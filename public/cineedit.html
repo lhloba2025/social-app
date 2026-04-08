@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineEdit Pro</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a0c;--bg2:#111114;--bg3:#18181d;--bg4:#1e1e25;
+    --border:#2a2a35;--border2:#35354a;
+    --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
+    --accent:#c8ff00;--accent2:#7c3aed;--accent3:#06b6d4;
+    --red:#ff4444;--orange:#ff8c00;--green:#00ff88;
+    --track-h:44px;--timeline-h:280px;--panel-w:260px;
+  }
+
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;user-select:none}
+
+  .menubar{height:28px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:16px;flex-shrink:0}
+  .menubar-logo{font-weight:700;font-size:11px;letter-spacing:2px;color:var(--accent);margin-right:8px}
+  .menu-item{font-size:11px;color:var(--text2);cursor:pointer;padding:2px 6px;border-radius:3px;position:relative}
+  .menu-item:hover{background:var(--bg4);color:var(--text)}
+  .menu-sep{width:1px;height:14px;background:var(--border);margin:0 4px}
+  .menubar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .badge{background:var(--accent2);color:white;font-size:9px;padding:2px 6px;border-radius:10px;font-family:'JetBrains Mono',monospace}
+
+  .toolbar{height:38px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:2px;flex-shrink:0}
+  .tb-group{display:flex;align-items:center;gap:1px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px}
+  .tb-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-size:13px;transition:all .15s;position:relative}
+  .tb-btn:hover{background:var(--bg4);color:var(--text)}
+  .tb-btn.active{background:var(--accent2);color:white}
+  .tb-btn[title]:hover::after{content:attr(title);position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);background:#000;color:var(--text);font-size:10px;padding:2px 6px;border-radius:3px;white-space:nowrap;z-index:999;pointer-events:none;border:1px solid var(--border)}
+  .tb-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+  .tb-timecode{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);background:var(--bg);border:1px solid var(--border2);padding:3px 10px;border-radius:4px;min-width:100px;text-align:center}
+  .tb-fps{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 8px;border-radius:4px}
+
+  .main{display:flex;flex:1;overflow:hidden}
+
+  .left-panel{width:var(--panel-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  .panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+  .panel-tab{flex:1;padding:7px 4px;font-size:10px;text-align:center;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s}
+  .panel-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .panel-tab:hover{color:var(--text2)}
+  .panel-content{flex:1;overflow-y:auto;padding:8px}
+  .panel-content::-webkit-scrollbar{width:4px}
+  .panel-content::-webkit-scrollbar-track{background:transparent}
+  .panel-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  .center{flex:1;display:flex;flex-direction:column;min-width:0}
+
+  .preview-area{flex:1;display:flex;overflow:hidden;min-height:0}
+  .preview-main{flex:1;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .preview-canvas{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative}
+  .preview-screen{background:#000;border:1px solid var(--border2);position:relative;overflow:hidden}
+  .preview-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:none}
+  .preview-tc{position:absolute;bottom:8px;left:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.6);background:rgba(0,0,0,.5);padding:2px 6px;border-radius:3px}
+  .preview-safe{position:absolute;inset:5%;border:1px solid rgba(255,255,255,.1);pointer-events:none;display:none}
+  .preview-safe.show{display:block}
+  .preview-crosshair-h{position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(0,255,136,.15);pointer-events:none}
+  .preview-crosshair-v{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(0,255,136,.15);pointer-events:none}
+
+  .preview-controls{height:42px;background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 12px;flex-shrink:0}
+  .pc-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:var(--bg3);color:var(--text2);font-size:14px;transition:all .15s;border:1px solid var(--border)}
+  .pc-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border2)}
+  .pc-btn.play-btn{width:40px;height:40px;background:var(--accent2);color:white;border-color:var(--accent2);font-size:16px}
+  .pc-btn.play-btn:hover{background:#6d28d9}
+  .pc-btn.play-btn.playing{background:var(--green);border-color:var(--green);color:#000}
+  .pc-sep{width:1px;height:20px;background:var(--border);margin:0 6px}
+  .pc-vol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+  .pc-vol input{width:70px;accent-color:var(--accent2)}
+  .pc-zoom{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-left:auto}
+  .pc-zoom select{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 4px;font-family:'JetBrains Mono',monospace}
+
+  .scopes{width:180px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  .scope-tab{padding:5px 8px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
+  .scope-canvas{flex:1;background:var(--bg);position:relative;overflow:hidden}
+
+  .timeline-area{height:var(--timeline-h);background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  .timeline-header{height:30px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:8px;flex-shrink:0}
+  .tl-tools{display:flex;gap:2px}
+  .tl-btn{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--text3);font-size:11px;transition:all .15s}
+  .tl-btn:hover{background:var(--bg4);color:var(--text)}
+  .tl-btn.active{background:var(--accent2);color:white}
+  .tl-header-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .tl-zoom-label{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+  .tl-zoom-slider{width:80px;accent-color:var(--accent)}
+
+  .timeline-body{flex:1;display:flex;overflow:hidden}
+  .track-labels{width:160px;flex-shrink:0;background:var(--bg3);border-right:1px solid var(--border);overflow-y:auto}
+  .track-labels::-webkit-scrollbar{display:none}
+  .track-ruler{height:22px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden}
+  .ruler-mark{position:absolute;top:0;bottom:0;width:1px;background:var(--border)}
+  .ruler-label{position:absolute;top:3px;font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace;transform:translateX(-50%)}
+  .playhead{position:absolute;top:0;bottom:0;width:1px;background:var(--accent);z-index:10;pointer-events:none}
+  .playhead::before{content:'▼';position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--accent)}
+  .tracks-scroll{flex:1;overflow:auto;position:relative}
+  .tracks-scroll::-webkit-scrollbar{width:6px;height:6px}
+  .tracks-scroll::-webkit-scrollbar-track{background:var(--bg)}
+  .tracks-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+  .tracks-inner{position:relative;min-width:2000px}
+
+  .track-label{height:var(--track-h);display:flex;align-items:center;padding:0 8px;gap:6px;border-bottom:1px solid var(--border);position:relative}
+  .track-label:hover{background:var(--bg4)}
+  .track-eye{width:14px;height:14px;cursor:pointer;font-size:11px;opacity:.6}
+  .track-eye:hover{opacity:1}
+  .track-lock{width:14px;height:14px;cursor:pointer;font-size:10px;opacity:.4}
+  .track-lock:hover{opacity:.8}
+  .track-color{width:3px;height:28px;border-radius:2px;flex-shrink:0}
+  .track-name{font-size:10px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
+  .track-mute{width:18px;height:14px;background:var(--bg4);border:1px solid var(--border);border-radius:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3)}
+  .track-mute:hover{background:var(--orange);color:white;border-color:var(--orange)}
+  .track-solo{width:18px;height:14px;background:var(--bg4);border:1px solid var(--border);border-radius:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3)}
+  .track-solo:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+  .track-vol{width:50px;accent-color:var(--accent2);cursor:pointer}
+
+  .track-lane{height:var(--track-h);border-bottom:1px solid var(--border);position:relative;background:var(--bg)}
+  .track-lane:nth-child(even){background:rgba(255,255,255,.01)}
+  .track-lane:hover{background:rgba(124,58,237,.03)}
+
+  .clip{position:absolute;top:4px;bottom:4px;border-radius:4px;cursor:pointer;overflow:hidden;display:flex;align-items:center;border:1px solid transparent;transition:border-color .1s;min-width:20px}
+  .clip:hover{border-color:rgba(255,255,255,.3)}
+  .clip.selected{border-color:white!important;box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+  .clip-label{font-size:9px;font-weight:600;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.9);text-shadow:0 1px 2px rgba(0,0,0,.8);pointer-events:none;z-index:1;position:relative}
+  .clip-waveform{position:absolute;inset:0;display:flex;align-items:center;pointer-events:none}
+  .clip-handle{position:absolute;top:0;bottom:0;width:6px;background:rgba(255,255,255,.2);cursor:ew-resize;z-index:2}
+  .clip-handle:hover{background:rgba(255,255,255,.5)}
+  .clip-handle.left{left:0;border-radius:4px 0 0 4px}
+  .clip-handle.right{right:0;border-radius:0 4px 4px 0}
+  .clip-thumb{position:absolute;inset:0;opacity:.15;background-size:cover;background-position:center}
+
+  .clip.video{background:linear-gradient(135deg,#1e3a5f,#1a4a7a)}
+  .clip.video2{background:linear-gradient(135deg,#1a3a2a,#1a5a3a)}
+  .clip.video3{background:linear-gradient(135deg,#3a1a4a,#5a1a7a)}
+  .clip.audio{background:linear-gradient(135deg,#3a1a0a,#6a3a0a)}
+  .clip.audio2{background:linear-gradient(135deg,#1a1a3a,#2a2a6a)}
+  .clip.fx{background:linear-gradient(135deg,#3a0a0a,#6a0a0a);opacity:.8}
+  .clip.title-clip{background:linear-gradient(135deg,#2a2a0a,#5a5a0a)}
+
+  .right-panel{width:var(--panel-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  .inspector-header{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .inspector-title{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+  .inspector-body{flex:1;overflow-y:auto;padding:8px}
+  .inspector-body::-webkit-scrollbar{width:4px}
+  .inspector-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  .statusbar{height:20px;background:var(--bg3);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:16px;flex-shrink:0}
+  .status-item{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px}
+  .status-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+  .status-dot.red{background:var(--red)}
+  .status-dot.orange{background:var(--orange)}
+
+  .notif{position:fixed;bottom:30px;right:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--text);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px;display:flex;align-items:center;gap:8px}
+  .notif.show{transform:translateY(0);opacity:1}
+  .notif-icon{font-size:14px}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9990;display:none;align-items:center;justify-content:center}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:20px;min-width:360px;max-width:500px}
+  .modal-title{font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)}
+  .modal-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .modal-label{font-size:11px;color:var(--text2);width:100px;flex-shrink:0}
+  .modal-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 8px;border-radius:4px;outline:none;font-family:'JetBrains Mono',monospace}
+  .modal-input:focus{border-color:var(--accent2)}
+  .modal-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .modal-btn{padding:6px 14px;border-radius:4px;font-size:11px;cursor:pointer;border:none;font-family:'Syne',sans-serif}
+  .modal-btn.cancel{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+  .modal-btn.confirm{background:var(--accent2);color:white}
+  .modal-btn:hover{opacity:.85}
+
+  .ctx-menu{position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;min-width:160px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6);padding:4px 0;display:none}
+  .ctx-menu.show{display:block}
+  .ctx-item{padding:6px 12px;font-size:11px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px}
+  .ctx-item:hover{background:var(--bg4);color:var(--text)}
+  .ctx-item.danger{color:var(--red)}
+  .ctx-item.danger:hover{background:rgba(255,68,68,.1)}
+  .ctx-sep{height:1px;background:var(--border);margin:4px 0}
+  .ctx-shortcut{margin-left:auto;font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+
+  .wave-bar{flex:1;background:rgba(255,255,255,.35);border-radius:1px;transition:height .1s}
+  
+  .drop-zone{border:2px dashed var(--border2);border-radius:6px;padding:20px;text-align:center;color:var(--text3);font-size:11px;cursor:pointer;transition:all .2s}
+  .drop-zone:hover,.drop-zone.dragover{border-color:var(--accent2);color:var(--accent2);background:rgba(124,58,237,.05)}
+  .drop-zone input{display:none}
+
+  .bin-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0;margin-bottom:6px}
+  .bin-title{font-size:10px;font-weight:600;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+  .bin-add{width:18px;height:18px;border-radius:3px;background:var(--bg4);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2)}
+  .bin-add:hover{background:var(--accent2);color:white;border-color:var(--accent2)}
+  .media-item{display:flex;align-items:center;gap:8px;padding:6px;border-radius:5px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .15s}
+  .media-item:hover{background:var(--bg3);border-color:var(--border)}
+  .media-item.selected{background:var(--bg4);border-color:var(--accent2)}
+  .media-thumb{width:40px;height:26px;border-radius:3px;flex-shrink:0;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .media-info{flex:1;min-width:0}
+  .media-name{font-size:10px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .media-dur{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+  .media-type-badge{font-size:8px;padding:1px 4px;border-radius:2px;font-weight:700;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif">
+  <span class="notif-icon">✓</span>
+  <span id="notifText"></span>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="cutClip()">✂ Cut <span class="ctx-shortcut">Ctrl+X</span></div>
+  <div class="ctx-item" onclick="copyClip()">⎘ Copy <span class="ctx-shortcut">Ctrl+C</span></div>
+  <div class="ctx-item" onclick="pasteClip()">⎘ Paste <span class="ctx-shortcut">Ctrl+V</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="splitClipAtPlayhead()">⚡ Split at Playhead <span class="ctx-shortcut">S</span></div>
+  <div class="ctx-item" onclick="duplicateClip()">⎘ Duplicate <span class="ctx-shortcut">Ctrl+D</span></div>
+  <div class="ctx-item" onclick="rippleDelete()">⚡ Ripple Delete <span class="ctx-shortcut">Shift+Del</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="deleteClip()">✕ Delete <span class="ctx-shortcut">Del</span></div>
+</div>
+
+<!-- MENU BAR -->
+<div class="menubar">
+  <span class="menubar-logo">CINEEDIT</span>
+  <div class="menu-sep"></div>
+  <div class="menu-item" onclick="showMenu('file')">File</div>
+  <div class="menu-item" onclick="showMenu('edit')">Edit</div>
+  <div class="menu-item" onclick="showMenu('clip')">Clip</div>
+  <div class="menubar-right">
+    <span class="badge">PRO</span>
+    <span style="font-size:10px;color:var(--text3)">CineEdit Pro</span>
+    <div class="status-dot" style="width:6px;height:6px;background:var(--green)"></div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="tb-group">
+    <button class="tb-btn active" id="tool-select" title="Selection (V)" onclick="setTool('select')">↖</button>
+    <button class="tb-btn" id="tool-razor" title="Razor (C)" onclick="setTool('razor')">✂</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-timecode" id="mainTimecode">00:00:00:00</div>
+  <div class="tb-fps">24 fps</div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <button class="tb-btn" title="Undo (Ctrl+Z)" onclick="undo()">↩</button>
+    <button class="tb-btn" title="Redo (Ctrl+Shift+Z)" onclick="redo()">↪</button>
+  </div>
+  <div style="flex:1"></div>
+  <button class="tb-btn" style="background:var(--accent2);color:white;width:auto;padding:0 12px;border-radius:4px;font-size:10px;font-weight:600" onclick="openExport()" title="Export">⬇ EXPORT</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchPanel('media',this)">Media</div>
+    </div>
+    <div class="panel-content" id="panel-media">
+      <div class="bin-header">
+        <span class="bin-title">Project Media</span>
+        <label class="bin-add" title="Import Media" style="width:auto;padding:2px 8px;font-size:9px">
+          + Import
+          <input type="file" multiple accept="video/*,audio/*,image/*" onchange="importFiles(this.files)">
+        </label>
+      </div>
+      <div class="drop-zone" id="dropZone" ondragover="e=>e.preventDefault()" onclick="document.querySelector('#dropZone input').click()">
+        <label style="cursor:pointer">
+          <div style="font-size:20px;margin-bottom:6px;opacity:.4">🎬</div>
+          Drop media here or click to import
+          <input type="file" multiple accept="video/*,audio/*,image/*" onchange="importFiles(this.files)" style="display:none">
+        </label>
+      </div>
+      <div id="mediaBin" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="preview-area">
+      <div class="preview-main">
+        <div class="preview-canvas" id="previewCanvas">
+          <div class="preview-screen" id="previewScreen" style="width:640px;height:360px">
+            <div class="preview-overlay" id="previewOverlay">
+              <div style="font-size:40px;opacity:.15">🎬</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.2);font-family:'JetBrains Mono',monospace">NO SIGNAL</div>
+            </div>
+            <div class="preview-tc" id="previewTC">00:00:00:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW CONTROLS -->
+    <div class="preview-controls">
+      <button class="pc-btn" title="Play/Pause (Space)" onclick="togglePlay()" id="playBtn">▶</button>
+      <div class="pc-sep"></div>
+      <div class="pc-vol">
+        <span>🔊</span>
+        <input type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
+      </div>
+      <div class="pc-zoom">
+        Zoom:
+        <select onchange="setPreviewZoom(this.value)">
+          <option value="1" selected>100%</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-area">
+      <div class="timeline-header">
+        <div class="tl-tools">
+          <button class="tl-btn active" id="tl-select" title="Selection" onclick="setTool('select')">↖</button>
+          <button class="tl-btn" id="tl-razor" title="Razor" onclick="setTool('razor')">✂</button>
+          <button class="tl-btn" title="Add Video Track" onclick="addTrack('video')">+V</button>
+          <button class="tl-btn" title="Add Audio Track" onclick="addTrack('audio')">+A</button>
+        </div>
+        <div class="tl-header-right">
+          <span class="tl-zoom-label">Zoom:</span>
+          <input type="range" class="tl-zoom-slider" min="20" max="400" value="100" oninput="setTimelineZoom(this.value)">
+        </div>
+      </div>
+
+      <div style="flex:1;display:flex;overflow:hidden">
+        <div class="track-labels" id="trackLabels"></div>
+        <div class="tracks-scroll" id="tracksScroll" onscroll="syncScroll(this)" oncontextmenu="e=>{e.preventDefault();showCtx(e)}">
+          <div class="tracks-inner" id="tracksInner">
+            <div class="playhead" id="playheadTrack" style="pointer-events:all;cursor:ew-resize"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="inspector-header">
+      <span class="inspector-title">Inspector</span>
+    </div>
+    <div class="inspector-body" id="inspectorBody">
+      <div style="text-align:center;padding:30px 10px;color:var(--text3);font-size:10px">
+        <div style="font-size:24px;margin-bottom:8px;opacity:.3">⊙</div>
+        Select a clip to inspect
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <div class="status-item"><div class="status-dot"></div> Ready</div>
+  <div class="status-item">Sequence: 1920×1080 @ 24fps</div>
+  <div class="status-item">Duration: <span id="statusDuration">00:00:00:00</span></div>
+  <div class="status-item">Clips: <span id="statusClips">0</span></div>
+</div>
+
+<script>
+const state = {
+  currentTime: 0,
+  duration: 600,
+  fps: 24,
+  playing: false,
+  tool: 'select',
+  snap: true,
+  zoom: 100,
+  volume: 100,
+  selectedClips: [],
+  clipboard: null,
+  tracks: [],
+  mediaItems: [],
+  undoStack: [],
+  redoStack: [],
+  playInterval: null
+};
+
+function init() {
+  const defaultTracks = [
+    {id:'v1',name:'V1',type:'video',color:'#0891b2',visible:true,locked:false,muted:false,clips:[
+      {id:'c1',name:'Scene_01.mp4',start:24,end:120,color:'video'},
+      {id:'c2',name:'Scene_02.mp4',start:120,end:240,color:'video2'},
+    ]},
+    {id:'a1',name:'A1',type:'audio',color:'#d97706',visible:true,locked:false,muted:false,clips:[
+      {id:'a_c1',name:'Audio.wav',start:24,end:350,color:'audio'},
+    ]},
+  ];
+  state.tracks = defaultTracks;
+  
+  state.mediaItems = [
+    {id:'m1',name:'Scene_01.mp4',type:'video',duration:'00:00:04:00'},
+    {id:'m2',name:'Scene_02.mp4',type:'video',duration:'00:00:05:00'},
+    {id:'m3',name:'Audio.wav',type:'audio',duration:'00:00:13:14'},
+  ];
+
+  renderAll();
+  updateStatusBar();
+}
+
+function renderAll() {
+  renderMediaBin();
+  renderTracks();
+}
+
+function renderMediaBin() {
+  const bin = document.getElementById('mediaBin');
+  bin.innerHTML = state.mediaItems.map(item => `
+    <div class="media-item" id="mi-${item.id}" ondblclick="addToTimeline('${item.id}')" onclick="selectMedia('${item.id}')">
+      <div class="media-thumb" style="background:${item.type==='video'?'#1e3a5f':'#3a1a0a'}">
+        ${item.type==='video'?'🎬':'🎵'}
+      </div>
+      <div class="media-info">
+        <div class="media-name">${item.name}</div>
+        <div class="media-dur">${item.duration}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTracks() {
+  const labels = document.getElementById('trackLabels');
+  const inner = document.getElementById('tracksInner');
+
+  const totalFrames = Math.max(state.duration, ...state.tracks.flatMap(t=>t.clips.map(c=>c.end)));
+  const totalW = Math.max(2000, (totalFrames / state.fps) * state.zoom + 200);
+  inner.style.width = totalW + 'px';
+  inner.style.height = (state.tracks.length * 44) + 'px';
+
+  labels.innerHTML = state.tracks.map((track, i) => `
+    <div class="track-label" id="tl-${track.id}">
+      <span class="track-eye">${track.visible?'👁':'🚫'}</span>
+      <div class="track-color" style="background:${track.color}"></div>
+      <span class="track-name">${track.name}</span>
+    </div>
+  `).join('');
+
+  const existingLanes = inner.querySelectorAll('.track-lane');
+  existingLanes.forEach(l=>l.remove());
+
+  state.tracks.forEach((track, ti) => {
+    const lane = document.createElement('div');
+    lane.className = 'track-lane';
+    lane.id = 'lane-'+track.id;
+    lane.style.top = (ti * 44) + 'px';
+    lane.style.position = 'absolute';
+    lane.style.width = '100%';
+    lane.style.height = '44px';
+
+    track.clips.forEach(clip => {
+      const clipEl = createClipElement(clip, track);
+      lane.appendChild(clipEl);
+    });
+
+    inner.appendChild(lane);
+  });
+
+  updatePlayhead();
+}
+
+function createClipElement(clip, track) {
+  const pxPerFrame = state.zoom / state.fps;
+  const left = clip.start * pxPerFrame;
+  const width = Math.max(20, (clip.end - clip.start) * pxPerFrame);
+
+  const el = document.createElement('div');
+  el.className = `clip ${clip.color}`;
+  el.id = 'clip-' + clip.id;
+  el.style.left = left + 'px';
+  el.style.width = width + 'px';
+
+  el.innerHTML = `<div class="clip-label">${clip.name}</div>`;
+
+  el.onmousedown = (e) => {
+    selectClip(clip.id, track.id, e);
+    if (state.tool === 'select') startClipDrag(clip.id, track.id, e);
+  };
+
+  return el;
+}
+
+function togglePlay() {
+  state.playing = !state.playing;
+  const btn = document.getElementById('playBtn');
+  if (state.playing) {
+    btn.innerHTML = '⏸';
+    btn.classList.add('playing');
+    state.playInterval = setInterval(() => {
+      state.currentTime++;
+      updatePlayhead();
+      updateTimecode();
+      if (state.currentTime >= getLastFrame()) {
+        state.playing = false;
+        btn.innerHTML = '▶';
+        btn.classList.remove('playing');
+        clearInterval(state.playInterval);
+      }
+    }, 1000/state.fps);
+  } else {
+    btn.innerHTML = '▶';
+    btn.classList.remove('playing');
+    clearInterval(state.playInterval);
+  }
+}
+
+function getLastFrame() {
+  let max = state.duration;
+  state.tracks.forEach(t => t.clips.forEach(c => { if(c.end > max) max = c.end; }));
+  return max;
+}
+
+function updatePlayhead() {
+  const pxPerFrame = state.zoom / state.fps;
+  const x = state.currentTime * pxPerFrame;
+  document.getElementById('playheadTrack').style.left = x + 'px';
+}
+
+function updateTimecode() {
+  const tc = framesToTC(state.currentTime);
+  document.getElementById('mainTimecode').textContent = tc;
+  document.getElementById('previewTC').textContent = tc;
+}
+
+function framesToTC(frames) {
+  const fps = state.fps;
+  const s = Math.floor(frames/fps);
+  const f = frames % fps;
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  return `${pad(h)}:${pad(m)}:${pad(sec)}:${pad(f)}`;
+}
+
+function pad(n) { return n.toString().padStart(2,'0'); }
+
+function selectClip(clipId, trackId, e) {
+  if(!e.shiftKey && !e.ctrlKey) state.selectedClips = [];
+  if(!state.selectedClips.includes(clipId)) state.selectedClips.push(clipId);
+  renderTracks();
+}
+
+function deleteClip() {
+  if(state.selectedClips.length===0) return;
+  state.selectedClips.forEach(clipId => {
+    state.tracks.forEach(t => {
+      const idx = t.clips.findIndex(c=>c.id===clipId);
+      if(idx>=0) t.clips.splice(idx,1);
+    });
+  });
+  state.selectedClips = [];
+  renderTracks();
+  showNotif('Clip deleted');
+}
+
+function cutClip() { copyClip(); deleteClip(); }
+
+function copyClip() {
+  if(state.selectedClips.length===0) return;
+  const clips = [];
+  state.selectedClips.forEach(clipId => {
+    state.tracks.forEach(t => {
+      const c = t.clips.find(cl=>cl.id===clipId);
+      if(c) clips.push({clip:{...c},trackId:t.id});
+    });
+  });
+  state.clipboard = clips;
+  showNotif(`${clips.length} clip(s) copied`);
+}
+
+function pasteClip() {
+  if(!state.clipboard) return;
+  state.clipboard.forEach(item => {
+    const track = state.tracks.find(t=>t.id===item.trackId);
+    if(track) {
+      const dur = item.clip.end - item.clip.start;
+      const newClip = {...item.clip, id:'c'+Date.now(), start:state.currentTime, end:state.currentTime+dur};
+      track.clips.push(newClip);
+    }
+  });
+  renderTracks();
+  showNotif('Pasted');
+}
+
+function duplicateClip() {
+  copyClip();
+  pasteClip();
+}
+
+function splitClipAtPlayhead() {
+  state.tracks.forEach(t => {
+    const toAdd = [];
+    t.clips = t.clips.filter(c => {
+      if(state.currentTime > c.start && state.currentTime < c.end) {
+        toAdd.push({...c, id:'c'+Date.now(), start:state.currentTime});
+        c.end = state.currentTime;
+        return true;
+      }
+      return true;
+    });
+    t.clips.push(...toAdd);
+  });
+  renderTracks();
+  showNotif('Split at playhead');
+}
+
+function rippleDelete() {
+  if(state.selectedClips.length===0) return;
+  state.selectedClips.forEach(clipId => {
+    state.tracks.forEach(t => {
+      const idx = t.clips.findIndex(c=>c.id===clipId);
+      if(idx<0) return;
+      const clip = t.clips[idx];
+      const dur = clip.end - clip.start;
+      t.clips.splice(idx,1);
+      t.clips.forEach(c => { if(c.start >= clip.end) { c.start -= dur; c.end -= dur; } });
+    });
+  });
+  state.selectedClips = [];
+  renderTracks();
+  showNotif('Ripple delete');
+}
+
+let dragState = null;
+function startClipDrag(clipId, trackId, e) {
+  const clipEl = document.getElementById('clip-'+clipId);
+  dragState = { clipId, trackId, startX: e.clientX, origLeft: parseInt(clipEl.style.left||'0') };
+}
+
+document.addEventListener('mousemove', e => {
+  if(!dragState) return;
+  const dx = e.clientX - dragState.startX;
+  const clipEl = document.getElementById('clip-'+dragState.clipId);
+  if(!clipEl) { dragState=null; return; }
+  let newLeft = Math.max(0, dragState.origLeft + dx);
+  clipEl.style.left = newLeft+'px';
+});
+
+document.addEventListener('mouseup', e => {
+  if(!dragState) return;
+  const pxPerFrame = state.zoom/state.fps;
+  const clipEl = document.getElementById('clip-'+dragState.clipId);
+  if(clipEl) {
+    const newLeft = parseInt(clipEl.style.left||'0');
+    const newStart = Math.round(newLeft/pxPerFrame);
+    const track = state.tracks.find(t=>t.id===dragState.trackId);
+    if(track) {
+      const clip = track.clips.find(c=>c.id===dragState.clipId);
+      if(clip) {
+        const dur = clip.end - clip.start;
+        clip.start = newStart;
+        clip.end = newStart + dur;
+      }
+    }
+  }
+  dragState = null;
+  renderTracks();
+});
+
+function addTrack(type) {
+  const colors = {video:'#2563eb',audio:'#d97706'};
+  const count = state.tracks.filter(t=>t.type===type).length+1;
+  const name = type==='video'?`V${count}`:`A${count}`;
+  state.tracks.push({id:'t'+Date.now(),name,type,color:colors[type],visible:true,locked:false,muted:false,clips:[]});
+  renderTracks();
+  showNotif(`Added ${name} track`);
+}
+
+function setTimelineZoom(val) {
+  state.zoom = parseInt(val);
+  renderTracks();
+}
+
+function setTool(tool) {
+  state.tool = tool;
+  document.querySelectorAll('.tb-btn[id^="tool-"]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tl-btn[id^="tl-"]').forEach(b=>b.classList.remove('active'));
+  const tb = document.getElementById('tool-'+tool);
+  const tl = document.getElementById('tl-'+tool);
+  if(tb) tb.classList.add('active');
+  if(tl) tl.classList.add('active');
+}
+
+function importFiles(files) {
+  Array.from(files).forEach(file => {
+    const type = file.type.startsWith('video')?'video':'audio';
+    const dur = '--:--:--:--';
+    state.mediaItems.push({id:'m'+Date.now(), name:file.name, type, duration:dur});
+  });
+  renderMediaBin();
+  showNotif(`${files.length} file(s) imported`);
+}
+
+function addToTimeline(mediaId) {
+  const media = state.mediaItems.find(m=>m.id===mediaId);
+  if(!media) return;
+  const type = media.type==='audio'?'audio':'video';
+  let track = state.tracks.find(t=>t.type===type);
+  if(!track) { showNotif('No available track'); return; }
+  const lastEnd = Math.max(0,...track.clips.map(c=>c.end));
+  const dur = 96;
+  const newClip = {id:'c'+Date.now(),name:media.name,start:lastEnd,end:lastEnd+dur,color:type==='audio'?'audio':'video'};
+  track.clips.push(newClip);
+  renderTracks();
+  showNotif(`Added to timeline: ${media.name}`);
+}
+
+function selectMedia(id) {
+  document.querySelectorAll('.media-item').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('mi-'+id)?.classList.add('selected');
+}
+
+function updateStatusBar() {
+  const totalClips = state.tracks.reduce((a,t)=>a+t.clips.length,0);
+  document.getElementById('statusClips').textContent = totalClips;
+  document.getElementById('statusDuration').textContent = framesToTC(getLastFrame());
+}
+
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  document.getElementById('notifText').textContent = msg;
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t = setTimeout(()=>n.classList.remove('show'),2000);
+}
+
+function showCtx(e) {
+  const menu = document.getElementById('ctxMenu');
+  menu.style.left = e.clientX+'px';
+  menu.style.top = e.clientY+'px';
+  menu.classList.add('show');
+}
+
+function syncScroll(el) {
+  // Could sync ruler here if needed
+}
+
+function pushUndo() {
+  state.undoStack.push(JSON.stringify({tracks:state.tracks}));
+  state.redoStack = [];
+}
+
+function undo() {
+  if(state.undoStack.length===0) return;
+  state.redoStack.push(JSON.stringify({tracks:state.tracks}));
+  const snap = JSON.parse(state.undoStack.pop());
+  state.tracks = snap.tracks;
+  state.selectedClips = [];
+  renderTracks();
+  showNotif('Undo');
+}
+
+function redo() {
+  if(state.redoStack.length===0) return;
+  state.undoStack.push(JSON.stringify({tracks:state.tracks}));
+  const snap = JSON.parse(state.redoStack.pop());
+  state.tracks = snap.tracks;
+  state.selectedClips = [];
+  renderTracks();
+  showNotif('Redo');
+}
+
+function switchPanel(panelId, tabEl) {
+  document.getElementById('panel-'+panelId).style.display='block';
+  document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+  if(tabEl) tabEl.classList.add('active');
+}
+
+function openExport() {
+  showNotif('Export: Starting...');
+}
+
+function showMenu(id) {
+  showNotif(`Menu: ${id}`);
+}
+
+function setVolume(v) { state.volume=parseInt(v); }
+function setPreviewZoom(v) { showNotif('Preview: '+v); }
+
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  const editing = tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
+
+  if(e.key===' '&&!editing){e.preventDefault();togglePlay();}
+  if(e.key==='ArrowLeft'&&!editing){e.preventDefault();state.currentTime=Math.max(0,state.currentTime-1);updatePlayhead();updateTimecode();}
+  if(e.key==='ArrowRight'&&!editing){e.preventDefault();state.currentTime=Math.min(getLastFrame(),state.currentTime+1);updatePlayhead();updateTimecode();}
+  if(e.key==='Delete'||e.key==='Backspace'){if(!editing){e.preventDefault();deleteClip();}}
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();e.shiftKey?redo():undo();}
+  if(e.ctrlKey&&e.key==='c'&&!editing){e.preventDefault();copyClip();}
+  if(e.ctrlKey&&e.key==='x'&&!editing){e.preventDefault();cutClip();}
+  if(e.ctrlKey&&e.key==='v'){e.preventDefault();pasteClip();}
+  if(e.ctrlKey&&e.key==='d'){e.preventDefault();duplicateClip();}
+});
+
+document.addEventListener('click', ()=>document.getElementById('ctxMenu').classList.remove('show'));
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', ()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('dragover'); importFiles(e.dataTransfer.files); });
+
+init();
+updateTimecode();
+</script>
+
+</body>
+</html>
