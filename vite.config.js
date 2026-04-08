@@ -17,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://social-app-production-7cfd.up.railway.app',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
