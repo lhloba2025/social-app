@@ -1,0 +1,16 @@
+{
+  "name": "Social Media Manager",
+  "short_name": "SocialApp",
+  "description": "إدارة السوشيال ميديا",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#00d4d4",
+  "icons": [
+    {
+      "src": "https://base44.com/logo_v2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

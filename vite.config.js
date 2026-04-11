@@ -21,6 +21,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
+      '/auth': {
+        target: 'https://social-app-production-7cfd.up.railway.app',
+        changeOrigin: true,
+      },
+      '/upload': {
+        target: 'https://social-app-production-7cfd.up.railway.app',
+        changeOrigin: true,
+      },
     },
   },
 });

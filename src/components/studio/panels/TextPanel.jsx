@@ -164,14 +164,29 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
     sel.addRange(savedSelectionRef.current.cloneRange());
     document.execCommand("styleWithCSS", false, true);
     document.execCommand("hiliteColor", false, color);
-    // Fix: ensure all spans with background-color have vertical-align and line-height set to prevent offset
-    const spans = editorRef.current.querySelectorAll("span[style]");
-    spans.forEach(span => {
-      if (span.style.backgroundColor && span.style.backgroundColor !== "transparent") {
+    // Fix: convert any block elements (div/p) with background-color to inline spans
+    // Chrome sometimes wraps entire lines in <div style="background-color:..."> instead of inline <span>
+    const allStyled = editorRef.current.querySelectorAll("div[style], p[style], span[style], font[style]");
+    allStyled.forEach(el => {
+      const bg = el.style.backgroundColor;
+      if (!bg || bg === "transparent" || bg === "") return;
+      const tagName = el.tagName.toLowerCase();
+      if (tagName === "div" || tagName === "p") {
+        // Convert block element to inline span
+        const span = document.createElement("span");
+        span.style.cssText = el.style.cssText;
         span.style.display = "inline";
         span.style.lineHeight = "inherit";
         span.style.verticalAlign = "baseline";
         span.style.padding = "0";
+        span.innerHTML = el.innerHTML;
+        el.replaceWith(span);
+      } else {
+        // Just fix existing inline elements
+        el.style.display = "inline";
+        el.style.lineHeight = "inherit";
+        el.style.verticalAlign = "baseline";
+        el.style.padding = "0";
       }
     });
     update("richHtml", editorRef.current.innerHTML);

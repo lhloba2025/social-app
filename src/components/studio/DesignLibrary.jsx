@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { localApi } from "@/api/localClient";
-import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload } from "lucide-react";
+import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MediaUploadModal from "../MediaUploadModal";
 
@@ -12,14 +12,32 @@ function parseJson(val, fallback) {
 }
 
 function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
+  const [pageIdx, setPageIdx] = useState(0);
   const size = parseJson(design.size, {});
+
+  // Extract pages from dedicated `pages` column (new format), fallback to bg.__pages (old format)
+  const pagesFromCol = parseJson(design.pages, null);
+  const bgData = parseJson(design.bg, {});
+  const pages = (Array.isArray(pagesFromCol) && pagesFromCol.length > 0) ? pagesFromCol : bgData.__pages;
+  const totalPages = pages && Array.isArray(pages) && pages.length > 1 ? pages.length : 1;
+  const hasMultiplePages = totalPages > 1;
+
+  // Get background color of current page for non-thumbnail pages
+  const currentPageBg = pages?.[pageIdx]?.bg?.color || "#1e293b";
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-800 rounded-2xl overflow-hidden max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-          <h3 className="font-bold text-white">{design.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-white">{design.name}</h3>
+            {hasMultiplePages && (
+              <span className="px-2 py-0.5 rounded-full bg-indigo-600/30 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
+                {totalPages} {isRtl ? "صفحات" : "pages"}
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition">
             <X className="w-5 h-5" />
           </button>
@@ -27,29 +45,70 @@ function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
 
         {/* Preview */}
         <div className="p-4">
-          <div style={{ width: "100%", borderRadius: 8, overflow: "hidden", margin: "0 auto" }}>
-            {design.thumbnail ? (
-              <img
-                src={design.thumbnail}
-                alt={design.name}
-                style={{ width: "100%", height: "auto", display: "block", borderRadius: 8 }}
-              />
-            ) : (
-              <div style={{
-                width: "100%",
-                paddingBottom: size.width && size.height ? `${(size.height / size.width) * 100}%` : "100%",
-                backgroundColor: "#1e293b",
-                borderRadius: 8,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <span className="text-slate-500 text-sm">
-                  {isRtl ? "لا يوجد معاينة" : "No preview"}
-                </span>
-              </div>
+          <div className="relative">
+            <div style={{ width: "100%", borderRadius: 8, overflow: "hidden", margin: "0 auto" }}>
+              {/* Show per-page thumbnail if available, otherwise fallback */}
+              {(() => {
+                const pageThumbnail = pages?.[pageIdx]?.thumbnail || (pageIdx === 0 ? design.thumbnail : null);
+                const aspectPct = size.width && size.height ? `${(size.height / size.width) * 100}%` : "100%";
+                if (pageThumbnail) {
+                  return (
+                    <div style={{ width: "100%", paddingBottom: aspectPct, position: "relative", borderRadius: 8, overflow: "hidden" }}>
+                      <img src={pageThumbnail} alt={design.name}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{
+                    width: "100%", paddingBottom: aspectPct,
+                    backgroundColor: currentPageBg,
+                    borderRadius: 8, position: "relative",
+                  }}>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      <span className="text-5xl font-black text-white/20">{pageIdx + 1}</span>
+                      <span className="text-slate-400 text-sm text-center px-4">
+                        {isRtl ? `الصفحة ${pageIdx + 1} — افتح التصميم وتنقل للصفحات لتظهر معاينتها` : `Page ${pageIdx + 1} — open & visit each page to generate previews`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Page navigation arrows */}
+            {hasMultiplePages && (
+              <>
+                <button
+                  onClick={() => setPageIdx(i => Math.max(0, i - 1))}
+                  disabled={pageIdx === 0}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center disabled:opacity-30 transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPageIdx(i => Math.min(totalPages - 1, i + 1))}
+                  disabled={pageIdx === totalPages - 1}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center disabled:opacity-30 transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
+
+          {/* Page dots */}
+          {hasMultiplePages && (
+            <div className="flex items-center justify-center gap-1.5 mt-3">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPageIdx(i)}
+                  className={`w-2 h-2 rounded-full transition ${i === pageIdx ? "bg-indigo-400 w-4" : "bg-slate-600 hover:bg-slate-400"}`}
+                />
+              ))}
+            </div>
+          )}
 
           {size.width && (
             <p className="text-slate-400 text-xs text-center mt-2">{size.width}×{size.height}</p>
@@ -284,6 +343,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {filteredDesigns.map((design) => {
               const sizeStr = getSize(design);
+              const designPagesCol = parseJson(design.pages, null);
+              const designBg = parseJson(design.bg, {});
+              const designPages = (Array.isArray(designPagesCol) && designPagesCol.length > 0) ? designPagesCol : designBg.__pages;
+              const pagesCount = designPages && Array.isArray(designPages) ? designPages.length : 1;
               return (
                 <div
                   key={design.id}
@@ -296,6 +359,12 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       <img src={design.thumbnail} alt={design.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="text-slate-600 text-4xl font-bold">{design.name?.[0]?.toUpperCase()}</div>
+                    )}
+                    {/* Pages count badge */}
+                    {pagesCount > 1 && (
+                      <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-bold">
+                        {pagesCount}p
+                      </div>
                     )}
                   </div>
 
@@ -320,6 +389,21 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       title={isRtl ? "تعديل" : "Edit"}
                     >
                       <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const params = new URLSearchParams({
+                          designId: design.id,
+                          name: encodeURIComponent(design.name || ""),
+                          thumb: encodeURIComponent(design.thumbnail_url || ""),
+                        });
+                        navigate(`/PostComposer?${params}`);
+                      }}
+                      className="p-2 rounded-lg bg-slate-800/80 hover:bg-green-600 transition"
+                      title={isRtl ? "جدولة المنشور" : "Schedule Post"}
+                    >
+                      <CalendarPlus className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => handleDelete(e, design.id)}

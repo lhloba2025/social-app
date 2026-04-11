@@ -128,10 +128,38 @@ function ShapeElement({ shape, scale, isSelected }) {
 
     if (points) {
       const r = Math.min(shape.borderRadius || 0, 20);
-      const pathD = shape.shapeType === "arrow" 
+      const pathD = shape.shapeType === "arrow"
         ? "M20,50 L80,50 M65,35 L80,50 L65,65"
         : roundedPolygonPath(points, r);
-      
+      const clipId = `clip-${shape.id}`;
+
+      // Image fill for polygon shapes via SVG clipPath
+      if (shape.fillImage && shape.shapeType !== "arrow") {
+        const scale = (shape.imageScale || 100) / 100;
+        const ox = shape.imageOffsetX || 0;
+        const oy = shape.imageOffsetY || 0;
+        const imgSize = 100 / scale;
+        const imgX = (100 - imgSize) / 2 + ox;
+        const imgY = (100 - imgSize) / 2 + oy;
+        return (
+          <svg {...commonSvgProps}>
+            <defs>
+              <clipPath id={clipId}><path d={pathD} /></clipPath>
+            </defs>
+            <image
+              href={shape.fillImage}
+              x={imgX} y={imgY}
+              width={imgSize} height={imgSize}
+              preserveAspectRatio="xMidYMid slice"
+              clipPath={`url(#${clipId})`}
+            />
+            {shape.borderWidth > 0 && (
+              <path d={pathD} fill="none" stroke={shape.borderColor} strokeWidth={shape.borderWidth || 0} strokeLinecap="round" strokeLinejoin="round" />
+            )}
+          </svg>
+        );
+      }
+
       return (
         <svg {...commonSvgProps}>
           {shape.blur > 0 && (
@@ -155,7 +183,105 @@ function ShapeElement({ shape, scale, isSelected }) {
     }
   }
 
+  // Image fill for simple div shapes (rect, circle, ellipse, rounded)
+  if (shape.fillImage) {
+    const scale = (shape.imageScale || 100) / 100;
+    const ox = 50 + (shape.imageOffsetX || 0);
+    const oy = 50 + (shape.imageOffsetY || 0);
+    return (
+      <div style={{
+        width: "100%", height: "100%",
+        opacity: shape.opacity ?? 1,
+        borderRadius: shape.shapeType === "circle" ? "50%" : (shape.shapeType === "ellipse" ? "50%" : `${(shape.borderRadius || 0) * (shape._scale || 1)}px`),
+        overflow: "hidden",
+        backgroundImage: `url(${shape.fillImage})`,
+        backgroundSize: `${scale * 100}%`,
+        backgroundPosition: `${ox}% ${oy}%`,
+        backgroundRepeat: "no-repeat",
+        border: shape.borderWidth > 0 ? `${shape.borderWidth}px solid ${shape.borderColor || "#ffffff"}` : "none",
+      }} />
+    );
+  }
+
   return <div style={baseStyle} />;
+}
+
+// ─── Smart Guides helper (خارج المكوّن لأنها دالة خالصة) ─────────────────────
+const SNAP_THRESHOLD = 1.5; // percent
+
+function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, logos) {
+  let dragW = 20, dragH = 15, isTextEl = type === "text";
+  if (type === "text") {
+    const el = textLayers.find(l => l.id === id);
+    if (el) { dragW = el.textWidth || 30; dragH = 15; }
+  } else if (type === "shape") {
+    const el = shapes.find(s => s.id === id);
+    if (el) { dragW = el.width || 20; dragH = el.height || 15; }
+  } else if (type === "image") {
+    const el = images.find(i => i.id === id);
+    if (el) { dragW = el.width || 20; dragH = el.height || 20; }
+  } else if (type === "logo") {
+    const el = logos.find(l => l.id === id);
+    if (el) { dragW = el.width || 20; dragH = el.height || 15; }
+  }
+
+  const candidateXs = [0, 50, 100];
+  const candidateYs = [0, 50, 100];
+
+  const addBounds = (el, elType) => {
+    if (el.id === id || el.visible === false) return;
+    const x = el.x || 0, y = el.y || 0;
+    if (elType === "text") {
+      const w = el.textWidth || 30;
+      candidateXs.push(x - w / 2, x, x + w / 2);
+      candidateYs.push(y - 7.5, y, y + 7.5);
+    } else {
+      const w = el.width || 20, h = el.height || 15;
+      candidateXs.push(x, x + w / 2, x + w);
+      candidateYs.push(y, y + h / 2, y + h);
+    }
+  };
+  textLayers.forEach(l => addBounds(l, "text"));
+  shapes.forEach(s => addBounds(s, "shape"));
+  images.forEach(i => addBounds(i, "image"));
+  logos.forEach(l => addBounds(l, "logo"));
+
+  const dragXs = isTextEl
+    ? [newX - dragW / 2, newX, newX + dragW / 2]
+    : [newX, newX + dragW / 2, newX + dragW];
+  const dragYs = isTextEl
+    ? [newY - dragH / 2, newY, newY + dragH / 2]
+    : [newY, newY + dragH / 2, newY + dragH];
+
+  let bestSnapX = null, bestSnapY = null;
+  let minDx = SNAP_THRESHOLD, minDy = SNAP_THRESHOLD;
+
+  [...new Set(candidateXs)].forEach(cx => {
+    dragXs.forEach((dx, i) => {
+      const d = Math.abs(dx - cx);
+      if (d < minDx) {
+        minDx = d;
+        const offsets = isTextEl ? [-dragW / 2, 0, dragW / 2] : [0, dragW / 2, dragW];
+        bestSnapX = { guide: cx, newX: cx - offsets[i] };
+      }
+    });
+  });
+  [...new Set(candidateYs)].forEach(cy => {
+    dragYs.forEach((dy, i) => {
+      const d = Math.abs(dy - cy);
+      if (d < minDy) {
+        minDy = d;
+        const offsets = isTextEl ? [-dragH / 2, 0, dragH / 2] : [0, dragH / 2, dragH];
+        bestSnapY = { guide: cy, newY: cy - offsets[i] };
+      }
+    });
+  });
+
+  const vGuides = [], hGuides = [];
+  let snapX = newX, snapY = newY;
+  if (bestSnapX) { snapX = bestSnapX.newX; vGuides.push(bestSnapX.guide); }
+  if (bestSnapY) { snapY = bestSnapY.newY; hGuides.push(bestSnapY.guide); }
+  return { snapX, snapY, vGuides, hGuides };
 }
 
 export default function StudioCanvas({
@@ -167,6 +293,9 @@ export default function StudioCanvas({
   const containerRef = containerRefProp || containerRefLocal;
   const dragRef = useRef(null);
   const resizeRef = useRef(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [guides, setGuides] = useState({ v: [], h: [] });
 
   const startDrag = useCallback((e, id, type, currentX, currentY, locked) => {
     if (locked) return;
@@ -203,8 +332,18 @@ export default function StudioCanvas({
         const { id, type, startMX, startMY, startX, startY } = dragRef.current;
         const totalDx = ((e.clientX - startMX) / containerW) * 100;
         const totalDy = ((e.clientY - startMY) / containerH) * 100;
-        const newX = Math.max(-50, Math.min(150, startX + totalDx));
-        const newY = Math.max(-50, Math.min(150, startY + totalDy));
+        let newX = Math.max(-50, Math.min(150, startX + totalDx));
+        let newY = Math.max(-50, Math.min(150, startY + totalDy));
+
+        // ─── Smart Guides & Snap ───────────────────────────────────────
+        if (type !== "group") {
+          const { snapX, snapY, vGuides, hGuides } = computeSnapGuides(
+            id, type, newX, newY, textLayers, shapes, images, logos
+          );
+          newX = snapX; newY = snapY;
+          setGuides({ v: vGuides, h: hGuides });
+        }
+        // ──────────────────────────────────────────────────────────────
 
         if (type === "shape") onUpdateShape(id, { x: newX, y: newY });
         else if (type === "image") onUpdateImage(id, { x: newX, y: newY });
@@ -274,7 +413,7 @@ export default function StudioCanvas({
         }
       }
     };
-    const onUp = () => { dragRef.current = null; resizeRef.current = null; };
+    const onUp = () => { dragRef.current = null; resizeRef.current = null; setGuides({ v: [], h: [] }); };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
@@ -335,7 +474,7 @@ export default function StudioCanvas({
             transform: `rotate(${img.rotation || 0}deg)`,
             opacity: img.opacity ?? 1,
             cursor: img.locked ? "default" : "grab",
-            outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+            outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
             outlineOffset: `${2 * scale}px`,
             zIndex: 20,
             display: "flex",
@@ -348,7 +487,7 @@ export default function StudioCanvas({
             style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
             dangerouslySetInnerHTML={{ __html: coloredSvg.replace('<svg ', '<svg width="100%" height="100%" style="display:block" ') }}
           />
-          {isSelected && (
+          {isSelected && !isExporting && (
             <div
               style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
               onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
@@ -375,7 +514,7 @@ export default function StudioCanvas({
             transform: `rotate(${img.rotation || 0}deg)`,
             opacity: img.opacity ?? 1,
             cursor: img.locked ? "default" : "grab",
-            outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+            outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
             outlineOffset: `${2 * scale}px`,
             zIndex: 25,
           }}
@@ -385,7 +524,7 @@ export default function StudioCanvas({
             style={{ width: "100%", height: "100%" }}
             dangerouslySetInnerHTML={{ __html: img.svgContent.replace('<svg ', '<svg width="100%" height="100%" style="display:block;overflow:visible" ') }}
           />
-          {isSelected && (
+          {isSelected && !isExporting && (
             <div
               style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
               onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
@@ -413,7 +552,7 @@ export default function StudioCanvas({
             transform: `rotate(${img.rotation || 0}deg)`,
             opacity: img.opacity ?? 1,
             cursor: img.locked ? "default" : "grab",
-            outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+            outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
             outlineOffset: `${2 * scale}px`,
             zIndex: 20,
             display: "flex",
@@ -431,7 +570,7 @@ export default function StudioCanvas({
               style={{ display: "block" }}
             />
           )}
-          {isSelected && (
+          {isSelected && !isExporting && (
             <div
               style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
               onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
@@ -470,7 +609,7 @@ export default function StudioCanvas({
             transform: `rotate(${img.rotation || 0}deg)`,
             opacity: img.opacity ?? 1,
             cursor: img.locked ? "default" : "grab",
-            outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+            outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
             outlineOffset: `${2 * scale}px`,
             zIndex: 20,
             mixBlendMode: img.blendMode || "normal",
@@ -489,7 +628,7 @@ export default function StudioCanvas({
           }}>
             {img.text}
           </div>
-          {isSelected && (
+          {isSelected && !isExporting && (
             <div
               style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
               onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
@@ -519,7 +658,7 @@ export default function StudioCanvas({
           transform: `rotate(${img.rotation || 0}deg)`,
           opacity: img.opacity ?? 1,
           cursor: "grab",
-          outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+          outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
            outlineOffset: `${2 * scale}px`,
            zIndex: type === "logo" ? 20 : 10,
            mixBlendMode: img.blendMode || "normal",
@@ -550,7 +689,7 @@ export default function StudioCanvas({
             />
           </div>
         )}
-        {isSelected && (
+        {isSelected && !isExporting && (
           <div
             style={{
               position: "absolute", bottom: -6, right: -6,
@@ -576,7 +715,10 @@ export default function StudioCanvas({
   };
 
   return (
+    <>
+    <style>{`[data-studio-canvas] *::selection { background: transparent !important; }`}</style>
     <div
+      data-studio-canvas
       ref={containerRef}
       style={{
         position: "relative",
@@ -601,7 +743,15 @@ export default function StudioCanvas({
       {!isExporting && <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "10% 10%", pointerEvents: "none" }} />}
       {!isExporting && <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)", backgroundSize: "50% 50%", pointerEvents: "none" }} />}
 
-      <div ref={canvasRef} style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      {/* Smart Guides - خطوط المحاذاة الذكية */}
+      {!isExporting && guides.v.map(gx => (
+        <div key={`vg-${gx}`} style={{ position: "absolute", left: `${gx}%`, top: 0, bottom: 0, width: 1, background: "#f43f5e", pointerEvents: "none", zIndex: 200, opacity: 0.9 }} />
+      ))}
+      {!isExporting && guides.h.map(gy => (
+        <div key={`hg-${gy}`} style={{ position: "absolute", top: `${gy}%`, left: 0, right: 0, height: 1, background: "#f43f5e", pointerEvents: "none", zIndex: 200, opacity: 0.9 }} />
+      ))}
+
+      <div ref={canvasRef} style={{ position: "absolute", inset: 0, overflow: "hidden" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onSelect(null, null); }}>
         {/* SVG filters for direct logo recoloring */}
         <svg style={{ position: "absolute", width: 0, height: 0 }}>
           <defs>
@@ -642,7 +792,7 @@ export default function StudioCanvas({
                 startDrag(e, group.id, "group", bounds.x, bounds.y);
               }}
             >
-              {isSelected && (
+              {isSelected && !isExporting && (
                 <div
                   style={{
                     position: "absolute",
@@ -679,7 +829,7 @@ export default function StudioCanvas({
                 transform: `rotate(${shape.rotation || 0}deg)`,
                 opacity: shape.opacity ?? 1,
                 cursor: "grab",
-                outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+                outline: isSelected && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
                 outlineOffset: `${2 * scale}px`,
                 zIndex: isSelected ? 15 : 5,
                 mixBlendMode: shape.blendMode || "normal",
@@ -688,7 +838,7 @@ export default function StudioCanvas({
               onMouseDown={(e) => { if (!shape.locked) onSelect(shape.id, "shape", e); startDrag(e, shape.id, "shape", shape.x || 10, shape.y || 10, shape.locked); }}
             >
               <ShapeElement shape={shape} scale={scale} isSelected={isSelected} />
-              {isSelected && (
+              {isSelected && !isExporting && (
                 <div
                   style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
                   onMouseDown={(e) => { e.stopPropagation(); startResize(e, shape.id, "shape", shape.width || 20, shape.height || 15); }}
@@ -707,7 +857,24 @@ export default function StudioCanvas({
         {/* Text layers */}
         {textLayers.filter(t => t.visible !== false).map((layer) => {
           const isSelected = selectedId === layer.id;
+          const isEditing = editingId === layer.id;
           const fs = (layer.fontSize || 24) * scale;
+          const textStyle = {
+            fontSize: fs,
+            fontFamily: layer.fontFamily || "Tajawal",
+            fontWeight: layer.bold ? "bold" : "normal",
+            fontStyle: layer.italic ? "italic" : "normal",
+            color: layer.color || "#ffffff",
+            textAlign: layer.align || "center",
+            lineHeight: layer.lineHeight || 1.4,
+            letterSpacing: layer.letterSpacing ? `${layer.letterSpacing}px` : undefined,
+            direction: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            width: "100%",
+            boxSizing: "border-box",
+          };
           return (
             <div
               key={layer.id}
@@ -715,49 +882,87 @@ export default function StudioCanvas({
                 position: "absolute",
                 left: `${layer.x || 50}%`,
                 top: `${layer.y || 50}%`,
-                marginLeft: `-${(layer.textWidth || 90) / 2}%`,
-                marginTop: `-${fs * (layer.lineHeight || 1.4) / 2}px`,
-                transform: layer.rotation ? `rotate(${layer.rotation}deg)` : "none",
+                transform: `translate(-50%, -50%)${layer.rotation ? ` rotate(${layer.rotation}deg)` : ""}`,
                 width: layer.textWidth ? `${layer.textWidth}%` : "90%",
                 maxWidth: layer.textWidth ? `${layer.textWidth}%` : "90%",
                 zIndex: 30,
-                cursor: "grab",
-                outline: isSelected ? `${2 * scale}px dashed #818cf8` : "none",
+                cursor: isEditing ? "text" : "grab",
+                outline: isSelected && !isExporting && !isEditing ? `${2 * scale}px dashed #818cf8` : "none",
                 outlineOffset: `${2 * scale}px`,
                 userSelect: "none",
+                WebkitUserSelect: "none",
               }}
-              onMouseDown={(e) => { if (!layer.locked) onSelect(layer.id, "text", e); startDrag(e, layer.id, "text", layer.x || 50, layer.y || 50, layer.locked); }}
+              onMouseDown={(e) => { if (!isEditing) { if (!layer.locked) onSelect(layer.id, "text", e); startDrag(e, layer.id, "text", layer.x || 50, layer.y || 50, layer.locked); } }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (layer.locked) return;
+                const plain = layer.richHtml
+                  ? (() => { const d = document.createElement("div"); d.innerHTML = layer.richHtml; return d.textContent || d.innerText || ""; })()
+                  : (layer.text || "");
+                setEditingId(layer.id);
+                setEditingText(plain);
+              }}
             >
+              {/* Display div — hidden while editing so textarea shows in its place */}
               <div style={{
-                backgroundColor: layer.bgColor || "transparent",
-                padding: layer.bgColor ? `0.15em 0.3em` : 0,
-                borderRadius: layer.bgColor ? "4px" : 0,
-                fontSize: fs,
-                fontFamily: layer.fontFamily || "Tajawal",
-                fontWeight: layer.bold ? "bold" : "normal",
-                fontStyle: layer.italic ? "italic" : "normal",
-                color: layer.color || "#ffffff",
-                textAlign: layer.align || "center",
-                lineHeight: layer.lineHeight || 1.4,
-                letterSpacing: layer.letterSpacing ? `${layer.letterSpacing}px` : undefined,
-                opacity: layer.opacity ?? 1,
+                ...textStyle,
+                opacity: isEditing ? 0 : (layer.opacity ?? 1),
                 filter: `blur(${layer.blur || 0}px) brightness(${layer.brightness || 100}%)${layer.glow ? ` drop-shadow(0 0 ${layer.glow}px rgba(255,255,255,0.5))` : ""}`,
                 textShadow: layer.shadow ? `${2 * scale}px ${2 * scale}px ${4 * scale}px rgba(0,0,0,0.8)` : (layer.dropShadow ? `0 ${4 * scale}px ${8 * scale}px rgba(0,0,0,0.6)` : "none"),
                 mixBlendMode: layer.blendMode || "normal",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                overflowWrap: "break-word",
-                direction: "auto",
                 display: "block",
-                width: "100%",
-                boxSizing: "border-box",
+                pointerEvents: "none",
+                userSelect: "none",
+                WebkitUserSelect: "none",
               }}>
-                {layer.richHtml
-                  ? <span style={{ lineHeight: "inherit", verticalAlign: "baseline", display: "inline" }} dangerouslySetInnerHTML={{ __html: layer.richHtml }} />
-                  : (layer.text || "نص")
-                }
+                {layer.bgColor ? (
+                  <span style={{ backgroundColor: layer.bgColor, padding: "0 2px", borderRadius: "3px", display: "inline" }}>
+                    {layer.richHtml
+                      ? <span style={{ lineHeight: "inherit" }} dangerouslySetInnerHTML={{ __html: layer.richHtml.replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
+                      : (layer.text || "نص")
+                    }
+                  </span>
+                ) : (
+                  layer.richHtml
+                    ? <span style={{ lineHeight: "inherit", display: "block", width: "100%" }} dangerouslySetInnerHTML={{ __html: layer.richHtml.replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
+                    : (layer.text || "نص")
+                )}
               </div>
-              {isSelected && (
+
+              {/* Textarea overlay — only shown while double-click editing, never captured by html2canvas on export */}
+              {isEditing && (
+                <textarea
+                  autoFocus
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  onBlur={() => {
+                    onUpdateText(layer.id, { text: editingText, richHtml: "" });
+                    setEditingId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { setEditingId(null); }
+                  }}
+                  style={{
+                    ...textStyle,
+                    position: "absolute",
+                    inset: 0,
+                    height: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    resize: "none",
+                    padding: 0,
+                    margin: 0,
+                    overflow: "hidden",
+                    caretColor: layer.color || "#ffffff",
+                    zIndex: 50,
+                    userSelect: "text",
+                    WebkitUserSelect: "text",
+                  }}
+                />
+              )}
+
+              {isSelected && !isExporting && !isEditing && (
                 <div
                   style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
                   onMouseDown={(e) => { e.stopPropagation(); startResize(e, layer.id, "text", layer.textWidth || 90, 0); }}
@@ -768,5 +973,6 @@ export default function StudioCanvas({
         })}
       </div>
     </div>
+    </>
   );
 }

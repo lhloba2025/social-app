@@ -1,12 +1,12 @@
-import DesignStudio from './pages/DesignStudio';
+import Dashboard from './pages/Dashboard';
 import Layout from './Layout';
 
 export const PAGES = {
-    "DesignStudio": DesignStudio,
+    "Dashboard": Dashboard,
 }
 
 export const pagesConfig = {
-    mainPage: "DesignStudio",
+    mainPage: "Dashboard",
     Pages: PAGES,
     Layout,
 };

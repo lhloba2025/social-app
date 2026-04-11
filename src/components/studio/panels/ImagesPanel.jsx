@@ -1,12 +1,14 @@
 import React, { useRef, useState } from "react";
-import { Upload, Trash2, Eye, EyeOff, Copy, Loader2 } from "lucide-react";
+import { Upload, Trash2, Eye, EyeOff, Copy, Loader2, Scissors } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
+import { removeBgWithKey, getBrandKey } from "./BrandKitPanel";
 
 export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpdate, onDelete, onDuplicate, language, isLogo = false }) {
   const isRtl = language === "ar";
   const fileRef = useRef();
   const [uploading, setUploading] = React.useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const selected = images.find((i) => i.id === selectedId && !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol);
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };
   const canvasImages = images.filter((i) => !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol);
@@ -29,16 +31,47 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
     }
   };
 
+  const handleRemoveBg = async () => {
+    if (!selected) return;
+    const apiKey = getBrandKey();
+    if (!apiKey) {
+      alert("أضف مفتاح remove.bg في تبويب البراند أولاً");
+      return;
+    }
+    setRemovingBg(true);
+    try {
+      const newUrl = await removeBgWithKey(selected.url, apiKey);
+      onUpdate(selected.id, { url: newUrl });
+    } catch (e) {
+      alert("فشل إزالة الخلفية: " + e.message);
+    } finally {
+      setRemovingBg(false);
+    }
+  };
+
   return (
     <div className="space-y-3 text-xs">
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:opacity-50"
-      >
-        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-        {uploading ? (isRtl ? "جاري الرفع..." : "Uploading...") : (isRtl ? "رفع صورة" : "Upload Image")}
-      </button>
+      <div className="flex gap-1">
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:opacity-50"
+        >
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          {uploading ? "جاري..." : (isRtl ? "رفع صورة" : "Upload")}
+        </button>
+        {selected && (
+          <button
+            onClick={handleRemoveBg}
+            disabled={removingBg}
+            title="إزالة الخلفية بالذكاء الاصطناعي (remove.bg)"
+            className="flex items-center gap-1 px-2 py-2 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-semibold transition disabled:opacity-50"
+          >
+            {removingBg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />}
+            {!removingBg && <span>{isRtl ? "إزالة BG" : "Remove BG"}</span>}
+          </button>
+        )}
+      </div>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
 
       <div className="space-y-1 max-h-32 overflow-y-auto">

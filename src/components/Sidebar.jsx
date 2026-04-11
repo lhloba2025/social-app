@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Film } from "lucide-react";
+import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Film, Home, CalendarDays, PenSquare, ListChecks } from "lucide-react";
 
 const NAV_ITEMS = [
+  { path: "/", labelAr: "الرئيسية", labelEn: "Home", icon: Home, exact: true },
   { path: "/DesignStudio", labelAr: "منشئ التصاميم", labelEn: "Design Studio", icon: LayoutGrid },
   { path: "/VideoEditor", labelAr: "محرر الفيديو", labelEn: "Video Editor", icon: Film },
   { path: "/DesignLibraryPage", labelAr: "مكتبة التصاميم", labelEn: "Design Library", icon: BookImage },
+  { divider: true, labelAr: "السوشيال ميديا", labelEn: "Social Media" },
+  { path: "/PostComposer", labelAr: "إنشاء منشور", labelEn: "New Post", icon: PenSquare },
+  { path: "/ContentCalendar", labelAr: "تقويم المحتوى", labelEn: "Calendar", icon: CalendarDays },
+  { path: "/PostsManager", labelAr: "إدارة المنشورات", labelEn: "Posts", icon: ListChecks },
   { path: "/AccountsPage", labelAr: "ربط الحسابات", labelEn: "Accounts", icon: LinkIcon },
 ];
 
@@ -50,8 +55,20 @@ export default function Sidebar({ language, onLanguageChange }) {
 
       {/* Nav Items */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, labelAr, labelEn, icon: Icon }) => {
-          const active = location.pathname === path || location.pathname === "/";
+        {NAV_ITEMS.map((item, idx) => {
+          if (item.divider) {
+            return collapsed ? (
+              <div key={`div-${idx}`} className="my-2 border-t border-slate-700/50" />
+            ) : (
+              <div key={`div-${idx}`} className="pt-3 pb-1 px-2">
+                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                  {isRtl ? item.labelAr : item.labelEn}
+                </p>
+              </div>
+            );
+          }
+          const { path, labelAr, labelEn, icon: Icon, exact } = item;
+          const active = exact ? location.pathname === path : location.pathname === path;
           return (
             <Link
               key={path}

@@ -46,7 +46,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
   const [search, setSearch] = useState("");
 
   // Icons on canvas
-  const canvasIcons = images?.filter(i => (i.isLucideIcon || i.isSocialIcon) && !i.isSymbol) || [];
+  const canvasIcons = images?.filter(i => (i.isLucideIcon || i.isSocialIcon || i.isText) && !i.isSymbol) || [];
 
   const selected = images?.find((i) => i.id === selectedId && (i.isLucideIcon || i.isText || i.isSocialIcon));
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };

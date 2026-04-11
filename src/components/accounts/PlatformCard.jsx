@@ -1,112 +1,75 @@
 import React from "react";
-import { Unlink, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Unlink, Link as LinkIcon, Loader2, CheckCircle2 } from "lucide-react";
 
 const PLATFORM_INFO = {
-  facebook: { nameAr: "فيسبوك", color: "#1877F2", emoji: "f" },
-  instagram: { nameAr: "انستقرام", color: "#E4405F", emoji: "📸" },
-  twitter: { nameAr: "تويتر", color: "#1DA1F2", emoji: "𝕏" },
-  tiktok: { nameAr: "تيك توك", color: "#000000", emoji: "🎵" },
-  snapchat: { nameAr: "سناب شات", color: "#FFFC00", emoji: "👻" },
-  youtube: { nameAr: "يوتيوب", color: "#FF0000", emoji: "▶️" },
-  linkedin: { nameAr: "لينكدإن", color: "#0A66C2", emoji: "💼" },
+  facebook:  { nameAr: "فيسبوك",   nameEn: "Facebook",  color: "#1877F2", bg: "#1877F215", icon: "/icons/facebook.svg"  },
+  instagram: { nameAr: "انستقرام", nameEn: "Instagram", color: "#E4405F", bg: "#E4405F15", icon: "/icons/instagram.svg" },
+  tiktok:    { nameAr: "تيك توك",  nameEn: "TikTok",    color: "#ffffff", bg: "#ffffff10", icon: "/icons/tiktok.svg"    },
+  snapchat:  { nameAr: "سناب شات", nameEn: "Snapchat",  color: "#FFFC00", bg: "#FFFC0015", icon: "/icons/snapchat.svg"  },
 };
 
-export default function PlatformCard({
-  platform,
-  account,
-  onConnect,
-  onDisconnect,
-  isLoading,
-}) {
+const PLATFORM_EMOJI = {
+  facebook: "f",
+  instagram: "📸",
+  tiktok: "♪",
+  snapchat: "👻",
+};
+
+export default function PlatformCard({ platform, account, onConnect, onDisconnect, isLoading, ar = true }) {
   const info = PLATFORM_INFO[platform];
   const isConnected = !!account;
 
   return (
-    <div className="group bg-gradient-to-br from-slate-800 to-slate-850 border border-slate-700 rounded-2xl p-6 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300">
-      {/* Platform header */}
-      <div className="flex items-center gap-4 mb-5">
-        <div
-          className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-lg group-hover:shadow-indigo-500/20 transition-all"
-          style={{ backgroundColor: info.color + "25", borderColor: info.color + "40", border: "2px solid" }}
-        >
-          {info.emoji}
+    <div className={`relative rounded-2xl border p-5 transition-all duration-300
+      ${isConnected
+        ? "bg-slate-800/80 border-slate-700"
+        : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600"}`}>
+
+      {isConnected && (
+        <span className="absolute top-3 left-3 flex items-center gap-1 text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
+          <CheckCircle2 className="w-3 h-3" />
+          {ar ? "متصل" : "Connected"}
+        </span>
+      )}
+
+      <div className="flex items-center gap-4 mb-4">
+        {/* Platform icon */}
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0"
+          style={{ backgroundColor: info.bg, border: `1.5px solid ${info.color}30` }}>
+          <span style={{ color: info.color }}>{PLATFORM_EMOJI[platform]}</span>
         </div>
-        <div className="flex-1">
-          <h3 className="font-bold text-white text-lg">{info.nameAr}</h3>
-          <div className="flex items-center gap-2 mt-2">
-            <div
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                isConnected ? "bg-green-500 shadow-lg shadow-green-500/50" : "bg-slate-600"
-              }`}
-            />
-            <span className="text-xs font-semibold">
-              {isConnected ? (
-                <span className="text-green-400">متصل</span>
-              ) : (
-                <span className="text-slate-400">غير متصل</span>
-              )}
-            </span>
-          </div>
+
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-white text-base">{ar ? info.nameAr : info.nameEn}</h3>
+          {isConnected && account.username && (
+            <p className="text-slate-400 text-xs truncate mt-0.5">@{account.username}</p>
+          )}
+          {isConnected && account.followerCount !== undefined && (
+            <p className="text-indigo-400 text-xs mt-0.5 font-semibold">
+              {account.followerCount.toLocaleString(ar ? "ar-SA" : "en-US")} {ar ? "متابع" : "followers"}
+            </p>
+          )}
+          {!isConnected && (
+            <p className="text-slate-500 text-xs mt-0.5">{ar ? "غير مرتبط" : "Not connected"}</p>
+          )}
         </div>
       </div>
 
-      {/* Connected account details */}
-      {isConnected && account && (
-        <div className="mb-5 space-y-4 pb-5 border-b border-slate-700/50">
-          {account.profilePicture && (
-            <img
-              src={account.profilePicture}
-              alt={account.username}
-              className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500/30 shadow-lg"
-            />
-          )}
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-slate-500 font-medium">اسم المستخدم</p>
-              <p className="font-semibold text-white">@{account.username}</p>
-            </div>
-            {account.accountName && (
-              <div>
-                <p className="text-xs text-slate-500 font-medium">اسم الحساب</p>
-                <p className="font-semibold text-white text-sm">{account.accountName}</p>
-              </div>
-            )}
-            {account.followerCount !== undefined && (
-              <div>
-                <p className="text-xs text-slate-500 font-medium">المتابعون</p>
-                <p className="font-semibold text-indigo-400">
-                  {account.followerCount.toLocaleString("ar-SA")}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Action button */}
       <button
-        onClick={() =>
-          isConnected ? onDisconnect(account) : onConnect(platform)
-        }
+        onClick={() => isConnected ? onDisconnect(account) : onConnect(platform)}
         disabled={isLoading}
-        className={`w-full py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 ${
-          isConnected
-            ? "bg-red-600/20 text-red-400 hover:bg-red-600/30 disabled:opacity-50 border border-red-600/30"
-            : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-lg shadow-indigo-600/20"
-        }`}
+        className={`w-full py-2.5 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2
+          ${isConnected
+            ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+            : "text-white border"}`}
+        style={!isConnected ? { backgroundColor: info.color + "20", borderColor: info.color + "40", color: info.color } : {}}
       >
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : isConnected ? (
-          <>
-            <Unlink className="w-4 h-4" />
-            فصل الحساب
-          </>
+          <><Unlink className="w-3.5 h-3.5" /> {ar ? "فصل الحساب" : "Disconnect"}</>
         ) : (
-          <>
-            <LinkIcon className="w-4 h-4" />
-            ربط الحساب
-          </>
+          <><LinkIcon className="w-3.5 h-3.5" /> {ar ? "ربط الحساب" : "Connect"}</>
         )}
       </button>
     </div>

@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from "react";
-import { Copy, Trash2, Eye, EyeOff, ArrowUp, ArrowDown } from "lucide-react";
+import React, { useState, useCallback, useRef } from "react";
+import { Copy, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Upload, X, Loader2 } from "lucide-react";
 import StudioColorPicker from "../StudioColorPicker";
 import FiltersPanel from "./FiltersPanel";
 import BlendModesPanel from "./BlendModesPanel";
+import { uploadFile } from "@/api/localClient";
 
 const SHAPE_TYPES = [
   { id: "rect", labelAr: "مستطيل", labelEn: "Rectangle" },
@@ -23,6 +24,8 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
   const selected = shapes.find((s) => s.id === selectedId);
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };
   const [multiSelected, setMultiSelected] = useState([]);
+  const [uploadingFill, setUploadingFill] = useState(false);
+  const fillImgRef = useRef();
   const [distributeGap, setDistributeGap] = useState(5);
   const [distributeDir, setDistributeDir] = useState("h"); // h or v
 
@@ -327,6 +330,84 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             <Copy className="w-3.5 h-3.5" />
             {isRtl ? "نسخ الشكل (Ctrl+D)" : "Duplicate (Ctrl+D)"}
           </button>
+
+          {/* Image Fill inside shape */}
+          {selected.shapeType !== "arrow" && selected.shapeType !== "line" && (
+            <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 font-semibold text-xs">
+                  {isRtl ? "🖼️ صورة داخل الشكل" : "🖼️ Image Fill"}
+                </label>
+                {selected.fillImage && (
+                  <button onClick={() => { update("fillImage", null); update("imageOffsetX", 0); update("imageOffsetY", 0); update("imageScale", 100); }}
+                    className="text-red-400 hover:text-red-300 text-xs flex items-center gap-0.5">
+                    <X className="w-3 h-3" /> {isRtl ? "إزالة" : "Remove"}
+                  </button>
+                )}
+              </div>
+
+              {selected.fillImage ? (
+                <img src={selected.fillImage} alt="" className="w-full h-16 object-cover rounded" />
+              ) : (
+                <button
+                  onClick={() => fillImgRef.current?.click()}
+                  disabled={uploadingFill}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition disabled:opacity-50"
+                >
+                  {uploadingFill ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  {uploadingFill ? (isRtl ? "جاري الرفع..." : "Uploading...") : (isRtl ? "رفع صورة" : "Upload Image")}
+                </button>
+              )}
+              <input
+                ref={fillImgRef} type="file" accept="image/*" className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file || !selected) return;
+                  setUploadingFill(true);
+                  try {
+                    const { file_url } = await uploadFile({ file });
+                    update("fillImage", file_url);
+                  } finally {
+                    setUploadingFill(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+
+              {selected.fillImage && (
+                <>
+                  <div>
+                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                      <span>{isRtl ? "حجم الصورة" : "Scale"}</span>
+                      <span>{selected.imageScale || 100}%</span>
+                    </div>
+                    <input type="range" min="20" max="300" step="5" value={selected.imageScale || 100}
+                      onChange={(e) => update("imageScale", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                      <span>{isRtl ? "إزاحة أفقية" : "Offset X"}</span>
+                      <span>{selected.imageOffsetX || 0}</span>
+                    </div>
+                    <input type="range" min="-50" max="50" step="1" value={selected.imageOffsetX || 0}
+                      onChange={(e) => update("imageOffsetX", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                      <span>{isRtl ? "إزاحة عمودية" : "Offset Y"}</span>
+                      <span>{selected.imageOffsetY || 0}</span>
+                    </div>
+                    <input type="range" min="-50" max="50" step="1" value={selected.imageOffsetY || 0}
+                      onChange={(e) => update("imageOffsetY", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                  </div>
+                  <button onClick={() => fillImgRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-1 py-1 rounded bg-slate-600 hover:bg-slate-500 text-xs text-slate-300 transition">
+                    <Upload className="w-3 h-3" /> {isRtl ? "تغيير الصورة" : "Change Image"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           <FiltersPanel element={selected} onChange={(updated) => onUpdate(selected.id, updated)} language={language} />
           <BlendModesPanel element={selected} onChange={(updated) => onUpdate(selected.id, updated)} language={language} />

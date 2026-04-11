@@ -16,6 +16,8 @@ import IconsPanel from "./panels/IconsPanel.jsx";
 import SymbolsPanel from "./panels/SymbolsPanel";
 import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
+import TemplatesPanel from "./panels/TemplatesPanel";
+import BrandKitPanel from "./panels/BrandKitPanel";
 import CustomColorPicker from "./CustomColorPicker";
 import AlignmentTools from "./AlignmentTools";
 import { SIZES } from "./sizes";
@@ -23,6 +25,7 @@ import SizeSelector from "./SizeSelector";
 import ShareModal from "./ShareModal";
 
 const TABS = [
+  { id: "templates", labelAr: "قوالب", labelEn: "Templates" },
   { id: "text", labelAr: "نصوص", labelEn: "Text" },
   { id: "shapes", labelAr: "أشكال", labelEn: "Shapes" },
   { id: "icons", labelAr: "أيقونات", labelEn: "Icons" },
@@ -35,6 +38,7 @@ const TABS = [
   { id: "size", labelAr: "مقاس", labelEn: "Size" },
   { id: "draw", labelAr: "رسم", labelEn: "Draw" },
   { id: "layers", labelAr: "طبقات", labelEn: "Layers" },
+  { id: "brand", labelAr: "البراند", labelEn: "Brand" },
 ];
 
 function genId() { return Math.random().toString(36).slice(2, 9); }
@@ -73,14 +77,17 @@ const defaultText = () => ({
   rotation: 0, blur: 0, brightness: 100,
 });
 
-const defaultShape = (type) => ({
-  id: genId(), shapeType: type, x: 20, y: 20, width: 25, height: 20,
+const defaultShape = (type, canvasAspect = 1) => ({
+  id: genId(), shapeType: type, x: 20, y: 20, width: 25, height: 20 * canvasAspect,
   fillColor: "#8b5cf6", borderColor: "#ffffff", borderWidth: 0,
   opacity: 1, visible: true, rotation: 0, borderRadius: 0,
 });
 
-const defaultImage = (url, isSvg, svgContent) => ({
-  id: genId(), url, x: 20, y: 20, width: 30, height: 30,
+// canvasAspect = canvasWidth / canvasHeight (e.g. 0.5625 for 9:16, 1.778 for 16:9)
+// height% means % of canvas height. To appear proportional, we normalise:
+//   height = width * canvasAspect  → same physical size for width and height
+const defaultImage = (url, isSvg, svgContent, canvasAspect = 1) => ({
+  id: genId(), url, x: 20, y: 20, width: 30, height: 30 * canvasAspect,
   opacity: 1, visible: true, rotation: 0, borderRadius: 0,
   blur: 0, dropShadow: false, isSvg, svgContent, svgColor: null,
   phoneFrame: false, phoneFrameColor: "#1e293b",
@@ -99,15 +106,40 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
   const draft = !loadedDesign ? loadDraft() : null;
 
-  const [textLayers, setTextLayers] = useState(draft?.textLayers || []);
-  const [shapes, setShapes] = useState(draft?.shapes || []);
-  const [images, setImages] = useState(draft?.images || []);
+  // If draft has multiple pages, load the active page's data as initial state
+  const draftPage = (draft?.pages && draft.pages.length > 0)
+    ? (draft.pages[draft.currentPageIdx || 0] || draft.pages[0])
+    : null;
+  const initDraft = draftPage || draft;
+
+  const [textLayers, setTextLayers] = useState(initDraft?.textLayers || []);
+  const [shapes, setShapes] = useState(initDraft?.shapes || []);
+  const [images, setImages] = useState(initDraft?.images || []);
   const imagesRef = React.useRef(images);
   // Keep imagesRef always in sync with images state
   useEffect(() => { imagesRef.current = images; }, [images]);
-  const [logos, setLogos] = useState(draft?.logos || []);
-  const [groups, setGroups] = useState(draft?.groups || []);
-  const [bg, setBg] = useState(draft?.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 });
+  const [logos, setLogos] = useState(initDraft?.logos || []);
+  const [groups, setGroups] = useState(initDraft?.groups || []);
+  const [bg, setBg] = useState(initDraft?.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 });
+
+  // ─── Multi-Page (كاروسيل / صفحات متعددة) ─────────────────────────────────
+  const pagesData = useRef(null);
+  if (!pagesData.current) {
+    if (draft?.pages && Array.isArray(draft.pages) && draft.pages.length > 0) {
+      pagesData.current = draft.pages;
+    } else {
+      pagesData.current = [{
+        id: genId(), textLayers: draft?.textLayers || [], shapes: draft?.shapes || [],
+        images: draft?.images || [], logos: draft?.logos || [],
+        groups: draft?.groups || [],
+        bg: draft?.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 },
+      }];
+    }
+  }
+  const [currentPageIdx, setCurrentPageIdx] = useState(draft?.currentPageIdx || 0);
+  const [pagesCount, setPagesCount] = useState(pagesData.current.length);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [multiSelected, setMultiSelected] = useState([]);
@@ -120,7 +152,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
-  const [exportedImageUrl, setExportedImageUrl] = useState(null);
+  const [exportedImageUrl, setExportedImageUrl] = useState("");
   const [designName, setDesignName] = useState(loadedDesign?.name || "");
   const qc = useQueryClient();
   const canvasRef = useRef(null);
@@ -248,8 +280,29 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   // Auto-save draft to localStorage on every change
   useEffect(() => {
     if (loadedDesign) return; // don't overwrite draft when editing saved design
-    const draft = { textLayers, shapes, images, logos, bg, groups };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    // Sync current page into pagesData before persisting
+    const _draftExisting = pagesData.current[currentPageIdx];
+    pagesData.current[currentPageIdx] = {
+      id: _draftExisting?.id || genId(),
+      textLayers: JSON.parse(JSON.stringify(textLayers)),
+      shapes: JSON.parse(JSON.stringify(shapes)),
+      images: JSON.parse(JSON.stringify(images)),
+      logos: JSON.parse(JSON.stringify(logos)),
+      groups: JSON.parse(JSON.stringify(groups)),
+      bg: JSON.parse(JSON.stringify(bg)),
+      ...(_draftExisting?.thumbnail ? { thumbnail: _draftExisting.thumbnail } : {}),
+    };
+    // Strip thumbnails from pages before storing — base64 images fill up localStorage (5MB limit)
+    const draftPages = pagesData.current.map(({ thumbnail, ...rest }) => rest);
+    const draft = { textLayers, shapes, images, logos, bg, groups, pages: draftPages, currentPageIdx };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Quota exceeded — save minimal draft without pages
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ textLayers, shapes, images, logos, bg, groups, currentPageIdx }));
+      } catch { /* ignore */ }
+    }
   }, [textLayers, shapes, images, logos, bg, groups]);
 
   // Load design data when opening saved design
@@ -260,20 +313,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
        if (typeof val === "string") { try { return JSON.parse(val); } catch { return fallback; } }
        return val;
      };
-     setTextLayers(parse(loadedDesign.textLayers, []));
-     setShapes(parse(loadedDesign.shapes, []));
-     const loadedImages = parse(loadedDesign.images, []);
-     setImages(loadedImages);
-     imagesRef.current = loadedImages;
 
-     // Load logos - restore svgContent from Logo library if missing
-     const loadedLogos = parse(loadedDesign.logos, []);
-     const restoreLogosSvg = async (logosArr) => {
-       if (logosArr.every(l => !l.isSvg || l.svgContent)) {
-         setLogos(logosArr);
-         return;
-       }
-       // Fetch saved logos to get svgContent
+     // Helper: restore svgContent for SVG logos from the Logo library
+     const restoreLogosSvg = async (logosArr, applyFn) => {
+       if (logosArr.every(l => !l.isSvg || l.svgContent)) { applyFn(logosArr); return; }
        const savedLogos = await localApi.entities.Logo.list("-created_date", 100);
        const restored = logosArr.map((l) => {
          if (l.isSvg && !l.svgContent) {
@@ -282,12 +325,54 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
          }
          return l;
        });
-       setLogos(restored);
+       applyFn(restored);
      };
-     restoreLogosSvg(loadedLogos);
 
+     // Parse the bg field (strip legacy __pages if present)
      const parsedBg = parse(loadedDesign.bg, null);
-     if (parsedBg) setBg(parsedBg);
+     const { __pages: _legacyPages, ...cleanBg } = parsedBg || {};
+
+     // Load pages from dedicated `pages` column (new format), fallback to bg.__pages (old format)
+     const pagesFromCol = parse(loadedDesign.pages, null);
+     const pagesFromBg = _legacyPages;
+     const extractedPages = (Array.isArray(pagesFromCol) && pagesFromCol.length > 0)
+       ? pagesFromCol
+       : (Array.isArray(pagesFromBg) && pagesFromBg.length > 0 ? pagesFromBg : null);
+
+     if (extractedPages && extractedPages.length > 0) {
+       // Multi-page design: restore all pages, load page 0 as the active page
+       pagesData.current = extractedPages.map((page) => ({
+         id: page.id || genId(),
+         textLayers: page.textLayers || [],
+         shapes: page.shapes || [],
+         images: page.images || [],
+         logos: page.logos || [],
+         groups: page.groups || [],
+         bg: page.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 },
+         ...(page.thumbnail ? { thumbnail: page.thumbnail } : {}),
+       }));
+       setPagesCount(extractedPages.length);
+       setCurrentPageIdx(0);
+       const page0 = pagesData.current[0];
+       setTextLayers(page0.textLayers);
+       setShapes(page0.shapes);
+       const p0Images = page0.images;
+       setImages(p0Images);
+       imagesRef.current = p0Images;
+       setGroups(page0.groups);
+       setBg(page0.bg);
+       restoreLogosSvg(page0.logos, setLogos);
+     } else {
+       // Single-page design: load from top-level fields
+       setTextLayers(parse(loadedDesign.textLayers, []));
+       setShapes(parse(loadedDesign.shapes, []));
+       const loadedImages = parse(loadedDesign.images, []);
+       setImages(loadedImages);
+       imagesRef.current = loadedImages;
+       restoreLogosSvg(parse(loadedDesign.logos, []), setLogos);
+       if (parsedBg) setBg(cleanBg);
+     }
+
      setDesignName(loadedDesign.name || "");
    }
   }, [loadedDesign?.id]);
@@ -295,13 +380,65 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   // Load media to edit (image only - video goes to separate page)
   useEffect(() => {
     if (mediaToEdit?.url && mediaToEdit.type !== "video") {
-      const img = defaultImage(mediaToEdit.url, false, null);
+      const img = defaultImage(mediaToEdit.url, false, null, size ? size.width / size.height : 1);
       setImages(p => { const next = [...p, img]; imagesRef.current = next; return next; });
       setSelectedId(img.id);
       setSelectedType("image");
       setActiveTab("images");
     }
   }, [mediaToEdit]);
+
+  // Capture a data-URL thumbnail of the current canvas — used for per-page preview in library
+  const capturePageDataUrl = async () => {
+    if (!canvasWrapRef?.current) return null;
+    const originalLogos = logos;
+    try {
+      // Pre-render logo colors (html2canvas doesn't support CSS url() SVG filters)
+      const hasLogoColors = logos.some(l => l.logoColor && !l.isSvg);
+      if (hasLogoColors) {
+        const recolored = await Promise.all(logos.map(async (logo) => {
+          if (logo.logoColor && !logo.isSvg) {
+            const dataUrl = await recolorToDataUrl(logo.url, logo.logoColor);
+            return { ...logo, _exportUrl: dataUrl, logoColor: "" };
+          }
+          return logo;
+        }));
+        await new Promise(resolve => {
+          flushSync(() => setLogos(recolored));
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+      }
+
+      // Hide grid/handles/guides during capture
+      await new Promise(resolve => {
+        flushSync(() => setExporting(true));
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+
+      const element = canvasWrapRef.current;
+      const clientW = element.offsetWidth;
+      const clientH = element.offsetHeight;
+      const targetW = 600;
+      const captureScale = Math.min(2, targetW / clientW);
+      const canvas = await html2canvas(element, {
+        useCORS: true, allowTaint: true,
+        scale: captureScale,
+        backgroundColor: null, logging: false,
+        width: clientW, height: clientH,
+        scrollX: -window.scrollX, scrollY: -window.scrollY,
+        windowWidth: document.documentElement.clientWidth,
+        windowHeight: document.documentElement.clientHeight,
+      });
+
+      setExporting(false);
+      if (hasLogoColors) setLogos(originalLogos);
+      return canvas.toDataURL("image/jpeg", 0.82);
+    } catch {
+      setExporting(false);
+      setLogos(originalLogos);
+      return null;
+    }
+  };
 
   const captureThumbnail = async () => {
     if (!canvasRef.current) return null;
@@ -313,7 +450,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           logos.map(async (logo) => {
             if (logo.logoColor && !logo.isSvg) {
               const dataUrl = await recolorToDataUrl(logo.url, logo.logoColor);
-              return { ...logo, _exportUrl: dataUrl };
+              // Set _exportUrl so canvas uses the pre-recolored image,
+              // AND clear logoColor so the CSS filter doesn't apply again (avoids double recoloring)
+              return { ...logo, _exportUrl: dataUrl, logoColor: "" };
             }
             return logo;
           })
@@ -324,15 +463,22 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         });
       }
 
+      const noSelectStyle = document.createElement("style");
+      noSelectStyle.id = "export-no-select";
+      noSelectStyle.innerHTML = `* { -webkit-user-select: none !important; user-select: none !important; } ::selection { background: transparent !important; color: inherit !important; }`;
+      document.head.appendChild(noSelectStyle);
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      window.getSelection()?.removeAllRanges();
+      await new Promise(r => setTimeout(r, 500));
+
       await new Promise(resolve => {
         flushSync(() => setExporting(true));
         requestAnimationFrame(() => requestAnimationFrame(resolve));
       });
 
       const element = canvasWrapRef.current;
-      const rect = element.getBoundingClientRect();
-      const clientW = rect.width;
-      const clientH = rect.height;
+      const clientW = element.offsetWidth;
+      const clientH = element.offsetHeight;
       const exportScale = size.width / clientW;
 
       const canvas = await html2canvas(element, {
@@ -343,28 +489,25 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         logging: false,
         width: clientW,
         height: clientH,
-        x: 0,
-        y: 0,
         scrollX: -window.scrollX,
         scrollY: -window.scrollY,
         windowWidth: document.documentElement.clientWidth,
         windowHeight: document.documentElement.clientHeight,
       });
 
+      document.getElementById("export-no-select")?.remove();
       setLogos(originalLogos);
       setExporting(false);
 
-      return new Promise((resolve) => {
-        canvas.toBlob(async (blob) => {
-          if (!blob) { resolve(null); return; }
-          const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
-          const { file_url } = await uploadFile({ file });
-          resolve(file_url);
-        }, "image/jpeg", 0.85);
-      });
+      const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.85));
+      if (!blob) return null;
+      const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
+      const { file_url } = await uploadFile({ file });
+      return file_url;
     } catch (e) {
       console.error("Thumbnail capture failed:", e);
       setExporting(false);
+      document.querySelectorAll('[contenteditable="false"]').forEach(el => el.setAttribute("contenteditable", "true"));
       return null;
     }
   };
@@ -378,6 +521,57 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         ...(svgContent && svgContent.length <= MAX_SVG ? { svgContent } : {}),
       }));
 
+      // Sync current page state into pagesData before saving all pages (preserve thumbnail)
+      const _saveExisting = pagesData.current[currentPageIdx];
+      pagesData.current[currentPageIdx] = {
+        id: _saveExisting?.id || genId(),
+        textLayers: JSON.parse(JSON.stringify(textLayers)),
+        shapes: JSON.parse(JSON.stringify(shapes)),
+        images: JSON.parse(JSON.stringify(images)),
+        logos: JSON.parse(JSON.stringify(logos)),
+        groups: JSON.parse(JSON.stringify(groups)),
+        bg: JSON.parse(JSON.stringify(bg)),
+        ...(_saveExisting?.thumbnail ? { thumbnail: _saveExisting.thumbnail } : {}),
+      };
+
+      // Capture current page thumbnail and store it in pagesData
+      const currentDataUrl = await capturePageDataUrl();
+      if (currentDataUrl) {
+        pagesData.current[currentPageIdx] = {
+          ...pagesData.current[currentPageIdx],
+          thumbnail: currentDataUrl,
+        };
+      }
+
+      // Upload all available page thumbnails as files (keep bg field small)
+      const pageThumbUrls = {};
+      for (let i = 0; i < pagesData.current.length; i++) {
+        const dataUrl = pagesData.current[i]?.thumbnail;
+        if (!dataUrl) continue;
+        if (dataUrl.startsWith("data:")) {
+          try {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `page_${i}_thumb.jpg`, { type: "image/jpeg" });
+            const { file_url } = await uploadFile({ file });
+            pageThumbUrls[i] = file_url;
+          } catch { /* skip */ }
+        } else {
+          pageThumbUrls[i] = dataUrl; // already a server URL
+        }
+      }
+
+      const cleanPages = pagesData.current.map((page, i) => ({
+        id: page.id,
+        textLayers: cleanArr(page.textLayers || []),
+        shapes: cleanArr(page.shapes || []),
+        images: cleanArr(page.images || []),
+        logos: cleanArr(page.logos || []),
+        groups: page.groups || [],
+        bg: page.bg,
+        ...(pageThumbUrls[i] ? { thumbnail: pageThumbUrls[i] } : {}),
+      }));
+
       const thumbnailUrl = await captureThumbnail();
 
       const data = {
@@ -388,7 +582,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         images: JSON.stringify(cleanArr(images)),
         logos: JSON.stringify(cleanArr(logos)),
         groups: JSON.stringify(groups),
-        bg: JSON.stringify(bg),
+        bg: JSON.stringify({ ...bg, __pages: cleanPages }),
         ...(thumbnailUrl ? { thumbnail: thumbnailUrl } : {}),
       };
 
@@ -470,20 +664,59 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const deleteText = (id) => setTextLayers(p => p.filter(l => l.id !== id));
   const duplicateText = (id) => setTextLayers(p => { const l = p.find(t => t.id === id); if (!l) return p; return [...p, { ...l, id: genId(), x: l.x + 2, y: l.y + 2 }]; });
 
+  // Canvas aspect ratio helper (width / height). Normalises % heights so elements appear proportional.
+  const canvasAspect = size ? size.width / size.height : 1;
+
   // Shape ops
-  const addShape = (type) => { const s = defaultShape(type); setShapes(p => [...p, s]); setSelectedId(s.id); setSelectedType("shape"); };
+  const addShape = (type) => { const s = defaultShape(type, canvasAspect); setShapes(p => [...p, s]); setSelectedId(s.id); setSelectedType("shape"); };
   const updateShape = (id, data) => setShapes(p => p.map(s => s.id === id ? { ...s, ...data } : s));
   const deleteShape = (id) => setShapes(p => p.filter(s => s.id !== id));
   const duplicateShape = (id) => setShapes(p => { const s = p.find(sh => sh.id === id); if (!s) return p; return [...p, { ...s, id: genId(), x: s.x + 2, y: s.y + 2 }]; });
 
   // Image ops
-  const addImage = (data) => { const img = { ...defaultImage(data.url, data.isSvg, data.svgContent), ...data, id: undefined }; img.id = img.id || Math.random().toString(36).slice(2, 9); setImages(p => { const next = [...p, img]; imagesRef.current = next; return next; }); setSelectedId(img.id); setSelectedType("image"); if (data.isSymbol) setActiveTab("symbols"); else if (data.isLucideIcon || data.isText) setActiveTab("icons"); else setActiveTab("images"); };
+  const addImage = (data) => {
+    const img = { ...defaultImage(data.url, data.isSvg, data.svgContent, canvasAspect), ...data, id: undefined };
+    img.id = img.id || Math.random().toString(36).slice(2, 9);
+    const imgId = img.id;
+    setImages(p => { const next = [...p, img]; imagesRef.current = next; return next; });
+    setSelectedId(imgId);
+    setSelectedType("image");
+    if (data.isSymbol) setActiveTab("symbols");
+    else if (data.isLucideIcon || data.isText) setActiveTab("icons");
+    else setActiveTab("images");
+
+    // For real bitmap images without an explicit height, load to get natural dimensions
+    // and correct the height so the image appears at its natural aspect ratio.
+    const hasExplicitSize = data.width !== undefined || data.height !== undefined;
+    const isSpecialType = data.isLucideIcon || data.isSocialIcon || data.isSymbol || data.isText || data.isHandDrawn || data.isSvg;
+    if (!hasExplicitSize && !isSpecialType && data.url) {
+      const probe = new Image();
+      probe.onload = () => {
+        if (probe.naturalWidth && probe.naturalHeight) {
+          const naturalAspect = probe.naturalWidth / probe.naturalHeight;
+          const correctedH = (img.width * canvasAspect) / naturalAspect;
+          setImages(p => {
+            const next = p.map(i => i.id === imgId ? { ...i, height: correctedH } : i);
+            imagesRef.current = next;
+            return next;
+          });
+        }
+      };
+      probe.src = data.url;
+    }
+  };
   const updateImage = (id, data) => setImages(p => { const next = p.map(i => i.id === id ? { ...i, ...data } : i); imagesRef.current = next; return next; });
   const deleteImage = (id) => setImages(p => p.filter(i => i.id !== id));
   const duplicateImage = (id) => setImages(p => { const img = p.find(i => i.id === id); if (!img) return p; return [...p, { ...img, id: genId(), x: img.x + 2, y: img.y + 2 }]; });
 
   // Logo ops
-  const addLogo = (data) => { const logo = defaultImage(data.url, data.isSvg, data.svgContent); setLogos(p => [...p, logo]); setSelectedId(logo.id); setSelectedType("logo"); };
+  const addLogo = (data) => {
+    const logo = { ...defaultImage(data.url, data.isSvg, data.svgContent, canvasAspect), ...data, id: undefined };
+    logo.id = logo.id || genId();
+    setLogos(p => [...p, logo]);
+    setSelectedId(logo.id);
+    setSelectedType("logo");
+  };
   const updateLogo = (id, data) => setLogos(p => p.map(l => l.id === id ? { ...l, ...data } : l));
   const deleteLogo = (id) => setLogos(p => p.filter(l => l.id !== id));
   const duplicateLogo = (id) => setLogos(p => { const l = p.find(lg => lg.id === id); if (!l) return p; return [...p, { ...l, id: genId(), x: l.x + 2, y: l.y + 2 }]; });
@@ -537,6 +770,93 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setSelectedType(null);
   };
 
+  // ─── Page management helpers ───────────────────────────────────────────────
+  const saveCurrentPage = useCallback(() => {
+    const existing = pagesData.current[currentPageIdx];
+    pagesData.current[currentPageIdx] = {
+      id: existing?.id || genId(),
+      textLayers: JSON.parse(JSON.stringify(textLayers)),
+      shapes: JSON.parse(JSON.stringify(shapes)),
+      images: JSON.parse(JSON.stringify(images)),
+      logos: JSON.parse(JSON.stringify(logos)),
+      groups: JSON.parse(JSON.stringify(groups)),
+      bg: JSON.parse(JSON.stringify(bg)),
+      ...(existing?.thumbnail ? { thumbnail: existing.thumbnail } : {}),
+    };
+  }, [currentPageIdx, textLayers, shapes, images, logos, groups, bg]);
+
+  const loadPage = useCallback((page) => {
+    skipCountRef.current = 6;
+    setTextLayers(page.textLayers);
+    setShapes(page.shapes);
+    setImages(page.images);
+    imagesRef.current = page.images;
+    setLogos(page.logos);
+    setGroups(page.groups);
+    setBg(page.bg);
+    setSelectedId(null);
+    setSelectedType(null);
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+  }, []);
+
+  const switchToPage = useCallback(async (idx) => {
+    if (idx === currentPageIdx) return;
+    // Capture thumbnail of current page before leaving it
+    const thumb = await capturePageDataUrl();
+    if (thumb) {
+      pagesData.current[currentPageIdx] = {
+        ...(pagesData.current[currentPageIdx] || {}),
+        thumbnail: thumb,
+      };
+    }
+    saveCurrentPage();
+    setCurrentPageIdx(idx);
+    loadPage(pagesData.current[idx]);
+  }, [currentPageIdx, saveCurrentPage, loadPage]);
+
+  const addPage = useCallback(() => {
+    saveCurrentPage();
+    const newPage = {
+      id: genId(), textLayers: [], shapes: [], images: [], logos: [], groups: [],
+      bg: { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 },
+    };
+    pagesData.current.push(newPage);
+    const newIdx = pagesData.current.length - 1;
+    setCurrentPageIdx(newIdx);
+    setPagesCount(pagesData.current.length);
+    loadPage(newPage);
+  }, [saveCurrentPage, loadPage]);
+
+  const deletePage = useCallback((idx) => {
+    if (pagesData.current.length <= 1) return;
+    pagesData.current.splice(idx, 1);
+    const newIdx = Math.min(idx, pagesData.current.length - 1);
+    setCurrentPageIdx(newIdx);
+    setPagesCount(pagesData.current.length);
+    loadPage(pagesData.current[newIdx]);
+  }, [loadPage]);
+
+  const duplicatePage = useCallback((idx) => {
+    if (idx === currentPageIdx) saveCurrentPage();
+    const source = pagesData.current[idx];
+    const newPage = {
+      id: genId(),
+      textLayers: JSON.parse(JSON.stringify(source.textLayers)),
+      shapes: JSON.parse(JSON.stringify(source.shapes)),
+      images: JSON.parse(JSON.stringify(source.images)),
+      logos: JSON.parse(JSON.stringify(source.logos)),
+      groups: JSON.parse(JSON.stringify(source.groups)),
+      bg: JSON.parse(JSON.stringify(source.bg)),
+    };
+    pagesData.current.splice(idx + 1, 0, newPage);
+    const newIdx = idx + 1;
+    setCurrentPageIdx(newIdx);
+    setPagesCount(pagesData.current.length);
+    loadPage(newPage);
+  }, [currentPageIdx, saveCurrentPage, loadPage]);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const moveGroupElements = (groupId, deltaX, deltaY) => {
     const groupIndex = groups.findIndex(g => g.id === groupId);
     if (groupIndex === -1) return;
@@ -568,15 +888,22 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       });
     }
 
+    const noSelectStyle = document.createElement("style");
+    noSelectStyle.id = "export-no-select";
+    noSelectStyle.innerHTML = `* { -webkit-user-select: none !important; user-select: none !important; } ::selection { background: transparent !important; color: inherit !important; }`;
+    document.head.appendChild(noSelectStyle);
+    window.getSelection()?.removeAllRanges();
+    await new Promise(r => setTimeout(r, 500));
+
     await new Promise(resolve => {
       flushSync(() => setExporting(true));
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     });
 
-    const element = canvasWrapRef.current;
-    const rect = element.getBoundingClientRect();
-    const clientW = rect.width;
-    const clientH = rect.height;
+    const element = /** @type {HTMLElement} */ (/** @type {unknown} */ (canvasWrapRef.current));
+    if (!element) return;
+    const clientW = element.offsetWidth;
+    const clientH = element.offsetHeight;
     const exportScale = size.width / clientW;
 
     const canvas = await html2canvas(element, {
@@ -587,18 +914,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       logging: false,
       width: clientW,
       height: clientH,
-      x: 0,
-      y: 0,
       scrollX: -window.scrollX,
       scrollY: -window.scrollY,
       windowWidth: document.documentElement.clientWidth,
       windowHeight: document.documentElement.clientHeight,
     });
 
+    document.getElementById("export-no-select")?.remove();
     setLogos(originalLogos);
 
     const dataUrl = canvas.toDataURL("image/png");
-
     const link = document.createElement("a");
     link.download = `design-${size.id || "custom"}.png`;
     link.href = dataUrl;
@@ -668,6 +993,45 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const handleAiAddBg = (url) => { setBg(prev => ({ ...prev, mode: "image", imageUrl: url })); setActiveTab("bg"); };
   const handleAiAddImage = (url) => { addImage({ url, isSvg: false, svgContent: null }); setActiveTab("images"); };
 
+  // تطبيق قالب جاهز على الصفحة الحالية
+  const handleApplyTemplate = ({ textLayers: tl, shapes: sh, images: im, logos: lo, groups: gr, bg: newBg }) => {
+    skipCountRef.current = 6;
+    setTextLayers(tl);
+    setShapes(sh);
+    const imgs = im || [];
+    setImages(imgs); imagesRef.current = imgs;
+    setLogos(lo);
+    setGroups(gr || []);
+    setBg(newBg);
+    setSelectedId(null); setSelectedType(null);
+    setActiveTab("text");
+  };
+
+  // Magic Resize: تغيير الحجم مع ضبط الحجم النسبي لكل العناصر
+  const handleMagicResize = (newSize) => {
+    if (!size) { onChangeSize(newSize); return; }
+
+    // Scale font sizes proportionally to new canvas width
+    const fontScale = newSize.width / size.width;
+    setTextLayers(p => p.map(l => ({ ...l, fontSize: Math.round(l.fontSize * fontScale) })));
+
+    // Rescale element heights to maintain visual proportions on the new aspect ratio.
+    // Elements store height as % of canvas height. When aspect ratio changes, the same
+    // height% renders a different number of pixels, causing distortion.
+    // We convert: new_height% = old_height% * (old_canvasH / old_canvasW) * (new_canvasW / new_canvasH)
+    //           = old_height% * (oldAspect / newAspect)  where aspect = width/height
+    const oldAspect = size.width / size.height;
+    const newAspect = newSize.width / newSize.height;
+    const hScale = oldAspect / newAspect;
+
+    const rescaleH = (el) => ({ ...el, height: (el.height || 20) * hScale });
+    setShapes(p => p.map(rescaleH));
+    setImages(p => { const next = p.map(rescaleH); imagesRef.current = next; return next; });
+    setLogos(p => p.map(rescaleH));
+
+    onChangeSize(newSize);
+  };
+
   const getMultiSelectedElements = () => {
     return multiSelected.map(({ id, type }) => {
       let element = null;
@@ -695,9 +1059,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   }
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="h-screen flex flex-col bg-slate-900 text-white overflow-hidden">
+    <div dir={isRtl ? "rtl" : "ltr"} className="h-full flex flex-col bg-slate-900 text-white overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+        <button onClick={() => navigate("/")} title={isRtl ? "الرئيسية" : "Home"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-700 transition text-slate-300 hover:text-white">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span className="text-xs font-semibold hidden sm:block">{isRtl ? "الرئيسية" : "Home"}</span>
+        </button>
         <button onClick={() => navigate("/DesignLibraryPage")} title={isRtl ? "مكتبة التصاميم" : "Design Library"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-700 transition text-slate-300 hover:text-white">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-xs font-semibold hidden sm:block">{isRtl ? "المكتبة" : "Library"}</span>
@@ -793,6 +1164,22 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
           {/* Panel content - keep all mounted to preserve contentEditable state */}
           <div className="flex-1 overflow-y-auto p-3">
+            <div style={{ display: activeTab === "templates" ? "block" : "none" }}>
+              <TemplatesPanel onApply={handleApplyTemplate} language={language} />
+            </div>
+            <div style={{ display: activeTab === "brand" ? "block" : "none" }}>
+              <BrandKitPanel
+                onApplyColor={(color) => {
+                  if (selectedId && selectedType === "text") updateText(selectedId, { color });
+                  else if (selectedId && selectedType === "shape") updateShape(selectedId, { fillColor: color });
+                }}
+                onApplyFont={(font) => {
+                  if (selectedId && selectedType === "text") updateText(selectedId, { fontFamily: font });
+                }}
+                onApplyBg={(color) => setBg(prev => ({ ...prev, mode: "color", color }))}
+                language={language}
+              />
+            </div>
             <div style={{ display: activeTab === "text" ? "block" : "none" }}>
               <TextPanel
                 layers={textLayers}
@@ -946,11 +1333,12 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             <div style={{ display: activeTab === "size" ? "block" : "none" }}>
               <div className="space-y-2">
                 <p className="text-slate-400 text-xs">{isRtl ? "المقاس الحالي" : "Current Size"}: {size.width}×{size.height}</p>
+                <p className="text-indigo-400 text-xs">✨ {isRtl ? "Magic Resize: يضبط حجم الخطوط تلقائياً" : "Magic Resize: auto-scales fonts"}</p>
                 <div className="space-y-1 max-h-96 overflow-y-auto">
                   {SIZES.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => { onChangeSize(s); }}
+                      onClick={() => { handleMagicResize(s); }}
                       className={`w-full text-start px-3 py-2 rounded text-xs transition ${s.id === size.id ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-300"}`}
                     >
                       <span className="font-semibold">{isRtl ? s.nameAr : s.nameEn}</span>
@@ -997,6 +1385,53 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           </div>
         </div>
       </div>
+
+      {/* ─── شريط الصفحات (Multi-Page Strip) ─────────────────────────────── */}
+      <div className="flex-shrink-0 bg-slate-800 border-t border-slate-700 px-4 py-2 flex items-center gap-2 overflow-x-auto">
+        <span className="text-slate-400 text-xs font-semibold flex-shrink-0">
+          {isRtl ? "الصفحات" : "Pages"}
+        </span>
+        {Array.from({ length: pagesCount }).map((_, i) => (
+          <div key={i} className="relative flex-shrink-0 group">
+            <button
+              onClick={() => switchToPage(i)}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition ${
+                i === currentPageIdx
+                  ? "border-indigo-500 bg-indigo-900/60 text-indigo-300"
+                  : "border-slate-600 bg-slate-700 text-slate-400 hover:border-slate-500 hover:text-white"
+              }`}
+            >
+              {i + 1}
+            </button>
+            {pagesCount > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); deletePage(i); }}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-400 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
+              >
+                ×
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); duplicatePage(i); }}
+              title={isRtl ? "نسخ الصفحة" : "Duplicate page"}
+              className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-500 hover:bg-slate-400 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
+            >
+              ⧉
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={addPage}
+          title={isRtl ? "إضافة صفحة جديدة" : "Add page"}
+          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 text-lg flex items-center justify-center transition"
+        >
+          +
+        </button>
+        <span className="text-slate-500 text-xs ms-2">
+          {currentPageIdx + 1} / {pagesCount}
+        </span>
+      </div>
+      {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* Save modal */}
       {showSaveModal && (

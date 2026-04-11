@@ -7,12 +7,13 @@ export default function DisconnectModal({
   onConfirm,
   onCancel,
   isLoading,
+  ar = true,
 }) {
   if (!isOpen || !account) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm">
+      <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm" dir={ar ? "rtl" : "ltr"}>
         {/* Icon */}
         <div className="flex justify-center mb-4">
           <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center">
@@ -22,13 +23,17 @@ export default function DisconnectModal({
 
         {/* Content */}
         <h3 className="font-bold text-lg text-white text-center mb-2">
-          فصل الحساب
+          {ar ? "فصل الحساب" : "Disconnect Account"}
         </h3>
         <p className="text-slate-300 text-center mb-6">
-          هل أنت متأكد من فصل حساب <span className="font-semibold text-indigo-400">@{account.username}</span>؟
+          {ar
+            ? <>هل أنت متأكد من فصل حساب <span className="font-semibold text-indigo-400">@{account.username}</span>؟</>
+            : <>Are you sure you want to disconnect <span className="font-semibold text-indigo-400">@{account.username}</span>?</>}
         </p>
         <p className="text-sm text-slate-400 text-center mb-6">
-          لن تتمكن من نشر المحتوى على هذا الحساب إلى أن تقوم بربطه مجدداً.
+          {ar
+            ? "لن تتمكن من نشر المحتوى على هذا الحساب إلى أن تقوم بربطه مجدداً."
+            : "You won't be able to publish content to this account until you reconnect it."}
         </p>
 
         {/* Buttons */}
@@ -38,7 +43,7 @@ export default function DisconnectModal({
             disabled={isLoading}
             className="flex-1 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold transition disabled:opacity-50"
           >
-            إلغاء
+            {ar ? "إلغاء" : "Cancel"}
           </button>
           <button
             onClick={onConfirm}
@@ -46,7 +51,7 @@ export default function DisconnectModal({
             className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            نعم، فصل الحساب
+            {ar ? "نعم، فصل الحساب" : "Yes, Disconnect"}
           </button>
         </div>
       </div>

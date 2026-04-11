@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { SIZES, RATIO_GROUPS } from "./sizes";
-import { Sparkles, Globe } from "lucide-react";
+import { Sparkles, Globe, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function RatioShape({ ratio }) {
   const styles = {
@@ -20,6 +21,7 @@ export default function SizeSelector({ onSelect, language, setLanguage }) {
   const isRtl = language === "ar";
   const [customW, setCustomW] = useState(1080);
   const [customH, setCustomH] = useState(1080);
+  const navigate = useNavigate();
 
   const handleSelect = (size) => {
     if (size.isCustom) {
@@ -30,10 +32,18 @@ export default function SizeSelector({ onSelect, language, setLanguage }) {
   };
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="min-h-screen bg-slate-900 text-white">
+    <div dir={isRtl ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-900 text-white">
       {/* Header */}
       <div className="border-b border-slate-700 px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/")}
+            title={isRtl ? "الرئيسية" : "Home"}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          >
+            <Home className="w-5 h-5" />
+          </button>
+          <div className="w-px h-5 bg-slate-700" />
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
