@@ -1,40 +1,47 @@
 import React, { useRef, useState } from "react";
-import { Upload, Trash2, Plus, Loader2, Check } from "lucide-react";
-import { localApi, uploadFile } from "@/api/localClient";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Upload, Trash2, Loader2 } from "lucide-react";
+import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
+
+function loadSavedLogos() {
+  try { return JSON.parse(localStorage.getItem("saved_logos") || "[]"); } catch { return []; }
+}
+function saveSavedLogos(logos) {
+  localStorage.setItem("saved_logos", JSON.stringify(logos));
+}
 
 export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, onUpdate, onDelete, language }) {
   const isRtl = language === "ar";
   const fileRef = useRef();
   const [uploading, setUploading] = useState(false);
   const [logoName, setLogoName] = useState("");
-  const qc = useQueryClient();
-
-  const { data: savedLogos = [], isLoading } = useQuery({
-    queryKey: ["logos"],
-    queryFn: () => localApi.entities.Logo.list("-created_date", 50),
-  });
-
-  const deleteSavedLogo = useMutation({
-    mutationFn: (id) => localApi.entities.Logo.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["logos"] }),
-  });
+  const [savedLogos, setSavedLogos] = useState(loadSavedLogos);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await uploadFile({ file });
-    const isSvg = file.type === "image/svg+xml";
-    let svgContent = null;
-    if (isSvg) svgContent = await file.text();
-    const name = logoName.trim() || file.name.replace(/\.[^.]+$/, "");
-    await localApi.entities.Logo.create({ name, url: file_url, isSvg, svgContent });
-    qc.invalidateQueries({ queryKey: ["logos"] });
-    setLogoName("");
-    setUploading(false);
-    e.target.value = "";
+    try {
+      const { file_url } = await uploadFile({ file });
+      const isSvg = file.type === "image/svg+xml";
+      let svgContent = null;
+      if (isSvg) svgContent = await file.text();
+      const name = logoName.trim() || file.name.replace(/\.[^.]+$/, "");
+      const newLogo = { id: `logo_${Date.now()}`, name, url: file_url, isSvg, svgContent };
+      const updated = [newLogo, ...loadSavedLogos()];
+      saveSavedLogos(updated);
+      setSavedLogos(updated);
+      setLogoName("");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const deleteSavedLogo = (id) => {
+    const updated = loadSavedLogos().filter(l => l.id !== id);
+    saveSavedLogos(updated);
+    setSavedLogos(updated);
   };
 
   const addToCanvas = (savedLogo) => {
@@ -71,9 +78,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
       {/* Saved logos library */}
       <div className="border-t border-slate-700 pt-2">
         <p className="text-slate-500 mb-2">{isRtl ? "اضغط لإضافة للكانفاس:" : "Click to add to canvas:"}</p>
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
-        ) : savedLogos.length === 0 ? (
+        {savedLogos.length === 0 ? (
           <p className="text-slate-500 text-center py-4">{isRtl ? "لا توجد لوقوهات محفوظة" : "No logos saved yet"}</p>
         ) : (
           <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
@@ -92,7 +97,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
                   <span className="text-[9px] text-slate-400 truncate w-full text-center">{logo.name}</span>
                 </button>
                 <button
-                  onClick={() => deleteSavedLogo.mutate(logo.id)}
+                  onClick={() => deleteSavedLogo(logo.id)}
                   className="absolute top-0.5 right-0.5 bg-red-600 rounded p-0.5 text-white opacity-0 group-hover:opacity-100 transition"
                 >
                   <Trash2 className="w-2.5 h-2.5" />
