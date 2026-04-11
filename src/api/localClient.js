@@ -31,10 +31,24 @@ function entity(route) {
   };
 }
 
+const CLOUDINARY_CLOUD = 'dvcpczwsi';
+const CLOUDINARY_PRESET = 'Social App';
+
 export async function uploadFile({ file }) {
   const form = new FormData();
   form.append('file', file);
-  return req('POST', '/upload', form);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
+    { method: 'POST', body: form }
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudinary upload failed (${res.status}): ${text}`);
+  }
+  const data = await res.json();
+  return { file_url: data.secure_url, url: data.secure_url };
 }
 
 export const localApi = {
