@@ -440,6 +440,114 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             </div>
           </div>
 
+          {/* ── أشكال مرنة / Flex Transform ── */}
+          <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-indigo-300 font-bold text-xs">
+                {isRtl ? "✦ أشكال مرنة" : "✦ Flex Transform"}
+              </label>
+              <button
+                onClick={() => { update("skewX", 0); update("skewY", 0); update("rotateX", 0); update("rotateY", 0); update("perspective", 800); }}
+                className="text-[10px] text-slate-400 hover:text-white bg-slate-700 px-2 py-0.5 rounded transition"
+              >{isRtl ? "إعادة" : "Reset"}</button>
+            </div>
+
+            {/* Skew X */}
+            <div>
+              <div className="flex justify-between mb-0.5">
+                <label className="text-slate-400 text-[11px]">{isRtl ? "ميل أفقي" : "Skew X"}</label>
+                <span className="text-indigo-400 text-[11px] font-bold">{selected.skewX || 0}°</span>
+              </div>
+              <input type="range" min="-60" max="60" step="1" value={selected.skewX || 0}
+                onChange={(e) => update("skewX", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+              <div className="flex gap-1 mt-1">
+                {[-45, -30, -15, 0, 15, 30, 45].map(v => (
+                  <button key={v} onClick={() => update("skewX", v)}
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.skewX || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Skew Y */}
+            <div>
+              <div className="flex justify-between mb-0.5">
+                <label className="text-slate-400 text-[11px]">{isRtl ? "ميل عمودي" : "Skew Y"}</label>
+                <span className="text-indigo-400 text-[11px] font-bold">{selected.skewY || 0}°</span>
+              </div>
+              <input type="range" min="-60" max="60" step="1" value={selected.skewY || 0}
+                onChange={(e) => update("skewY", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+            </div>
+
+            {/* 3D Rotate X */}
+            <div>
+              <div className="flex justify-between mb-0.5">
+                <label className="text-slate-400 text-[11px]">{isRtl ? "3D أعلى/أسفل" : "3D Tilt X"}</label>
+                <span className="text-indigo-400 text-[11px] font-bold">{selected.rotateX || 0}°</span>
+              </div>
+              <input type="range" min="-80" max="80" step="1" value={selected.rotateX || 0}
+                onChange={(e) => update("rotateX", parseInt(e.target.value))} className="w-full accent-purple-500" />
+            </div>
+
+            {/* 3D Rotate Y */}
+            <div>
+              <div className="flex justify-between mb-0.5">
+                <label className="text-slate-400 text-[11px]">{isRtl ? "3D يمين/يسار" : "3D Tilt Y"}</label>
+                <span className="text-indigo-400 text-[11px] font-bold">{selected.rotateY || 0}°</span>
+              </div>
+              <input type="range" min="-80" max="80" step="1" value={selected.rotateY || 0}
+                onChange={(e) => update("rotateY", parseInt(e.target.value))} className="w-full accent-purple-500" />
+              <div className="flex gap-1 mt-1">
+                {[-60, -40, -20, 0, 20, 40, 60].map(v => (
+                  <button key={v} onClick={() => update("rotateY", v)}
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.rotateY || 0) === v ? "bg-purple-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Perspective depth */}
+            <div>
+              <div className="flex justify-between mb-0.5">
+                <label className="text-slate-400 text-[11px]">{isRtl ? "عمق المنظور" : "Perspective"}</label>
+                <span className="text-indigo-400 text-[11px] font-bold">{selected.perspective ?? 800}px</span>
+              </div>
+              <input type="range" min="100" max="1500" step="50" value={selected.perspective ?? 800}
+                onChange={(e) => update("perspective", parseInt(e.target.value))} className="w-full accent-indigo-400" />
+              <div className="flex gap-1 mt-1">
+                {[200, 400, 600, 800, 1200].map(v => (
+                  <button key={v} onClick={() => update("perspective", v)}
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.perspective ?? 800) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick presets */}
+            <div>
+              <label className="text-slate-500 text-[10px] block mb-1">{isRtl ? "قوالب سريعة" : "Quick Presets"}</label>
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { label: isRtl ? "مائل" : "Slant", skewX: -20, skewY: 0, rotateX: 0, rotateY: 0 },
+                  { label: isRtl ? "متوازي" : "Para", skewX: -25, skewY: 0, rotateX: 0, rotateY: 0 },
+                  { label: isRtl ? "3D يمين" : "3D →", skewX: 0, skewY: 0, rotateX: 0, rotateY: 40, perspective: 500 },
+                  { label: isRtl ? "3D يسار" : "3D ←", skewX: 0, skewY: 0, rotateX: 0, rotateY: -40, perspective: 500 },
+                  { label: isRtl ? "3D فوق" : "3D ↑", skewX: 0, skewY: 0, rotateX: -35, rotateY: 0, perspective: 500 },
+                  { label: isRtl ? "مستوي" : "Flat", skewX: 0, skewY: 0, rotateX: 0, rotateY: 0, perspective: 800 },
+                ].map(p => (
+                  <button key={p.label}
+                    onClick={() => { update("skewX", p.skewX); update("skewY", p.skewY); update("rotateX", p.rotateX); update("rotateY", p.rotateY); if (p.perspective) update("perspective", p.perspective); }}
+                    className="py-1 rounded text-[10px] bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <button onClick={() => onDuplicate(selected.id)}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
             <Copy className="w-3.5 h-3.5" />
