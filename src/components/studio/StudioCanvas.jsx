@@ -105,15 +105,30 @@ function ShapeElement({ shape, scale, isSelected }) {
   const h = (shape.height / 100) * 100;
   const noFillShapes = ["line", "triangle", "diamond", "star", "pentagon", "hexagon", "arrow"];
 
+  // Build fill string: solid color or CSS gradient
+  const isGradient = shape.fillMode === "gradient";
+  const solidColor = shape.fillColor || "#8b5cf6";
+  const gradientCss = `linear-gradient(${shape.gradientAngle ?? 135}deg, ${shape.gradientColor1 || "#8b5cf6"}, ${shape.gradientColor2 || "#ec4899"})`;
+  const fillValue = noFillShapes.includes(shape.shapeType) ? "transparent" : (isGradient ? gradientCss : solidColor);
+
+  // SVG gradient coords from CSS angle (0°=top, 90°=right)
+  const svgGradId = `grad-${shape.id}`;
+  const svgBlurId = `blur-${shape.id}`;
+  const angleRad = ((shape.gradientAngle ?? 135) - 90) * Math.PI / 180;
+  const gx1 = (0.5 - 0.5 * Math.sin(angleRad)).toFixed(3);
+  const gy1 = (0.5 + 0.5 * Math.cos(angleRad)).toFixed(3);
+  const gx2 = (0.5 + 0.5 * Math.sin(angleRad)).toFixed(3);
+  const gy2 = (0.5 - 0.5 * Math.cos(angleRad)).toFixed(3);
+
   const baseStyle = {
     width: "100%", height: "100%",
     opacity: shape.opacity ?? 1,
-    backgroundColor: noFillShapes.includes(shape.shapeType) ? "transparent" : (shape.fillColor || "#8b5cf6"),
+    background: fillValue,
+    filter: shape.blur > 0 ? `blur(${shape.blur}px)` : undefined,
     border: !noFillShapes.includes(shape.shapeType) && shape.borderWidth > 0 ? `${(shape.borderWidth || 0) * scale}px solid ${shape.borderColor || "#ffffff"}` : "none",
     borderRadius: shape.shapeType === "circle" ? "50%" : (shape.shapeType === "ellipse" ? "50%" : `${(shape.borderRadius || 0) * scale}px`),
   };
 
-  const filterId = `blur-${shape.id}`;
   const commonSvgProps = {
     width: "100%",
     height: "100%",
@@ -167,21 +182,28 @@ function ShapeElement({ shape, scale, isSelected }) {
         );
       }
 
+      const svgFill = shape.shapeType === "arrow" ? "none" : (isGradient ? `url(#${svgGradId})` : solidColor);
       return (
         <svg {...commonSvgProps}>
-          {shape.blur > 0 && (
-            <defs>
-              <filter id={filterId}>
+          <defs>
+            {isGradient && (
+              <linearGradient id={svgGradId} x1={gx1} y1={gy1} x2={gx2} y2={gy2} gradientUnits="objectBoundingBox">
+                <stop offset="0%" stopColor={shape.gradientColor1 || "#8b5cf6"} />
+                <stop offset="100%" stopColor={shape.gradientColor2 || "#ec4899"} />
+              </linearGradient>
+            )}
+            {shape.blur > 0 && (
+              <filter id={svgBlurId}>
                 <feGaussianBlur stdDeviation={shape.blur * 0.5} />
               </filter>
-            </defs>
-          )}
+            )}
+          </defs>
           <path
             d={pathD}
-            fill={shape.shapeType === "arrow" ? "none" : (shape.fillColor || "#8b5cf6")}
+            fill={svgFill}
             stroke={shape.borderColor}
             strokeWidth={shape.borderWidth || (shape.shapeType === "arrow" ? 2 : 0)}
-            filter={shape.blur > 0 ? `url(#${filterId})` : undefined}
+            filter={shape.blur > 0 ? `url(#${svgBlurId})` : undefined}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

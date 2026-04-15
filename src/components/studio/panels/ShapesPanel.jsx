@@ -237,8 +237,71 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
       {/* Selected shape settings */}
       {selected && (
         <div className="space-y-3 border-t border-slate-700 pt-3">
-          <StudioColorPicker label={isRtl ? "لون التعبئة" : "Fill Color"} value={selected.fillColor} onChange={(v) => update("fillColor", v)} />
+          {/* Fill: Solid / Gradient */}
+          <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">{isRtl ? "نوع التعبئة" : "Fill Type"}</label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => update("fillMode", "solid")}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${(!selected.fillMode || selected.fillMode === "solid") ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                >{isRtl ? "لون" : "Solid"}</button>
+                <button
+                  onClick={() => update("fillMode", "gradient")}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "gradient" ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                >{isRtl ? "تدرج" : "Gradient"}</button>
+              </div>
+            </div>
+
+            {(!selected.fillMode || selected.fillMode === "solid") && (
+              <StudioColorPicker label={isRtl ? "لون التعبئة" : "Fill Color"} value={selected.fillColor} onChange={(v) => update("fillColor", v)} />
+            )}
+
+            {selected.fillMode === "gradient" && (
+              <>
+                <StudioColorPicker label={isRtl ? "اللون الأول" : "Color 1"} value={selected.gradientColor1 || "#8b5cf6"} onChange={(v) => update("gradientColor1", v)} />
+                <StudioColorPicker label={isRtl ? "اللون الثاني" : "Color 2"} value={selected.gradientColor2 || "#ec4899"} onChange={(v) => update("gradientColor2", v)} />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-400">{isRtl ? "زاوية التدرج" : "Gradient Angle"}</label>
+                    <span className="text-indigo-400 font-bold">{selected.gradientAngle ?? 135}°</span>
+                  </div>
+                  <input type="range" min="0" max="360" value={selected.gradientAngle ?? 135}
+                    onChange={(e) => update("gradientAngle", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                  <div className="flex gap-1 mt-1">
+                    {[0, 45, 90, 135, 180, 225, 270, 315].map(v => (
+                      <button key={v} onClick={() => update("gradientAngle", v)}
+                        className={`flex-1 py-1 rounded text-[9px] transition ${(selected.gradientAngle ?? 135) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                        {v}°
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Gradient preview */}
+                <div className="w-full h-6 rounded" style={{ background: `linear-gradient(${selected.gradientAngle ?? 135}deg, ${selected.gradientColor1 || "#8b5cf6"}, ${selected.gradientColor2 || "#ec4899"})` }} />
+              </>
+            )}
+          </div>
+
           <StudioColorPicker label={isRtl ? "لون الحدود" : "Border Color"} value={selected.borderColor} onChange={(v) => update("borderColor", v)} />
+
+          {/* Blur effect */}
+          <div className="bg-slate-700/50 rounded-lg p-2 space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">{isRtl ? "ضبابية" : "Blur"}</label>
+              <span className="text-indigo-400 font-bold">{selected.blur || 0}px</span>
+            </div>
+            <input type="range" min="0" max="40" step="0.5" value={selected.blur || 0}
+              onChange={(e) => update("blur", parseFloat(e.target.value))} className="w-full accent-indigo-500" />
+            <div className="flex gap-1">
+              {[0, 3, 6, 10, 15, 20].map(v => (
+                <button key={v} onClick={() => update("blur", v)}
+                  className={`flex-1 py-1 rounded text-[10px] transition ${(selected.blur || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Border radius - for rect, triangle, diamond */}
           {(selected.shapeType === "rect" || selected.shapeType === "triangle" || selected.shapeType === "diamond") && (
