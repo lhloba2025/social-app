@@ -1146,7 +1146,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel */}
-        <div className="w-64 flex-shrink-0 bg-slate-800 border-e border-slate-700 flex flex-col overflow-hidden">
+        <div className="w-56 flex-shrink-0 bg-slate-800 border-e border-slate-700 flex flex-col overflow-hidden">
           {/* Tabs */}
           <div className="flex flex-wrap gap-0.5 p-2 border-b border-slate-700">
             {TABS.map((tab) => (
@@ -1352,11 +1352,11 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         </div>
 
         {/* Canvas area */}
-        <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-6">
+        <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-4">
           <div
             ref={canvasWrapperRef}
             style={{
-              width: size.width > size.height ? "min(100%, 800px)" : "min(60%, 500px)",
+              width: size.width > size.height ? "min(100%, 1200px)" : "min(80%, 900px)",
               maxWidth: "100%",
             }}
           >
