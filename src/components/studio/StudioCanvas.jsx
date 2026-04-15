@@ -105,15 +105,23 @@ function ShapeElement({ shape, scale, isSelected }) {
   const h = (shape.height / 100) * 100;
   const noFillShapes = ["line", "triangle", "diamond", "star", "pentagon", "hexagon", "arrow"];
 
-  // Build fill string: solid color or CSS gradient
+  // Build fill string: solid color, CSS gradient, or stripes
   const isGradient = shape.fillMode === "gradient";
+  const isStripes = shape.fillMode === "stripes";
   const solidColor = shape.fillColor || "#8b5cf6";
   const gradientCss = `linear-gradient(${shape.gradientAngle ?? 135}deg, ${shape.gradientColor1 || "#8b5cf6"}, ${shape.gradientColor2 || "#ec4899"})`;
-  const fillValue = noFillShapes.includes(shape.shapeType) ? "transparent" : (isGradient ? gradientCss : solidColor);
+  const stripeSize = shape.stripeWidth ?? 10;
+  const stripeAngle = shape.stripeAngle ?? 45;
+  const stripeColor = shape.stripeColor || "#ffffff";
+  const stripeBg = shape.stripeBg || "#8b5cf6";
+  // repeating-linear-gradient for CSS stripes
+  const stripesCss = `repeating-linear-gradient(${stripeAngle}deg, ${stripeColor} 0px, ${stripeColor} ${stripeSize}px, ${stripeBg} ${stripeSize}px, ${stripeBg} ${stripeSize * 2}px)`;
+  const fillValue = noFillShapes.includes(shape.shapeType) ? "transparent" : (isGradient ? gradientCss : isStripes ? stripesCss : solidColor);
 
   // SVG gradient coords from CSS angle (0°=top, 90°=right)
   const svgGradId = `grad-${shape.id}`;
   const svgBlurId = `blur-${shape.id}`;
+  const svgPatternId = `stripes-${shape.id}`;
   const angleRad = ((shape.gradientAngle ?? 135) - 90) * Math.PI / 180;
   const gx1 = (0.5 - 0.5 * Math.sin(angleRad)).toFixed(3);
   const gy1 = (0.5 + 0.5 * Math.cos(angleRad)).toFixed(3);
@@ -182,7 +190,7 @@ function ShapeElement({ shape, scale, isSelected }) {
         );
       }
 
-      const svgFill = shape.shapeType === "arrow" ? "none" : (isGradient ? `url(#${svgGradId})` : solidColor);
+      const svgFill = shape.shapeType === "arrow" ? "none" : (isGradient ? `url(#${svgGradId})` : isStripes ? `url(#${svgPatternId})` : solidColor);
       return (
         <svg {...commonSvgProps}>
           <defs>
@@ -191,6 +199,12 @@ function ShapeElement({ shape, scale, isSelected }) {
                 <stop offset="0%" stopColor={shape.gradientColor1 || "#8b5cf6"} />
                 <stop offset="100%" stopColor={shape.gradientColor2 || "#ec4899"} />
               </linearGradient>
+            )}
+            {isStripes && (
+              <pattern id={svgPatternId} x="0" y="0" width={stripeSize * 2} height={stripeSize * 2} patternUnits="userSpaceOnUse" patternTransform={`rotate(${stripeAngle - 45})`}>
+                <rect width={stripeSize * 2} height={stripeSize * 2} fill={stripeBg} />
+                <rect width={stripeSize} height={stripeSize * 2} fill={stripeColor} />
+              </pattern>
             )}
             {shape.blur > 0 && (
               <filter id={svgBlurId}>

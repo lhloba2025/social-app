@@ -250,6 +250,10 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   onClick={() => update("fillMode", "gradient")}
                   className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "gradient" ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
                 >{isRtl ? "تدرج" : "Gradient"}</button>
+                <button
+                  onClick={() => update("fillMode", "stripes")}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "stripes" ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                >{isRtl ? "خطوط" : "Stripes"}</button>
               </div>
             </div>
 
@@ -281,6 +285,54 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 <div className="w-full h-6 rounded" style={{ background: `linear-gradient(${selected.gradientAngle ?? 135}deg, ${selected.gradientColor1 || "#8b5cf6"}, ${selected.gradientColor2 || "#ec4899"})` }} />
               </>
             )}
+
+            {selected.fillMode === "stripes" && (() => {
+              const sw = selected.stripeWidth ?? 10;
+              const sa = selected.stripeAngle ?? 45;
+              const sc = selected.stripeColor || "#ffffff";
+              const sbg = selected.stripeBg || "#8b5cf6";
+              const previewBg = `repeating-linear-gradient(${sa}deg, ${sc} 0px, ${sc} ${sw}px, ${sbg} ${sw}px, ${sbg} ${sw * 2}px)`;
+              return (
+                <>
+                  <StudioColorPicker label={isRtl ? "لون الخط" : "Stripe Color"} value={sc} onChange={(v) => update("stripeColor", v)} />
+                  <StudioColorPicker label={isRtl ? "لون الخلفية" : "Background Color"} value={sbg} onChange={(v) => update("stripeBg", v)} />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-slate-400">{isRtl ? "عرض الخط" : "Stripe Width"}</label>
+                      <span className="text-indigo-400 font-bold">{sw}px</span>
+                    </div>
+                    <input type="range" min="2" max="40" step="1" value={sw}
+                      onChange={(e) => update("stripeWidth", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                    <div className="flex gap-1 mt-1">
+                      {[4, 8, 12, 16, 24, 32].map(v => (
+                        <button key={v} onClick={() => update("stripeWidth", v)}
+                          className={`flex-1 py-1 rounded text-[10px] transition ${sw === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-slate-400">{isRtl ? "زاوية الخطوط" : "Stripe Angle"}</label>
+                      <span className="text-indigo-400 font-bold">{sa}°</span>
+                    </div>
+                    <input type="range" min="0" max="180" step="5" value={sa}
+                      onChange={(e) => update("stripeAngle", parseInt(e.target.value))} className="w-full accent-indigo-500" />
+                    <div className="flex gap-1 mt-1">
+                      {[0, 30, 45, 60, 90, 120, 135, 150].map(v => (
+                        <button key={v} onClick={() => update("stripeAngle", v)}
+                          className={`flex-1 py-1 rounded text-[9px] transition ${sa === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                          {v}°
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Stripes preview */}
+                  <div className="w-full h-8 rounded border border-slate-600" style={{ background: previewBg }} />
+                </>
+              );
+            })()}
           </div>
 
           <StudioColorPicker label={isRtl ? "لون الحدود" : "Border Color"} value={selected.borderColor} onChange={(v) => update("borderColor", v)} />
