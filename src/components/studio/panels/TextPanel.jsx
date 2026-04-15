@@ -72,11 +72,13 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
   const handleEditorInput = () => {
     if (!editorRef.current) return;
-    // Clean HTML and ensure fontFamily is not in inline styles
-    let html = editorRef.current.innerHTML;
-    // Remove fontFamily from spans/elements to prevent conflicts
-    html = html.replace(/font-family:\s*[^;]*;?/gi, "");
-    update("richHtml", html);
+    // Strip font-family and font-size from inline styles to prevent conflicts with layer props
+    const spans = editorRef.current.querySelectorAll("span[style], font[style], div[style]");
+    spans.forEach(el => {
+      el.style.removeProperty("font-family");
+      el.style.removeProperty("font-size");
+    });
+    update("richHtml", editorRef.current.innerHTML);
   };
 
   const savedSelectionRef = useRef(null);
@@ -136,14 +138,13 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
     document.execCommand("styleWithCSS", false, true);
     document.execCommand(cmd, false, value || null);
     
-    // Ensure fontFamily is preserved in all spans
-    const spans = editorRef.current.querySelectorAll("span[style]");
+    // Strip font-family from all styled spans so layer.fontFamily always controls the font
+    const spans = editorRef.current.querySelectorAll("span[style], font[style]");
     spans.forEach(span => {
-      if (!span.style.fontFamily) {
-        span.style.fontFamily = currentFont;
-      }
+      span.style.removeProperty("font-family");
+      span.style.removeProperty("font-size");
     });
-    
+
     update("richHtml", editorRef.current.innerHTML);
   }, [selected?.id, selected?.fontFamily]);
 
@@ -190,6 +191,11 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
         el.style.verticalAlign = "baseline";
         el.style.padding = "0";
       }
+    });
+    // Strip font-family and font-size added by styleWithCSS
+    editorRef.current.querySelectorAll("span[style], font[style], div[style]").forEach(el => {
+      el.style.removeProperty("font-family");
+      el.style.removeProperty("font-size");
     });
     update("richHtml", editorRef.current.innerHTML);
   };
