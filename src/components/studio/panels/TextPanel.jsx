@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useRef, useEffect, useCallback } from "react";
 import { Plus, Copy, Trash2, Eye, EyeOff, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Underline } from "lucide-react";
 import StudioColorPicker from "../StudioColorPicker";
@@ -61,7 +62,8 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
     if (!editorRef.current || !selected) return;
     editorRef.current.style.fontFamily = selected.fontFamily || "Tajawal";
     editorRef.current.style.lineHeight = String(selected.lineHeight || 1.4);
-  }, [selected?.fontFamily, selected?.lineHeight]);
+    editorRef.current.style.fontSize = `${Math.min(selected.fontSize || 24, 48)}px`;
+  }, [selected?.fontFamily, selected?.lineHeight, selected?.fontSize]);
 
   const update = (key, val) => {
     if (!selected) return;
@@ -193,34 +195,16 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
   };
 
   const applyFontSize = (newSize) => {
-    if (!editorRef.current || !savedSelectionRef.current) {
-      // No editor/selection context - just update global fontSize
-      update("fontSize", newSize);
-      return;
+    // Always update global fontSize — no inline sizes in richHtml to avoid canvas scaling bugs
+    update("fontSize", newSize);
+    // Strip any previously-applied inline font-size from richHtml
+    if (!editorRef.current) return;
+    const html = editorRef.current.innerHTML;
+    const stripped = html.replace(/font-size\s*:\s*[^;}"]+;?\s*/gi, "");
+    if (stripped !== html) {
+      editorRef.current.innerHTML = stripped;
+      update("richHtml", stripped);
     }
-
-    const range = savedSelectionRef.current.cloneRange();
-
-    if (range.collapsed) {
-      // No text selected - update global fontSize only
-      update("fontSize", newSize);
-      return;
-    }
-
-    // Text is selected - apply inline font size to selection only, don't change global fontSize
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    document.execCommand("styleWithCSS", false, true);
-    document.execCommand("fontSize", false, "7");
-    const fontEls = editorRef.current.querySelectorAll("font[size='7']");
-    fontEls.forEach((el) => {
-      const span = document.createElement("span");
-      span.style.fontSize = `${newSize}px`;
-      span.innerHTML = el.innerHTML;
-      el.replaceWith(span);
-    });
-    update("richHtml", editorRef.current.innerHTML);
   };
 
   return (
@@ -277,7 +261,6 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 fontFamily: selected.fontFamily || "Tajawal",
                 direction: "auto",
                 minHeight: 48,
-                fontSize: "13px",
                 lineHeight: selected.lineHeight || 1.4,
               }}
               className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white outline-none focus:border-indigo-500"
@@ -344,15 +327,15 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
             </div>
           </div>
 
-          {/* Font size for selected text */}
+          {/* Font size */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🔤 حجم النص المحدد" : "🔤 Selected text size"}</label>
+            <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط" : "Font Size"}</label>
             <div className="flex items-center gap-1 flex-wrap">
               {[12, 16, 20, 24, 32, 40, 48, 64, 80].map((sz) => (
                 <button
                   key={sz}
                   onMouseDown={(e) => { e.preventDefault(); applyFontSize(sz); }}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition text-[11px] font-semibold"
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fontSize === sz ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white"}`}
                 >
                   {sz}
                 </button>
@@ -361,15 +344,11 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 type="number"
                 min="6"
                 max="300"
-                placeholder={isRtl ? "مخصص" : "custom"}
+                value={selected.fontSize || 24}
                 className="w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-[11px]"
-                onFocus={saveSelection}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
-                  if (val > 0) {
-                    restoreSelection();
-                    applyFontSize(val);
-                  }
+                  if (val > 0) applyFontSize(val);
                 }}
               />
             </div>
@@ -436,26 +415,15 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
               onChange={(e) => update("textWidth", parseInt(e.target.value))} className="w-full" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط" : "Font Size"}</label>
-              <input
-                type="number"
-                value={selected.fontSize}
-                onChange={(e) => update("fontSize", parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
-              />
-            </div>
-            <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "تباعد السطور" : "Line Height"}</label>
-              <input
-                type="number"
-                step="0.1"
-                value={selected.lineHeight || 1.4}
-                onChange={(e) => update("lineHeight", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
-              />
-            </div>
+          <div>
+            <label className="text-slate-400 block mb-1">{isRtl ? "تباعد السطور" : "Line Height"}</label>
+            <input
+              type="number"
+              step="0.1"
+              value={selected.lineHeight || 1.4}
+              onChange={(e) => update("lineHeight", parseFloat(e.target.value))}
+              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+            />
           </div>
 
           <div>

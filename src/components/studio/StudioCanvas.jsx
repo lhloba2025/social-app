@@ -38,6 +38,11 @@ function colorSvgContent(svgContent, color) {
     .replace(/fill:(?!none)[^;"}]*/g, `fill:${color}`);
 }
 
+function stripInlineFontSizes(html) {
+  // Remove inline font-size so layer.fontSize * scale controls sizing uniformly on canvas
+  return html.replace(/font-size\s*:\s*[^;}"]+;?\s*/gi, "");
+}
+
 function hexToRgb01(hex) {
   const c = hex.replace("#", "");
   const r = parseInt(c.substring(0, 2), 16) / 255;
@@ -918,13 +923,13 @@ export default function StudioCanvas({
                 {layer.bgColor ? (
                   <span style={{ backgroundColor: layer.bgColor, padding: "0 2px", borderRadius: "3px", display: "inline" }}>
                     {layer.richHtml
-                      ? <span style={{ lineHeight: "inherit" }} dangerouslySetInnerHTML={{ __html: layer.richHtml.replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
+                      ? <span style={{ lineHeight: "inherit" }} dangerouslySetInnerHTML={{ __html: stripInlineFontSizes(layer.richHtml).replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
                       : (layer.text || "نص")
                     }
                   </span>
                 ) : (
                   layer.richHtml
-                    ? <span style={{ lineHeight: "inherit", display: "block", width: "100%" }} dangerouslySetInnerHTML={{ __html: layer.richHtml.replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
+                    ? <span style={{ lineHeight: "inherit", display: "block", width: "100%" }} dangerouslySetInnerHTML={{ __html: stripInlineFontSizes(layer.richHtml).replace(/<div(\s[^>]*)?>/gi, "<span$1>").replace(/<\/div>/gi, "</span>") }} />
                     : (layer.text || "نص")
                 )}
               </div>
