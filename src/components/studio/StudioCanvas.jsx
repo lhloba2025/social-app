@@ -148,6 +148,105 @@ function ShapeElement({ shape, scale, isSelected }) {
     return <div style={{ ...baseStyle, height: `${(shape.borderWidth || 2) * scale}px`, backgroundColor: shape.fillColor || "#ffffff", borderRadius: 2 }} />;
   }
 
+  // ── Decorative shapes ──────────────────────────────────────────────────────
+  const decoId = `deco-grad-${shape.id}`;
+  const decoBlurId = `deco-blur-${shape.id}`;
+  const decoColor = solidColor;
+  const decoColor2 = isGradient ? (shape.gradientColor2 || "#ec4899") : solidColor;
+
+  const decoSvgDefs = (
+    <defs>
+      {isGradient && (
+        <linearGradient id={decoId} x1={gx1} y1={gy1} x2={gx2} y2={gy2} gradientUnits="objectBoundingBox">
+          <stop offset="0%" stopColor={decoColor} />
+          <stop offset="100%" stopColor={decoColor2} />
+        </linearGradient>
+      )}
+      {shape.blur > 0 && <filter id={decoBlurId}><feGaussianBlur stdDeviation={shape.blur * 0.5} /></filter>}
+    </defs>
+  );
+  const decoFill = isGradient ? `url(#${decoId})` : decoColor;
+  const decoStroke = isGradient ? `url(#${decoId})` : decoColor;
+  const decoOpacity = shape.opacity ?? 1;
+  const decoFilter = shape.blur > 0 ? `url(#${decoBlurId})` : undefined;
+
+  if (shape.shapeType === "chain") {
+    const linkCount = 8;
+    const links = Array.from({ length: linkCount }, (_, i) => {
+      const cx = (i + 0.5) * (100 / linkCount);
+      return i % 2 === 0
+        ? <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} />
+        : <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} transform={`rotate(90,${cx},50)`} />;
+    });
+    return <svg {...commonSvgProps}>{decoSvgDefs}{links}</svg>;
+  }
+
+  if (shape.shapeType === "ring_chain") {
+    const count = 6;
+    const rings = Array.from({ length: count }, (_, i) => {
+      const cx = (i + 0.5) * (100 / count);
+      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.42} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} />;
+    });
+    return <svg {...commonSvgProps}>{decoSvgDefs}{rings}</svg>;
+  }
+
+  if (shape.shapeType === "rope") {
+    return (
+      <svg {...commonSvgProps}>
+        {decoSvgDefs}
+        <path d="M0,35 C15,10 30,60 50,35 C70,10 85,60 100,35" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" opacity={decoOpacity} filter={decoFilter} />
+        <path d="M0,65 C15,90 30,40 50,65 C70,90 85,40 100,65" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" opacity={decoOpacity} filter={decoFilter} />
+      </svg>
+    );
+  }
+
+  if (shape.shapeType === "arc_ribbon") {
+    return (
+      <svg {...commonSvgProps}>
+        {decoSvgDefs}
+        <path d="M2,90 Q50,5 98,90 L98,75 Q50,20 2,75 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+      </svg>
+    );
+  }
+
+  if (shape.shapeType === "wave_ribbon") {
+    return (
+      <svg {...commonSvgProps}>
+        {decoSvgDefs}
+        <path d="M0,55 C20,20 35,70 50,40 C65,10 80,70 100,40 L100,60 C80,90 65,30 50,60 C35,90 20,40 0,75 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+      </svg>
+    );
+  }
+
+  if (shape.shapeType === "dots_line") {
+    const count = 9;
+    const dots = Array.from({ length: count }, (_, i) => {
+      const cx = (i + 0.5) * (100 / count);
+      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.38} fill={decoFill} opacity={decoOpacity} filter={decoFilter} />;
+    });
+    return <svg {...commonSvgProps}>{decoSvgDefs}{dots}</svg>;
+  }
+
+  if (shape.shapeType === "zigzag") {
+    const pts = Array.from({ length: 9 }, (_, i) => `${i * 12.5},${i % 2 === 0 ? 80 : 20}`).join(" ");
+    return (
+      <svg {...commonSvgProps}>
+        {decoSvgDefs}
+        <polyline points={pts} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" strokeLinejoin="round" opacity={decoOpacity} filter={decoFilter} />
+      </svg>
+    );
+  }
+
+  if (shape.shapeType === "crescent") {
+    return (
+      <svg {...commonSvgProps}>
+        {decoSvgDefs}
+        <path d="M50,5 A45,45 0 1 1 50,95 A30,30 0 1 0 50,5 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+      </svg>
+    );
+  }
+  // ── end decorative shapes ──────────────────────────────────────────────────
+
   if (["triangle", "diamond", "star", "pentagon", "hexagon", "arrow"].includes(shape.shapeType)) {
     let points;
     if (shape.shapeType === "triangle") points = [[50, 2], [98, 98], [2, 98]];

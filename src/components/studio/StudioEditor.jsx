@@ -24,10 +24,13 @@ import { SIZES } from "./sizes";
 import SizeSelector from "./SizeSelector";
 import ShareModal from "./ShareModal";
 
+const DECO_TYPE_IDS = new Set(["chain","rope","arc_ribbon","wave_ribbon","ring_chain","dots_line","zigzag","crescent"]);
+
 const TABS = [
   { id: "templates", labelAr: "قوالب", labelEn: "Templates" },
   { id: "text", labelAr: "نصوص", labelEn: "Text" },
   { id: "shapes", labelAr: "أشكال", labelEn: "Shapes" },
+  { id: "deco", labelAr: "زخارف", labelEn: "Deco" },
   { id: "icons", labelAr: "أيقونات", labelEn: "Icons" },
   { id: "symbols", labelAr: "رموز", labelEn: "Symbols" },
   { id: "logo", labelAr: "لوقو", labelEn: "Logo" },
@@ -626,7 +629,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setMultiSelected([]);
 
     if (type === "text") setActiveTab("text");
-    else if (type === "shape") setActiveTab("shapes");
+    else if (type === "shape") {
+      const sh = shapes.find(s => s.id === id);
+      setActiveTab(DECO_TYPE_IDS.has(sh?.shapeType) ? "deco" : "shapes");
+    }
     else if (type === "logo") setActiveTab("logo");
     else if (type === "image") {
       const img = imagesRef.current.find(i => i.id === id);
@@ -640,7 +646,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         setActiveTab("images");
       }
     }
-  }, []);
+  }, [shapes]);
 
   const handleSelect = useCallback((id, type, e) => {
     // Handle multi-selection with Shift key
@@ -659,7 +665,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
     // Switch to the correct panel tab automatically
     if (type === "text") setActiveTab("text");
-    else if (type === "shape") setActiveTab("shapes");
+    else if (type === "shape") {
+      const sh = shapes.find(s => s.id === id);
+      setActiveTab(DECO_TYPE_IDS.has(sh?.shapeType) ? "deco" : "shapes");
+    }
     else if (type === "logo") setActiveTab("logo");
     else if (type === "image") {
       const img = imagesRef.current.find(i => i.id === id);
@@ -668,7 +677,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       else if (img?.isHandDrawn) setActiveTab("draw");
       else setActiveTab("images");
     }
-  }, [multiSelected]);
+  }, [multiSelected, shapes]);
 
   // Text ops
   const addText = () => { const t = defaultText(); setTextLayers(p => [...p, t]); setSelectedId(t.id); setSelectedType("text"); };
@@ -1239,6 +1248,20 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 onDuplicate={duplicateShape}
                 onReorder={reorderShapes}
                 language={language}
+              />
+            </div>
+            <div style={{ display: activeTab === "deco" ? "block" : "none" }}>
+              <ShapesPanel
+                shapes={shapes}
+                selectedId={selectedType === "shape" ? selectedId : null}
+                onSelect={(id) => handleSelectWithTabSwitch(id, "shape")}
+                onAdd={addShape}
+                onUpdate={updateShape}
+                onDelete={deleteShape}
+                onDuplicate={duplicateShape}
+                onReorder={reorderShapes}
+                language={language}
+                decoMode={true}
               />
             </div>
             <div style={{ display: activeTab === "logo" ? "block" : "none" }}>

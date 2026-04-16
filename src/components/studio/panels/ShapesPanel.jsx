@@ -19,7 +19,20 @@ const SHAPE_TYPES = [
   { id: "rounded", labelAr: "مستطيل مستدير", labelEn: "Rounded" },
 ];
 
-export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpdate, onDelete, onDuplicate, onReorder, language }) {
+const DECO_SHAPE_TYPES = [
+  { id: "chain", labelAr: "سلسلة", labelEn: "Chain" },
+  { id: "rope", labelAr: "حبل", labelEn: "Rope" },
+  { id: "arc_ribbon", labelAr: "شريط قوسي", labelEn: "Arc Ribbon" },
+  { id: "wave_ribbon", labelAr: "شريط موجي", labelEn: "Wave" },
+  { id: "ring_chain", labelAr: "حلقات", labelEn: "Rings" },
+  { id: "dots_line", labelAr: "خط نقاط", labelEn: "Dots" },
+  { id: "zigzag", labelAr: "متعرج", labelEn: "Zigzag" },
+  { id: "crescent", labelAr: "هلال", labelEn: "Crescent" },
+];
+
+const DECO_IDS = new Set(DECO_SHAPE_TYPES.map(d => d.id));
+
+export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpdate, onDelete, onDuplicate, onReorder, language, decoMode = false }) {
   const isRtl = language === "ar";
   const selected = shapes.find((s) => s.id === selectedId);
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };
@@ -110,19 +123,40 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
   return (
     <div className="space-y-3 text-xs">
-      {/* Add shapes */}
-      <div className="grid grid-cols-3 gap-1">
-        {SHAPE_TYPES.map((st) => (
-          <button
-            key={st.id}
-            onClick={() => onAdd(st.id)}
-            className="flex flex-col items-center gap-1 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
-          >
-            <ShapeIcon type={st.id} />
-            <span className="text-[10px]">{isRtl ? st.labelAr : st.labelEn}</span>
-          </button>
-        ))}
-      </div>
+      {/* Add shapes — shown only in normal mode */}
+      {!decoMode && (
+        <div className="grid grid-cols-3 gap-1">
+          {SHAPE_TYPES.map((st) => (
+            <button
+              key={st.id}
+              onClick={() => onAdd(st.id)}
+              className="flex flex-col items-center gap-1 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+            >
+              <ShapeIcon type={st.id} />
+              <span className="text-[10px]">{isRtl ? st.labelAr : st.labelEn}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Decorative shapes — shown only in deco mode */}
+      {decoMode && (
+        <div>
+          <p className="text-slate-400 font-semibold mb-1">✦ {isRtl ? "زخارف وحبال" : "Decorative"}</p>
+          <div className="grid grid-cols-4 gap-1">
+            {DECO_SHAPE_TYPES.map((st) => (
+              <button
+                key={st.id}
+                onClick={() => onAdd(st.id)}
+                className="flex flex-col items-center gap-0.5 p-1.5 rounded bg-slate-700/80 hover:bg-purple-700 transition text-slate-300 hover:text-white"
+              >
+                <DecoIcon type={st.id} />
+                <span className="text-[9px] text-center leading-tight">{isRtl ? st.labelAr : st.labelEn}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Align & Distribute */}
       <div className="space-y-1.5">
@@ -664,6 +698,55 @@ function ShapeIcon({ type, size = 16 }) {
   );
   if (type === "arrow") return (
     <svg width={s} height={s} viewBox="0 0 16 16"><path d="M2,8 L12,8 M10,6 L12,8 L10,10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  );
+  return null;
+}
+
+function DecoIcon({ type }) {
+  const s = 20;
+  if (type === "chain") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      {[0,1,2,3].map(i => i%2===0
+        ? <ellipse key={i} cx={5+i*9} cy={8} rx={4} ry={6} fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        : <ellipse key={i} cx={5+i*9} cy={8} rx={6} ry={4} fill="none" stroke="currentColor" strokeWidth="1.5"/>
+      )}
+    </svg>
+  );
+  if (type === "rope") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      <path d="M2,5 C8,3 14,13 20,5 C26,3 32,13 38,5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M2,11 C8,13 14,3 20,11 C26,13 32,3 38,11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+  if (type === "arc_ribbon") return (
+    <svg width={s} height={s} viewBox="0 0 40 20">
+      <path d="M2,18 Q20,2 38,18 L38,14 Q20,6 2,14 Z" fill="currentColor" opacity="0.8"/>
+    </svg>
+  );
+  if (type === "wave_ribbon") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      <path d="M2,10 C8,4 14,14 20,8 C26,2 32,14 38,8 L38,12 C32,18 26,6 20,12 C14,18 8,8 2,14 Z" fill="currentColor" opacity="0.8"/>
+    </svg>
+  );
+  if (type === "ring_chain") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      {[0,1,2,3].map(i => <circle key={i} cx={5+i*11} cy={8} r={5} fill="none" stroke="currentColor" strokeWidth="1.5"/>)}
+    </svg>
+  );
+  if (type === "dots_line") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      {[0,1,2,3,4,5].map(i => <circle key={i} cx={3+i*7} cy={8} r={2.5} fill="currentColor"/>)}
+    </svg>
+  );
+  if (type === "zigzag") return (
+    <svg width={s} height={s} viewBox="0 0 40 16">
+      <polyline points="2,12 8,4 14,12 20,4 26,12 32,4 38,12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (type === "crescent") return (
+    <svg width={s} height={s} viewBox="0 0 16 16">
+      <path d="M8,2 A6,6 0 1 1 8,14 A4,4 0 1 0 8,2 Z" fill="currentColor"/>
+    </svg>
   );
   return null;
 }
