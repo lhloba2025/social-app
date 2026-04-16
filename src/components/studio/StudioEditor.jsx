@@ -656,6 +656,18 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setSelectedId(id);
     setSelectedType(type);
     setMultiSelected([]);
+
+    // Switch to the correct panel tab automatically
+    if (type === "text") setActiveTab("text");
+    else if (type === "shape") setActiveTab("shapes");
+    else if (type === "logo") setActiveTab("logo");
+    else if (type === "image") {
+      const img = imagesRef.current.find(i => i.id === id);
+      if (img?.isSymbol) setActiveTab("symbols");
+      else if (img?.isLucideIcon || img?.isText || img?.isSocialIcon) setActiveTab("icons");
+      else if (img?.isHandDrawn) setActiveTab("draw");
+      else setActiveTab("images");
+    }
   }, [multiSelected]);
 
   // Text ops
