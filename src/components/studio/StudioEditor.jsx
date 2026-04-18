@@ -472,7 +472,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       document.head.appendChild(noSelectStyle);
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       window.getSelection()?.removeAllRanges();
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 100));
 
       await new Promise(resolve => {
         flushSync(() => setExporting(true));
@@ -1387,7 +1387,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         </div>
 
         {/* Canvas area */}
-        <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-4">
+        <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-4 relative">
+          {/* Saving overlay — hides visual glitches from thumbnail capture */}
+          {saving && (
+            <div className="absolute inset-0 z-50 bg-slate-950/80 flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                <span className="text-slate-300 text-sm">{isRtl ? "جاري الحفظ..." : "Saving..."}</span>
+              </div>
+            </div>
+          )}
           <div
             ref={canvasWrapperRef}
             style={{
