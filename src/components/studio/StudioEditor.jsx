@@ -445,8 +445,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
   const captureThumbnail = async () => {
     if (!canvasRef.current) return null;
+    const originalLogos = logos;
     try {
-      const originalLogos = logos;
 
       if (logos.some(l => l.logoColor && !l.isSvg)) {
         const recoloredLogos = await Promise.all(
@@ -510,6 +510,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     } catch (e) {
       console.error("Thumbnail capture failed:", e);
       setExporting(false);
+      setLogos(originalLogos);
       document.querySelectorAll('[contenteditable="false"]').forEach(el => el.setAttribute("contenteditable", "true"));
       return null;
     }
@@ -1390,7 +1391,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-4 relative">
           {/* Saving overlay — hides visual glitches from thumbnail capture */}
           {saving && (
-            <div className="absolute inset-0 z-50 bg-slate-950/80 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-50 bg-slate-950 flex items-center justify-center pointer-events-none">
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
                 <span className="text-slate-300 text-sm">{isRtl ? "جاري الحفظ..." : "Saving..."}</span>

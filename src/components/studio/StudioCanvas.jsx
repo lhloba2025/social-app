@@ -130,7 +130,6 @@ function ShapeElement({ shape, scale, isSelected }) {
 
   const baseStyle = {
     width: "100%", height: "100%",
-    opacity: shape.opacity ?? 1,
     background: fillValue,
     filter: shape.blur > 0 ? `blur(${shape.blur}px)` : undefined,
     border: !noFillShapes.includes(shape.shapeType) && shape.borderWidth > 0 ? `${(shape.borderWidth || 0) * scale}px solid ${shape.borderColor || "#ffffff"}` : "none",
@@ -175,8 +174,8 @@ function ShapeElement({ shape, scale, isSelected }) {
     const links = Array.from({ length: linkCount }, (_, i) => {
       const cx = (i + 0.5) * (100 / linkCount);
       return i % 2 === 0
-        ? <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} />
-        : <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} transform={`rotate(90,${cx},50)`} />;
+        ? <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} filter={decoFilter} />
+        : <ellipse key={i} cx={cx} cy={50} rx={100 / linkCount * 0.42} ry={30} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} filter={decoFilter} transform={`rotate(90,${cx},50)`} />;
     });
     return <svg {...commonSvgProps}>{decoSvgDefs}{links}</svg>;
   }
@@ -185,7 +184,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     const count = 6;
     const rings = Array.from({ length: count }, (_, i) => {
       const cx = (i + 0.5) * (100 / count);
-      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.42} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} opacity={decoOpacity} filter={decoFilter} />;
+      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.42} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 4} filter={decoFilter} />;
     });
     return <svg {...commonSvgProps}>{decoSvgDefs}{rings}</svg>;
   }
@@ -194,8 +193,8 @@ function ShapeElement({ shape, scale, isSelected }) {
     return (
       <svg {...commonSvgProps}>
         {decoSvgDefs}
-        <path d="M0,35 C15,10 30,60 50,35 C70,10 85,60 100,35" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" opacity={decoOpacity} filter={decoFilter} />
-        <path d="M0,65 C15,90 30,40 50,65 C70,90 85,40 100,65" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" opacity={decoOpacity} filter={decoFilter} />
+        <path d="M0,35 C15,10 30,60 50,35 C70,10 85,60 100,35" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" filter={decoFilter} />
+        <path d="M0,65 C15,90 30,40 50,65 C70,90 85,40 100,65" fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" filter={decoFilter} />
       </svg>
     );
   }
@@ -204,7 +203,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     return (
       <svg {...commonSvgProps}>
         {decoSvgDefs}
-        <path d="M2,90 Q50,5 98,90 L98,75 Q50,20 2,75 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+        <path d="M2,90 Q50,5 98,90 L98,75 Q50,20 2,75 Z" fill={decoFill} filter={decoFilter} />
       </svg>
     );
   }
@@ -213,7 +212,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     return (
       <svg {...commonSvgProps}>
         {decoSvgDefs}
-        <path d="M0,55 C20,20 35,70 50,40 C65,10 80,70 100,40 L100,60 C80,90 65,30 50,60 C35,90 20,40 0,75 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+        <path d="M0,55 C20,20 35,70 50,40 C65,10 80,70 100,40 L100,60 C80,90 65,30 50,60 C35,90 20,40 0,75 Z" fill={decoFill} filter={decoFilter} />
       </svg>
     );
   }
@@ -222,7 +221,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     const count = 9;
     const dots = Array.from({ length: count }, (_, i) => {
       const cx = (i + 0.5) * (100 / count);
-      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.38} fill={decoFill} opacity={decoOpacity} filter={decoFilter} />;
+      return <circle key={i} cx={cx} cy={50} r={100 / count * 0.38} fill={decoFill} filter={decoFilter} />;
     });
     return <svg {...commonSvgProps}>{decoSvgDefs}{dots}</svg>;
   }
@@ -232,7 +231,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     return (
       <svg {...commonSvgProps}>
         {decoSvgDefs}
-        <polyline points={pts} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" strokeLinejoin="round" opacity={decoOpacity} filter={decoFilter} />
+        <polyline points={pts} fill="none" stroke={decoStroke} strokeWidth={shape.borderWidth || 5} strokeLinecap="round" strokeLinejoin="round" filter={decoFilter} />
       </svg>
     );
   }
@@ -241,7 +240,7 @@ function ShapeElement({ shape, scale, isSelected }) {
     return (
       <svg {...commonSvgProps}>
         {decoSvgDefs}
-        <path d="M50,5 A45,45 0 1 1 50,95 A30,30 0 1 0 50,5 Z" fill={decoFill} opacity={decoOpacity} filter={decoFilter} />
+        <path d="M50,5 A45,45 0 1 1 50,95 A30,30 0 1 0 50,5 Z" fill={decoFill} filter={decoFilter} />
       </svg>
     );
   }
@@ -983,7 +982,10 @@ export default function StudioCanvas({
                 outlineOffset: `${2 * scale}px`,
                 zIndex: isSelected ? 15 : 5,
                 mixBlendMode: shape.blendMode || "normal",
-                filter: `drop-shadow(${shape.shadowX || 0}px ${shape.shadowY || 0}px ${shape.shadowBlur || 0}px rgba(0,0,0,0.5))${shape.glow ? ` drop-shadow(0 0 ${shape.glow}px rgba(255,255,255,0.5))` : ""}`,
+                filter: [
+                  (shape.shadowX || shape.shadowY || shape.shadowBlur) ? `drop-shadow(${shape.shadowX || 0}px ${shape.shadowY || 0}px ${shape.shadowBlur || 0}px rgba(0,0,0,0.5))` : "",
+                  shape.glow ? `drop-shadow(0 0 ${shape.glow}px rgba(255,255,255,0.5))` : "",
+                ].filter(Boolean).join(" ") || undefined,
               }}
               onMouseDown={(e) => { if (!shape.locked) onSelect(shape.id, "shape", e); startDrag(e, shape.id, "shape", shape.x || 10, shape.y || 10, shape.locked); }}
             >
