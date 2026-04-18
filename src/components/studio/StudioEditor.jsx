@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { Download, Sparkles, Copy, Plus, ChevronDown, Save, Loader2, LayoutGrid, Undo2, Redo2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import html2canvas from "html2canvas";
+import * as htmlToImage from "html-to-image";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { localApi, uploadFile } from "@/api/localClient";
 import StudioCanvas from "./StudioCanvas";
@@ -420,22 +420,13 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       const element = canvasWrapRef.current;
       const clientW = element.offsetWidth;
-      const clientH = element.offsetHeight;
       const targetW = 600;
       const captureScale = Math.min(2, targetW / clientW);
-      const canvas = await html2canvas(element, {
-        useCORS: true, allowTaint: true,
-        scale: captureScale,
-        backgroundColor: null, logging: false,
-        width: clientW, height: clientH,
-        scrollX: -window.scrollX, scrollY: -window.scrollY,
-        windowWidth: document.documentElement.clientWidth,
-        windowHeight: document.documentElement.clientHeight,
-      });
+      const dataUrl = await htmlToImage.toJpeg(element, { pixelRatio: captureScale, quality: 0.82 });
 
       setExporting(false);
       if (hasLogoColors) setLogos(originalLogos);
-      return canvas.toDataURL("image/jpeg", 0.82);
+      return dataUrl;
     } catch {
       setExporting(false);
       setLogos(originalLogos);
@@ -481,28 +472,14 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       const element = canvasWrapRef.current;
       const clientW = element.offsetWidth;
-      const clientH = element.offsetHeight;
       const exportScale = size.width / clientW;
 
-      const canvas = await html2canvas(element, {
-        useCORS: true,
-        allowTaint: true,
-        scale: exportScale,
-        backgroundColor: null,
-        logging: false,
-        width: clientW,
-        height: clientH,
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
-        windowWidth: document.documentElement.clientWidth,
-        windowHeight: document.documentElement.clientHeight,
-      });
+      const blob = await htmlToImage.toBlob(element, { pixelRatio: exportScale, quality: 0.85, type: "image/jpeg" });
 
       document.getElementById("export-no-select")?.remove();
       setLogos(originalLogos);
       setExporting(false);
 
-      const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.85));
       if (!blob) return null;
       const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
       const { file_url } = await uploadFile({ file });
@@ -925,27 +902,12 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     const element = /** @type {HTMLElement} */ (/** @type {unknown} */ (canvasWrapRef.current));
     if (!element) return;
     const clientW = element.offsetWidth;
-    const clientH = element.offsetHeight;
     const exportScale = size.width / clientW;
 
-    const canvas = await html2canvas(element, {
-      useCORS: true,
-      allowTaint: true,
-      scale: exportScale,
-      backgroundColor: null,
-      logging: false,
-      width: clientW,
-      height: clientH,
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
-      windowWidth: document.documentElement.clientWidth,
-      windowHeight: document.documentElement.clientHeight,
-    });
+    const dataUrl = await htmlToImage.toPng(element, { pixelRatio: exportScale });
 
     document.getElementById("export-no-select")?.remove();
     setLogos(originalLogos);
-
-    const dataUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.download = `design-${size.id || "custom"}.png`;
     link.href = dataUrl;

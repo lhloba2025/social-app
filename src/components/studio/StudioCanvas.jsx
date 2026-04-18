@@ -868,16 +868,29 @@ export default function StudioCanvas({
         overflow: "hidden",
         borderRadius: 8,
         cursor: "default",
-        isolation: "isolate",
-        ...(bgFilter ? {} : bgStyle),
+        ...(bg?.mode === "image" ? {} : bgFilter ? {} : bgStyle),
       }}
     >
-      {/* Background blur layer */}
-      {bgFilter && <div style={{ position: "absolute", inset: 0, ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
+      {/* Background image as <img> — html2canvas captures <img> elements reliably; CSS backgroundImage is often missed */}
+      {bg?.mode === "image" && bg?.imageUrl && (
+        <img
+          src={bg.imageUrl}
+          crossOrigin="anonymous"
+          style={{
+            position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+            objectFit: "cover", objectPosition: "center",
+            filter: bgFilter || undefined,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Background blur layer (non-image modes only) */}
+      {bgFilter && bg?.mode !== "image" && <div style={{ position: "absolute", inset: 0, ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
 
       {/* Background image overlay */}
       {bg?.mode === "image" && bg?.imageUrl && (
-        <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${1 - (bg.imageOpacity ?? 1)})`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: `rgba(0,0,0,${1 - (bg.imageOpacity ?? 1)})`, pointerEvents: "none" }} />
       )}
 
       {/* Grid lines - hidden during export */}
