@@ -18,6 +18,7 @@ import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
 import TemplatesPanel from "./panels/TemplatesPanel";
 import BrandKitPanel from "./panels/BrandKitPanel";
+import FramesPanel from "./panels/FramesPanel";
 import CustomColorPicker from "./CustomColorPicker";
 import AlignmentTools from "./AlignmentTools";
 import { SIZES } from "./sizes";
@@ -36,6 +37,7 @@ const TABS = [
   { id: "logo", labelAr: "لوقو", labelEn: "Logo" },
   { id: "images", labelAr: "صور", labelEn: "Images" },
   { id: "bg", labelAr: "خلفية", labelEn: "BG" },
+  { id: "frames", labelAr: "إطارات", labelEn: "Frames" },
   { id: "ai", labelAr: "ذكاء", labelEn: "AI" },
   { id: "colors", labelAr: "ألوان", labelEn: "Colors" },
   { id: "size", labelAr: "مقاس", labelEn: "Size" },
@@ -124,6 +126,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [logos, setLogos] = useState(initDraft?.logos || []);
   const [groups, setGroups] = useState(initDraft?.groups || []);
   const [bg, setBg] = useState(initDraft?.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 });
+  const [frame, setFrame] = useState(initDraft?.frame || { presetId: "none", color: "#c9a227", opacity: 1, padding: 4, thickness: 3 });
 
   // ─── Multi-Page (كاروسيل / صفحات متعددة) ─────────────────────────────────
   const pagesData = useRef(null);
@@ -1255,6 +1258,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             <div style={{ display: activeTab === "bg" ? "block" : "none" }}>
               <BackgroundPanel bg={bg} onChange={setBg} language={language} />
             </div>
+            <div style={{ display: activeTab === "frames" ? "block" : "none" }}>
+              <FramesPanel frame={frame} onChange={setFrame} language={language} />
+            </div>
             <div style={{ display: activeTab === "ai" ? "block" : "none" }}>
               <AIPanel
                 language={language}
@@ -1388,6 +1394,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               isExporting={exporting}
               groups={groups}
               onMoveGroup={moveGroupElements}
+              frame={frame}
             />
           </div>
         </div>

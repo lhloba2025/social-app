@@ -428,7 +428,7 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
 export default function StudioCanvas({
   canvasRef, containerRef: containerRefProp, size, bg, shapes, images, logos, textLayers,
   selectedId, selectedType, onSelect, onUpdateShape, onUpdateImage, onUpdateLogo, onUpdateText, scale, isExporting,
-  groups = [], onMoveGroup
+  groups = [], onMoveGroup, frame, language
 }) {
   const containerRefLocal = useRef(null);
   const containerRef = containerRefProp || containerRefLocal;
@@ -559,6 +559,74 @@ export default function StudioCanvas({
     window.addEventListener("mouseup", onUp);
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
   }, [onUpdateShape, onUpdateImage, onUpdateLogo, onUpdateText, groups, textLayers, shapes, images, logos]);
+
+  function renderFrame(frame) {
+    if (!frame || !frame.presetId || frame.presetId === "none") return null;
+    const c = frame.color || "#c9a227";
+    const op = frame.opacity ?? 1;
+    const p = `${frame.padding ?? 4}%`;
+    const t = frame.thickness ?? 3;
+    const base = { position: "absolute", pointerEvents: "none", zIndex: 500, opacity: op };
+
+    const box = (inset, border, extra = {}) => (
+      <div key={inset} style={{ ...base, top: inset, left: inset, right: inset, bottom: inset, border, ...extra }} />
+    );
+
+    if (frame.presetId === "single") return box(p, `${t}px solid ${c}`);
+    if (frame.presetId === "double") {
+      const p2 = `${(frame.padding ?? 4) + (t / 3) + 1.5}%`;
+      return <>{box(p, `${Math.max(1, t - 1)}px solid ${c}`)}{box(p2, `${t + 1}px solid ${c}`)}</>;
+    }
+    if (frame.presetId === "triple") {
+      const p2 = `${(frame.padding ?? 4) + 1.5}%`;
+      const p3 = `${(frame.padding ?? 4) + 3}%`;
+      return <>{box(p, `1px solid ${c}`)}{box(p2, `${t + 1}px solid ${c}`)}{box(p3, `1px solid ${c}`)}</>;
+    }
+    if (frame.presetId === "classic") {
+      const p2 = `${(frame.padding ?? 4) + 2}%`;
+      return <>{box(p, `${t * 2}px solid ${c}`)}{box(p2, `1px solid ${c}`)}</>;
+    }
+    if (frame.presetId === "glow") return box(p, `${t}px solid ${c}`, { boxShadow: `0 0 ${t * 4}px ${c}80, 0 0 ${t * 8}px ${c}40` });
+    if (frame.presetId === "thick_glow") return box(p, `${t * 2}px solid ${c}`, { boxShadow: `0 0 ${t * 6}px ${c}, 0 0 ${t * 12}px ${c}60, inset 0 0 ${t * 4}px rgba(0,0,0,0.4)` });
+    if (frame.presetId === "rounded") return box(p, `${t}px solid ${c}`, { borderRadius: "2%" });
+    if (frame.presetId === "dashed") return box(p, `${t}px dashed ${c}`);
+    if (frame.presetId === "film") {
+      const dots = [...Array(8)].map((_, i) => (
+        <div key={i} style={{ flex: 1, height: `${t * 2}px`, background: "#000", borderRadius: 1 }} />
+      ));
+      return (
+        <>
+          <div style={{ ...base, top: 0, left: 0, right: 0, height: `${t * 4}px`, background: c, display: "flex", alignItems: "center", gap: "2px", padding: "0 4px" }}>{dots}</div>
+          <div style={{ ...base, bottom: 0, left: 0, right: 0, height: `${t * 4}px`, background: c, display: "flex", alignItems: "center", gap: "2px", padding: "0 4px" }}>{dots}</div>
+        </>
+      );
+    }
+    if (frame.presetId === "corners" || frame.presetId === "corners_only") {
+      const sz = `${Math.max(4, (frame.padding ?? 4) * 4)}%`;
+      const positions = [
+        { top: p, left: p, rot: 0 },
+        { top: p, right: p, rot: 90 },
+        { bottom: p, right: p, rot: 180 },
+        { bottom: p, left: p, rot: 270 },
+      ];
+      return (
+        <>
+          {positions.map((pos, i) => (
+            <svg key={i} width={sz} height={sz} viewBox="0 0 40 40"
+              style={{ ...base, ...pos, overflow: "visible" }}>
+              <path d={`M 38 2 L 2 2 L 2 38`} stroke={c} strokeWidth={t * 0.8} fill="none"
+                transform={`rotate(${pos.rot} 20 20)`} />
+              <path d={`M 28 2 L 2 2 L 2 28`} stroke={c} strokeWidth={t * 0.3} fill="none" opacity="0.6"
+                transform={`rotate(${pos.rot} 20 20)`} />
+              <circle cx="2" cy="2" r={t * 0.6} fill={c} transform={`rotate(${pos.rot} 20 20)`} />
+            </svg>
+          ))}
+          {frame.presetId === "corners" && box(`${(frame.padding ?? 4) + 1}%`, `0.5px solid ${c}40`)}
+        </>
+      );
+    }
+    return null;
+  }
 
   const bgStyle = bg?.mode === "image" && bg?.imageUrl
     ? { backgroundImage: `url(${bg.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -1137,6 +1205,9 @@ export default function StudioCanvas({
           );
         })}
       </div>
+
+      {/* Frame overlay — rendered on top of everything */}
+      {renderFrame(frame)}
     </div>
     </>
   );
