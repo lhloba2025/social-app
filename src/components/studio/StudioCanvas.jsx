@@ -1,9 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { ICON_MAP } from "./lucideIcons";
 import { SOCIAL_ICONS } from "./socialIcons";
+import { SVG_BACKGROUNDS } from "./svgBackgrounds";
 
 function buildBg(bg) {
   if (!bg) return "#1e293b";
+  if (bg.mode === "svgDesign") {
+    const d = SVG_BACKGROUNDS.find(x => x.id === bg.svgDesignId);
+    return d ? "#09071f" : "#1e293b";
+  }
   if (bg.mode === "color") {
     const color = bg.color || "#1e293b";
     const opacity = bg.opacity ?? 1;
@@ -953,8 +958,20 @@ export default function StudioCanvas({
         />
       )}
 
+      {/* SVG Design Background */}
+      {bg?.mode === "svgDesign" && bg?.svgDesignId && (() => {
+        const design = SVG_BACKGROUNDS.find(d => d.id === bg.svgDesignId);
+        return design ? (
+          <div
+            dangerouslySetInnerHTML={{ __html: design.svg }}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none",
+              filter: bgFilter || undefined }}
+          />
+        ) : null;
+      })()}
+
       {/* Background blur layer (non-image modes only) — slightly oversized so blurred edges don't show transparent gaps */}
-      {bgFilter && bg?.mode !== "image" && <div style={{ position: "absolute", inset: "-20px", ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
+      {bgFilter && bg?.mode !== "image" && bg?.mode !== "svgDesign" && <div style={{ position: "absolute", inset: "-20px", ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
 
       {/* Background image overlay */}
       {bg?.mode === "image" && bg?.imageUrl && (

@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { Upload, Trash2, Loader2, Wand2 } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
+import { SVG_BACKGROUNDS } from "../svgBackgrounds";
 
 const PRESET_CATEGORIES = [
   {
@@ -120,6 +121,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
         {[
           { id: "color", labelAr: "لون", labelEn: "Color" },
           { id: "gradient", labelAr: "تدرج", labelEn: "Gradient" },
+          { id: "svgDesign", labelAr: "🎨 فنية", labelEn: "🎨 Art" },
           { id: "image", labelAr: "صورة", labelEn: "Image" },
         ].map((m) => (
           <button key={m.id} onClick={() => update("mode", m.id)}
@@ -264,6 +266,43 @@ export default function BackgroundPanel({ bg, onChange, language }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {bg.mode === "svgDesign" && (
+        <div className="space-y-3">
+          <p className="text-slate-400 text-[11px]">
+            {isRtl ? "اختر خلفية فنية جاهزة:" : "Choose a ready-made artistic background:"}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {SVG_BACKGROUNDS.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => onChange({ ...bg, svgDesignId: d.id, mode: "svgDesign", blur: bg.blur || 0 })}
+                title={isRtl ? d.nameAr : d.nameEn}
+                className={`flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition ${
+                  bg.svgDesignId === d.id
+                    ? "border-indigo-500 bg-indigo-900/40"
+                    : "border-slate-600 hover:border-yellow-400"
+                }`}
+              >
+                <div
+                  className="w-full aspect-video rounded overflow-hidden"
+                  style={{ background: d.preview }}
+                />
+                <span className="text-[10px] text-slate-300 text-center leading-tight truncate w-full">
+                  {isRtl ? d.nameAr : d.nameEn}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-slate-700 pt-2">
+            <label className="text-yellow-400 font-semibold block mb-1">
+              {isRtl ? "🌫️ تغبيش (زجاج مثلج)" : "🌫️ Frosted Blur"}: {bg.blur || 0}px
+            </label>
+            <input type="range" min="0" max="40" value={bg.blur || 0}
+              onChange={(e) => onChange({ ...bg, blur: parseInt(e.target.value) })} className="w-full" />
           </div>
         </div>
       )}
