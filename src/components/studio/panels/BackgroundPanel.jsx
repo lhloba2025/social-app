@@ -5,6 +5,17 @@ import StudioColorPicker from "../StudioColorPicker";
 
 const PRESET_CATEGORIES = [
   {
+    label: { ar: "💜 نيفي × بنفسجي (ستايل لهلوبه)", en: "💜 Navy × Purple (Brand Style)" },
+    presets: [
+      { name: "Lhloba Signature",  value: "linear-gradient(135deg, #06041a 0%, #1a0a3d 40%, #4c1d95 75%, #7c3aed 100%)" },
+      { name: "Purple Ribbons",    value: "linear-gradient(135deg, #06041a 0%, #06041a 18%, #4c1d95 22%, #7c3aed 28%, #4c1d95 33%, #06041a 37%, #06041a 55%, #5b21b6 60%, #8b5cf6 67%, #5b21b6 72%, #06041a 76%, #06041a 100%)" },
+      { name: "Navy Violet",       value: "linear-gradient(135deg, #04020f 0%, #0f0730 50%, #3730a3 100%)" },
+      { name: "Brand Spotlight",   value: "radial-gradient(circle at 35% 55%, #5b21b6 0%, #1a0a3d 45%, #04020f 100%)" },
+      { name: "Purple Mist",       value: "radial-gradient(circle at center, #4c1d95 0%, #1e1b4b 45%, #04020f 100%)" },
+      { name: "Navy Gold Lhloba",  value: "linear-gradient(135deg, #06041a 0%, #1a0a3d 40%, #4c1d95 65%, #c9a227 100%)" },
+    ],
+  },
+  {
     label: { ar: "🖤 ذهب وسواد", en: "🖤 Gold & Black" },
     presets: [
       { name: "Gold Glow", value: "radial-gradient(circle at center, #c9a227 0%, #0a0a0a 70%)" },
