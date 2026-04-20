@@ -885,8 +885,8 @@ export default function StudioCanvas({
         />
       )}
 
-      {/* Background blur layer (non-image modes only) */}
-      {bgFilter && bg?.mode !== "image" && <div style={{ position: "absolute", inset: 0, ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
+      {/* Background blur layer (non-image modes only) — slightly oversized so blurred edges don't show transparent gaps */}
+      {bgFilter && bg?.mode !== "image" && <div style={{ position: "absolute", inset: "-20px", ...bgStyle, filter: bgFilter, pointerEvents: "none" }} />}
 
       {/* Background image overlay */}
       {bg?.mode === "image" && bg?.imageUrl && (

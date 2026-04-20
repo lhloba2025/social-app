@@ -5,58 +5,58 @@ import StudioColorPicker from "../StudioColorPicker";
 
 const PRESET_CATEGORIES = [
   {
-    label: { ar: "🌑 فاخرة داكنة", en: "🌑 Dark Luxury" },
+    label: { ar: "🖤 ذهب وسواد", en: "🖤 Gold & Black" },
     presets: [
-      { name: "Deep Galaxy", value: "linear-gradient(135deg, #0d0221, #1a0533, #2d1b69)" },
-      { name: "Midnight Navy", value: "linear-gradient(135deg, #000428, #004e92)" },
-      { name: "Dark Velvet", value: "linear-gradient(135deg, #2c1654, #1a0533)" },
-      { name: "Onyx Black", value: "linear-gradient(135deg, #0a0a0a, #1a1a1a, #2d2d2d)" },
-      { name: "Deep Crimson", value: "linear-gradient(135deg, #3b0a14, #6b0f1a, #3b0a14)" },
-      { name: "Dark Teal", value: "linear-gradient(135deg, #0a1628, #0d2137, #0f3460)" },
+      { name: "Gold Glow", value: "radial-gradient(circle at center, #c9a227 0%, #0a0a0a 70%)" },
+      { name: "Gold Spot", value: "radial-gradient(circle at 30% 70%, #d4af37 0%, #0a0a0a 60%)" },
+      { name: "Black to Gold", value: "linear-gradient(135deg, #0a0a0a 0%, #c9a227 100%)" },
+      { name: "Gold Stripe", value: "linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 30%, #c9a227 50%, #1a1a1a 70%, #0d0d0d 100%)" },
+      { name: "Noir Gold V", value: "linear-gradient(180deg, #0d0d0d 0%, #c9a227 50%, #0d0d0d 100%)" },
+      { name: "Dark Champagne", value: "linear-gradient(135deg, #0d0a00 0%, #3d3000 40%, #c9a227 60%, #0d0a00 100%)" },
     ],
   },
   {
-    label: { ar: "✨ ذهبية فاخرة", en: "✨ Gold & Luxury" },
+    label: { ar: "🌹 روز جولد", en: "🌹 Rose Glam" },
     presets: [
-      { name: "Pure Gold", value: "linear-gradient(135deg, #b8860b, #ffd700, #b8860b)" },
-      { name: "Rose Gold", value: "linear-gradient(135deg, #b76e79, #e8b4bc, #c9a227)" },
-      { name: "Dark Gold", value: "linear-gradient(135deg, #0d0221 0%, #c9a227 100%)" },
-      { name: "Night Gold", value: "linear-gradient(135deg, #1a1a2e 0%, #c9a227 50%, #1a1a2e 100%)" },
-      { name: "Champagne", value: "linear-gradient(135deg, #f5e6a3, #c9a227, #f5e6a3)" },
-      { name: "Emerald Gold", value: "linear-gradient(135deg, #134e5e, #71b280 50%, #c9a227)" },
+      { name: "Rose Gold", value: "linear-gradient(135deg, #b76e79 0%, #e8b4bc 50%, #c9a227 100%)" },
+      { name: "Deep Rose", value: "radial-gradient(circle at center, #e8b4bc 0%, #7a1c3a 60%, #1a0010 100%)" },
+      { name: "Blush Noir", value: "linear-gradient(135deg, #1a0010 0%, #b76e79 100%)" },
+      { name: "Pink Glam", value: "linear-gradient(135deg, #2c0015 0%, #c9718a 50%, #ffd700 100%)" },
+      { name: "Rosé", value: "linear-gradient(135deg, #f5c6d0 0%, #e8879a 50%, #b76e79 100%)" },
+      { name: "Dusty Rose", value: "linear-gradient(135deg, #c4a0b0 0%, #8b4563 50%, #4a1628 100%)" },
     ],
   },
   {
-    label: { ar: "🎨 عصرية جريئة", en: "🎨 Bold & Modern" },
+    label: { ar: "🤍 رخام فاخر", en: "🤍 Luxury Marble" },
     presets: [
-      { name: "Instagram", value: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" },
-      { name: "Aurora", value: "linear-gradient(135deg, #00d2ff, #3a7bd5)" },
-      { name: "Purple Haze", value: "linear-gradient(135deg, #c471ed, #f64f59)" },
-      { name: "Ocean Depth", value: "linear-gradient(135deg, #005c97, #363795)" },
-      { name: "Neon Magenta", value: "linear-gradient(135deg, #f953c6, #b91d73)" },
-      { name: "Electric Blue", value: "linear-gradient(135deg, #0575e6, #021b79)" },
+      { name: "White Marble", value: "linear-gradient(135deg, #f5f5f0 0%, #e8e0d8 25%, #d4c5b5 50%, #e8e0d8 75%, #f5f5f0 100%)" },
+      { name: "Black Marble", value: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 30%, #1a1a1a 60%, #3d3d3d 100%)" },
+      { name: "Gold Marble", value: "linear-gradient(135deg, #2c2c2c 0%, #c9a227 30%, #f5e6a3 50%, #c9a227 70%, #1a1a1a 100%)" },
+      { name: "Warm Marble", value: "linear-gradient(135deg, #f5ebe0 0%, #ddbea9 50%, #c9a227 100%)" },
+      { name: "Grey Marble", value: "linear-gradient(135deg, #bdc3c7 0%, #6b7280 50%, #2c3e50 100%)" },
+      { name: "Stone Dark", value: "linear-gradient(135deg, #d4d4d4 0%, #8a8a8a 40%, #4a4a4a 100%)" },
     ],
   },
   {
-    label: { ar: "🌿 طبيعية هادئة", en: "🌿 Nature & Calm" },
+    label: { ar: "💜 مخمل ملكي", en: "💜 Royal Velvet" },
     presets: [
-      { name: "Blush", value: "linear-gradient(135deg, #fbc2eb, #a6c1ee)" },
-      { name: "Lavender", value: "linear-gradient(135deg, #e0c3fc, #8ec5fc)" },
-      { name: "Peach Soft", value: "linear-gradient(135deg, #ffecd2, #fcb69f)" },
-      { name: "Fresh Mint", value: "linear-gradient(135deg, #d4fc79, #96e6a1)" },
-      { name: "Sky Blue", value: "linear-gradient(135deg, #e0eafc, #cfdef3)" },
-      { name: "Forest Deep", value: "linear-gradient(135deg, #134e5e, #71b280)" },
+      { name: "Dark Velvet", value: "linear-gradient(135deg, #1a0010 0%, #3d0030 50%, #1a0010 100%)" },
+      { name: "Royal Purple", value: "linear-gradient(135deg, #12001a 0%, #2d0033 50%, #12001a 100%)" },
+      { name: "Bordeaux", value: "linear-gradient(135deg, #1a0505 0%, #3b1010 50%, #6b1a1a 100%)" },
+      { name: "Dark Plum", value: "linear-gradient(135deg, #1a0520 0%, #3d1050 50%, #1a0520 100%)" },
+      { name: "Emerald Velvet", value: "linear-gradient(135deg, #0a1a0a 0%, #1a3d1a 50%, #0a3020 100%)" },
+      { name: "Navy Velvet", value: "linear-gradient(135deg, #000a1a 0%, #001a3d 50%, #000f2d 100%)" },
     ],
   },
   {
-    label: { ar: "🔥 نارية", en: "🔥 Warm & Fire" },
+    label: { ar: "✨ جلاكسي & كون", en: "✨ Galaxy & Cosmic" },
     presets: [
-      { name: "Sunset", value: "linear-gradient(135deg, #f7971e, #ffd200)" },
-      { name: "Fire", value: "linear-gradient(135deg, #f12711, #f5af19)" },
-      { name: "Hot Summer", value: "linear-gradient(135deg, #ee0979, #ff6a00)" },
-      { name: "Desert", value: "linear-gradient(135deg, #f5af19, #f12711)" },
-      { name: "Gold Orange", value: "linear-gradient(135deg, #fa709a, #fee140)" },
-      { name: "Mango", value: "linear-gradient(135deg, #f093fb, #f5576c)" },
+      { name: "Deep Galaxy", value: "radial-gradient(circle at 40% 40%, #2d1b69 0%, #0d0221 60%, #000000 100%)" },
+      { name: "Nebula", value: "radial-gradient(circle at 60% 40%, #833ab4 0%, #1a0533 40%, #000428 100%)" },
+      { name: "Aurora", value: "linear-gradient(135deg, #000428 0%, #004e92 50%, #00d2ff 100%)" },
+      { name: "Cosmic Gold", value: "radial-gradient(circle at 50% 30%, #c9a227 0%, #1a0533 40%, #0d0221 100%)" },
+      { name: "Electric", value: "linear-gradient(135deg, #0575e6 0%, #021b79 50%, #0d0221 100%)" },
+      { name: "Deep Space", value: "linear-gradient(135deg, #000000 0%, #0d0221 40%, #1a0533 100%)" },
     ],
   },
 ];
@@ -89,10 +89,6 @@ export default function BackgroundPanel({ bg, onChange, language }) {
     e.target.value = "";
   };
 
-  const handleAiGenerate = () => {
-    alert("هذه الميزة غير متاحة في النسخة المحلية");
-  };
-
   const stops = bg.gradientStops || [{ color: "#667eea", position: 0, opacity: 1 }, { color: "#764ba2", position: 100, opacity: 1 }];
 
   const buildGradientPreview = () => {
@@ -103,7 +99,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
   };
 
   const applyPreset = (preset) => {
-    onChange({ ...bg, gradientPreset: preset.value, mode: "gradient", gradientStops: null, gradientType: "linear" });
+    onChange({ ...bg, gradientPreset: preset.value, mode: "gradient", gradientStops: null, gradientType: "linear", blur: bg.blur || 0 });
   };
 
   return (
@@ -115,11 +111,8 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           { id: "gradient", labelAr: "تدرج", labelEn: "Gradient" },
           { id: "image", labelAr: "صورة", labelEn: "Image" },
         ].map((m) => (
-          <button
-            key={m.id}
-            onClick={() => update("mode", m.id)}
-            className={`flex-1 py-1.5 text-xs font-semibold transition ${bg.mode === m.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
-          >
+          <button key={m.id} onClick={() => update("mode", m.id)}
+            className={`flex-1 py-1.5 text-xs font-semibold transition ${bg.mode === m.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
             {isRtl ? m.labelAr : m.labelEn}
           </button>
         ))}
@@ -134,8 +127,8 @@ export default function BackgroundPanel({ bg, onChange, language }) {
               onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
           </div>
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🌫️ ضبابية" : "🌫️ Blur"} px</label>
-            <input type="range" min="0" max="30" value={bg.blur || 0}
+            <label className="text-slate-400 block mb-1">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {bg.blur || 0}px</label>
+            <input type="range" min="0" max="40" value={bg.blur || 0}
               onChange={(e) => update("blur", parseInt(e.target.value))} className="w-full" />
           </div>
         </div>
@@ -144,13 +137,33 @@ export default function BackgroundPanel({ bg, onChange, language }) {
       {bg.mode === "gradient" && (
         <div className="space-y-3">
           {/* Preview */}
-          <div className="h-14 rounded-xl border border-slate-600 shadow-inner" style={{ background: buildGradientPreview() }} />
+          <div
+            className="h-16 rounded-xl border border-slate-600 shadow-inner"
+            style={{
+              background: buildGradientPreview(),
+              filter: bg.blur ? `blur(${bg.blur}px)` : undefined,
+            }}
+          />
 
-          {/* Gradient type toggle */}
+          {/* Blur / Frosted Glass */}
+          <div className="bg-slate-800 rounded-lg p-2 border border-slate-600">
+            <label className="text-yellow-400 font-semibold block mb-1">
+              {isRtl ? "🌫️ تغبيش (زجاج مثلج)" : "🌫️ Frosted Blur"}: {bg.blur || 0}px
+            </label>
+            <input type="range" min="0" max="40" value={bg.blur || 0}
+              onChange={(e) => update("blur", parseInt(e.target.value))} className="w-full" />
+            {bg.blur > 0 && (
+              <p className="text-slate-500 text-[10px] mt-1">
+                {isRtl ? "✨ تأثير الزجاج المثلج الفاخر" : "✨ Luxury frosted glass effect"}
+              </p>
+            )}
+          </div>
+
+          {/* Gradient type */}
           <div className="flex gap-1">
             {[
               { id: "linear", labelAr: "خطي", labelEn: "Linear" },
-              { id: "radial", labelAr: "دائري", labelEn: "Radial" },
+              { id: "radial", labelAr: "دائري (إضاءة)", labelEn: "Radial (Spotlight)" },
             ].map((t) => (
               <button key={t.id} onClick={() => update("gradientType", t.id)}
                 className={`flex-1 py-1 rounded text-[11px] font-semibold transition ${(bg.gradientType || "linear") === t.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
@@ -159,7 +172,6 @@ export default function BackgroundPanel({ bg, onChange, language }) {
             ))}
           </div>
 
-          {/* Linear angle */}
           {(bg.gradientType || "linear") === "linear" && (
             <div>
               <label className="text-slate-400 block mb-1">{isRtl ? "الزاوية" : "Angle"}: {bg.gradientAngle || 135}°</label>
@@ -176,10 +188,9 @@ export default function BackgroundPanel({ bg, onChange, language }) {
             </div>
           )}
 
-          {/* Radial position */}
           {bg.gradientType === "radial" && (
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "مركز التدرج" : "Radial Center"}</label>
+              <label className="text-slate-400 block mb-1">{isRtl ? "موقع الإضاءة" : "Light Position"}</label>
               <div className="flex gap-1 flex-wrap">
                 {RADIAL_POSITIONS.map((p) => (
                   <button key={p.value} onClick={() => update("radialPosition", p.value)}
@@ -217,14 +228,6 @@ export default function BackgroundPanel({ bg, onChange, language }) {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-slate-400 text-[10px] whitespace-nowrap">{isRtl ? "شفافية" : "Opacity"}: {Math.round((stop.opacity ?? 1) * 100)}%</label>
-                  <input type="range" min="0" max="1" step="0.05" value={stop.opacity ?? 1}
-                    onChange={(e) => {
-                      const ns = [...stops]; ns[idx] = { ...ns[idx], opacity: parseFloat(e.target.value) };
-                      update("gradientStops", ns);
-                    }} className="flex-1" />
-                </div>
               </div>
             ))}
             <button onClick={() => update("gradientStops", [...stops, { color: "#ffffff", position: 100, opacity: 1 }])}
@@ -233,17 +236,19 @@ export default function BackgroundPanel({ bg, onChange, language }) {
             </button>
           </div>
 
-          {/* Preset categories */}
-          <div className="space-y-3 border-t border-slate-700 pt-3">
-            <label className="text-slate-300 font-semibold">{isRtl ? "تدرجات جاهزة" : "Preset Gradients"}</label>
+          {/* Preset categories — salon/luxury focused */}
+          <div className="space-y-4 border-t border-slate-700 pt-3">
+            <label className="text-slate-200 font-bold text-sm">{isRtl ? "🎨 خلفيات فاخرة جاهزة" : "🎨 Luxury Presets"}</label>
             {PRESET_CATEGORIES.map((cat) => (
               <div key={cat.label.en}>
-                <p className="text-slate-500 text-[10px] mb-1.5">{isRtl ? cat.label.ar : cat.label.en}</p>
-                <div className="grid grid-cols-6 gap-1">
+                <p className="text-slate-400 text-[11px] font-semibold mb-2">{isRtl ? cat.label.ar : cat.label.en}</p>
+                <div className="grid grid-cols-6 gap-1.5">
                   {cat.presets.map((g) => (
                     <button key={g.name} onClick={() => applyPreset(g)}
-                      className="h-8 rounded-lg border-2 border-slate-600 hover:border-indigo-400 transition hover:scale-105"
-                      style={{ background: g.value }} title={g.name} />
+                      title={g.name}
+                      className="h-9 rounded-lg border-2 border-slate-700 hover:border-yellow-400 transition-all hover:scale-110 shadow-md"
+                      style={{ background: g.value }}
+                    />
                   ))}
                 </div>
               </div>
@@ -278,13 +283,13 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           </div>
 
           <div className="border-t border-slate-700 pt-3">
-            <label className="text-slate-400 block mb-1">{isRtl ? "توليد خلفية بالذكاء الاصطناعي" : "Generate with AI"}</label>
+            <label className="text-slate-400 block mb-1">{isRtl ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</label>
             <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={2}
               className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-xs resize-none"
               placeholder={isRtl ? "صف الخلفية المطلوبة..." : "Describe the background..."} />
-            <button onClick={handleAiGenerate} disabled={aiLoading || !aiPrompt.trim()}
+            <button onClick={() => alert("هذه الميزة غير متاحة في النسخة المحلية")} disabled={!aiPrompt.trim()}
               className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition disabled:opacity-50">
-              {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              <Wand2 className="w-4 h-4" />
               {isRtl ? "ولّد" : "Generate"}
             </button>
           </div>
