@@ -20,12 +20,12 @@ function buildBg(bg) {
     const stopsStr = stops.map((s) => {
       const opacity = s.opacity ?? 1;
       if (opacity === 1) return `${s.color} ${s.position}%`;
-      // Convert hex to rgba with opacity
       const r = parseInt(s.color.slice(1, 3), 16);
       const g = parseInt(s.color.slice(3, 5), 16);
       const b = parseInt(s.color.slice(5, 7), 16);
       return `rgba(${r}, ${g}, ${b}, ${opacity}) ${s.position}%`;
     }).join(", ");
+    if (bg.gradientType === "radial") return `radial-gradient(circle at ${bg.radialPosition || "center"}, ${stopsStr})`;
     return `linear-gradient(${bg.gradientAngle || 135}deg, ${stopsStr})`;
   }
   return "#1e293b";
