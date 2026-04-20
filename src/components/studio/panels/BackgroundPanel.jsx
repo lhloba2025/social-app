@@ -275,13 +275,13 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           <p className="text-slate-400 text-[11px]">
             {isRtl ? "اختر خلفية فنية جاهزة:" : "Choose a ready-made artistic background:"}
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {SVG_BACKGROUNDS.map((d) => (
               <button
                 key={d.id}
                 onClick={() => onChange({ ...bg, svgDesignId: d.id, mode: "svgDesign", blur: bg.blur || 0 })}
                 title={isRtl ? d.nameAr : d.nameEn}
-                className={`flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition ${
+                className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition hover:scale-[1.03] ${
                   bg.svgDesignId === d.id
                     ? "border-indigo-500 bg-indigo-900/40"
                     : "border-slate-600 hover:border-yellow-400"
@@ -289,9 +289,10 @@ export default function BackgroundPanel({ bg, onChange, language }) {
               >
                 <div
                   className="w-full aspect-video rounded overflow-hidden"
-                  style={{ background: d.preview }}
+                  dangerouslySetInnerHTML={{ __html: d.svg }}
+                  style={{ pointerEvents: "none" }}
                 />
-                <span className="text-[10px] text-slate-300 text-center leading-tight truncate w-full">
+                <span className="text-[10px] text-slate-300 text-center leading-tight w-full truncate px-0.5">
                   {isRtl ? d.nameAr : d.nameEn}
                 </span>
               </button>
