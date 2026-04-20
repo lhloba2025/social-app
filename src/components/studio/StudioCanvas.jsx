@@ -428,7 +428,7 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
 export default function StudioCanvas({
   canvasRef, containerRef: containerRefProp, size, bg, shapes, images, logos, textLayers,
   selectedId, selectedType, onSelect, onUpdateShape, onUpdateImage, onUpdateLogo, onUpdateText, scale, isExporting,
-  groups = [], onMoveGroup, frame, language
+  groups = [], onMoveGroup, frames = [], language
 }) {
   const containerRefLocal = useRef(null);
   const containerRef = containerRefProp || containerRefLocal;
@@ -1206,8 +1206,8 @@ export default function StudioCanvas({
         })}
       </div>
 
-      {/* Frame overlay — rendered on top of everything */}
-      {renderFrame(frame)}
+      {/* Frame overlays — one per frame */}
+      {frames.map((f, i) => <React.Fragment key={f.id || i}>{renderFrame(f)}</React.Fragment>)}
     </div>
     </>
   );
