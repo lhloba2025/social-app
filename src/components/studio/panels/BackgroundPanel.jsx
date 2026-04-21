@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Upload, Trash2, Loader2, Wand2 } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
-import { SVG_BACKGROUNDS } from "../svgBackgrounds";
+import { SVG_TYPES, SVG_TYPE_DEFAULTS, generateSvgBackground } from "../svgBackgrounds";
 
 const PRESET_CATEGORIES = [
   {
@@ -272,35 +272,94 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
       {bg.mode === "svgDesign" && (
         <div className="space-y-3">
-          <p className="text-slate-400 text-[11px]">
-            {isRtl ? "اختر خلفية فنية جاهزة:" : "Choose a ready-made artistic background:"}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {SVG_BACKGROUNDS.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => onChange({ ...bg, svgDesignId: d.id, mode: "svgDesign", blur: bg.blur || 0 })}
-                title={isRtl ? d.nameAr : d.nameEn}
-                className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition hover:scale-[1.03] ${
-                  bg.svgDesignId === d.id
-                    ? "border-indigo-500 bg-indigo-900/40"
-                    : "border-slate-600 hover:border-yellow-400"
-                }`}
-              >
-                <div
-                  className="w-full aspect-video rounded overflow-hidden"
-                  dangerouslySetInnerHTML={{ __html: d.svg }}
-                  style={{ pointerEvents: "none" }}
-                />
-                <span className="text-[10px] text-slate-300 text-center leading-tight w-full truncate px-0.5">
-                  {isRtl ? d.nameAr : d.nameEn}
-                </span>
-              </button>
-            ))}
+          {/* Shape type grid */}
+          <div>
+            <p className="text-slate-400 text-[11px] mb-2">{isRtl ? "نوع الشكل:" : "Shape Type:"}</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {SVG_TYPES.map((type, i) => {
+                const isActive = (bg.svgType || "swoosh") === type.id;
+                const prevSvg = generateSvgBackground({
+                  svgType: type.id,
+                  ...SVG_TYPE_DEFAULTS[type.id],
+                  uid: `p${i}`,
+                });
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => {
+                      const d = SVG_TYPE_DEFAULTS[type.id] || {};
+                      onChange({
+                        ...bg,
+                        svgType: type.id,
+                        bgColor: bg.bgColor || d.bgColor,
+                        color1:  bg.color1  || d.color1,
+                        color2:  bg.color2  || d.color2,
+                        size:     d.size,
+                        position: d.position,
+                        angle:    0,
+                      });
+                    }}
+                    className={`flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition ${
+                      isActive ? "border-indigo-500 bg-indigo-900/30" : "border-slate-600 hover:border-slate-400"
+                    }`}
+                  >
+                    <div className="w-full aspect-square bg-slate-900 rounded overflow-hidden relative">
+                      <div dangerouslySetInnerHTML={{ __html: prevSvg }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+                    </div>
+                    <span className="text-[9px] text-slate-400 text-center leading-tight">
+                      {isRtl ? type.nameAr : type.nameEn}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="border-t border-slate-700 pt-2">
+
+          {/* Color pickers */}
+          <StudioColorPicker
+            label={isRtl ? "🖌️ لون الخلفية" : "🖌️ Background"}
+            value={bg.bgColor || "#09071f"}
+            onChange={(v) => onChange({ ...bg, bgColor: v })}
+          />
+          <StudioColorPicker
+            label={isRtl ? "🎨 اللون الأول" : "🎨 Color 1"}
+            value={bg.color1 || "#4c1d95"}
+            onChange={(v) => onChange({ ...bg, color1: v })}
+          />
+          <StudioColorPicker
+            label={isRtl ? "🎨 اللون الثاني" : "🎨 Color 2"}
+            value={bg.color2 || "#7c3aed"}
+            onChange={(v) => onChange({ ...bg, color2: v })}
+          />
+
+          {/* Sliders */}
+          <div>
+            <label className="text-slate-400 block mb-1 text-[11px]">
+              {isRtl ? "الحجم" : "Size"}: {bg.size ?? 50}%
+            </label>
+            <input type="range" min="5" max="95" value={bg.size ?? 50}
+              onChange={(e) => onChange({ ...bg, size: parseInt(e.target.value) })} className="w-full" />
+          </div>
+
+          <div>
+            <label className="text-slate-400 block mb-1 text-[11px]">
+              {isRtl ? "الموضع" : "Position"}: {bg.position ?? 65}%
+            </label>
+            <input type="range" min="0" max="100" value={bg.position ?? 65}
+              onChange={(e) => onChange({ ...bg, position: parseInt(e.target.value) })} className="w-full" />
+          </div>
+
+          <div>
+            <label className="text-slate-400 block mb-1 text-[11px]">
+              {isRtl ? "الدوران" : "Rotation"}: {bg.angle ?? 0}°
+            </label>
+            <input type="range" min="-180" max="180" value={bg.angle ?? 0}
+              onChange={(e) => onChange({ ...bg, angle: parseInt(e.target.value) })} className="w-full" />
+          </div>
+
+          <div>
             <label className="text-yellow-400 font-semibold block mb-1">
-              {isRtl ? "🌫️ تغبيش (زجاج مثلج)" : "🌫️ Frosted Blur"}: {bg.blur || 0}px
+              {isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {bg.blur || 0}px
             </label>
             <input type="range" min="0" max="40" value={bg.blur || 0}
               onChange={(e) => onChange({ ...bg, blur: parseInt(e.target.value) })} className="w-full" />
