@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Search, Eye, EyeOff, Copy, Trash2 } from "lucide-react";
 import { ICON_MAP, ICON_CATEGORIES } from "../lucideIcons";
 import { SOCIAL_ICONS } from "../socialIcons";
+import { DOODLE_STICKERS } from "../doodleStickers";
 import StudioColorPicker from "../StudioColorPicker";
 
 // Currencies library
@@ -22,6 +23,7 @@ const CURRENCIES = [
 
 const CATEGORY_LABELS = {
   all:          { ar: "الكل",        en: "All" },
+  doodles:      { ar: "✍️ ستكرات",    en: "✍️ Doodles" },
   social:       { ar: "سوشيال",      en: "Social" },
   business:     { ar: "أعمال",       en: "Business" },
   communication:{ ar: "تواصل",       en: "Comm." },
@@ -46,14 +48,15 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
   const [search, setSearch] = useState("");
 
   // Icons on canvas
-  const canvasIcons = images?.filter(i => (i.isLucideIcon || i.isSocialIcon || i.isText) && !i.isSymbol) || [];
+  const canvasIcons = images?.filter(i => (i.isLucideIcon || i.isSocialIcon || i.isText || i.isDoodle) && !i.isSymbol) || [];
 
-  const selected = images?.find((i) => i.id === selectedId && (i.isLucideIcon || i.isText || i.isSocialIcon));
+  const selected = images?.find((i) => i.id === selectedId && (i.isLucideIcon || i.isText || i.isSocialIcon || i.isDoodle));
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };
 
   const getIconLabel = (img) => {
     if (img.isLucideIcon) return img.iconName || "Icon";
     if (img.isSocialIcon) return SOCIAL_ICONS[img.socialIconKey]?.label || img.socialIconKey;
+    if (img.isDoodle)     return DOODLE_STICKERS[img.doodleKey]?.label || img.doodleKey;
     if (img.isText) return img.text || "Symbol";
     return "Icon";
   };
@@ -91,6 +94,15 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
       return CURRENCIES.filter(c => c.name.toLowerCase().includes(q) || c.nameAr.toLowerCase().includes(q));
     }
     return activeCategory === "saudi" ? CURRENCIES : CURRENCIES;
+  }, [activeCategory, search]);
+
+  const doodlesToShow = useMemo(() => {
+    if (activeCategory !== "all" && activeCategory !== "doodles") return [];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return Object.keys(DOODLE_STICKERS).filter(k => DOODLE_STICKERS[k].label.toLowerCase().includes(q) || k.toLowerCase().includes(q));
+    }
+    return Object.keys(DOODLE_STICKERS);
   }, [activeCategory, search]);
 
   return (
@@ -176,6 +188,31 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
           </button>
         ))}
 
+        {/* Doodle stickers — hand-drawn decorative elements */}
+        {doodlesToShow.map((key) => {
+          const doodle = DOODLE_STICKERS[key];
+          return (
+            <button
+              key={`doodle-${key}`}
+              onClick={() => onAddIcon({
+                isDoodle: true,
+                doodleKey: key,
+                iconColor: doodle.color,
+                width: 18, height: 18,
+              })}
+              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              title={doodle.label}
+            >
+              <span
+                className="w-5 h-5 flex items-center justify-center"
+                style={{ color: doodle.color }}
+                dangerouslySetInnerHTML={{ __html: doodle.svg.replace('<svg ', '<svg width="20" height="20" ') }}
+              />
+              <span className="text-[7px] text-center truncate w-full">{doodle.label}</span>
+            </button>
+          );
+        })}
+
         {/* Social media icons */}
         {socialIconsToShow.map((key) => {
           const icon = SOCIAL_ICONS[key];
@@ -257,6 +294,14 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
             />
           )}
 
+          {selected.isDoodle && (
+            <StudioColorPicker
+              label={isRtl ? "🎨 لون الستكر" : "🎨 Doodle Color"}
+              value={selected.iconColor || DOODLE_STICKERS[selected.doodleKey]?.color || "#000000"}
+              onChange={(v) => update("iconColor", v)}
+            />
+          )}
+
           {selected.isText && (
             <StudioColorPicker
               label={isRtl ? "🎨 لون الرمز" : "🎨 Symbol Color"}
@@ -264,6 +309,64 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
               onChange={(v) => update("textColor", v)}
             />
           )}
+
+          {/* ── Gradient fill for Lucide + Social + Doodle icons ── */}
+          {(selected.isLucideIcon || selected.isSocialIcon || selected.isDoodle) && (() => {
+            const ig = selected.iconGradient || {};
+            const updateGrad = (patch) => onUpdate(selected.id, { iconGradient: { ...ig, ...patch } });
+            const GRAD_PRESETS = [
+              ["#8b5cf6","#ec4899"], ["#3b82f6","#06b6d4"], ["#f97316","#eab308"],
+              ["#10b981","#3b82f6"], ["#f43f5e","#f97316"], ["#a855f7","#6366f1"],
+              ["#ffffff","#94a3b8"], ["#fbbf24","#f87171"], ["#e11d48","#7c3aed"],
+              ["#0ea5e9","#6366f1"],
+            ];
+            return (
+              <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-200 font-semibold text-[11px]">{isRtl ? "✨ لون مدرج" : "✨ Gradient Fill"}</span>
+                  <button
+                    onClick={() => updateGrad({ enabled: !ig.enabled })}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${ig.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                  >
+                    {ig.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {GRAD_PRESETS.map(([c1, c2], i) => (
+                    <button
+                      key={i}
+                      onClick={() => updateGrad({ color1: c1, color2: c2, enabled: true })}
+                      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${ig.color1 === c1 && ig.color2 === c2 ? "border-white" : "border-slate-600"}`}
+                    />
+                  ))}
+                </div>
+                {ig.enabled && (
+                  <>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
+                        <input type="color" value={ig.color1 || "#8b5cf6"} onInput={(e) => updateGrad({ color1: e.target.value })}
+                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
+                        <input type="color" value={ig.color2 || "#ec4899"} onInput={(e) => updateGrad({ color2: e.target.value })}
+                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${ig.angle ?? 135}°` : `Angle: ${ig.angle ?? 135}°`}</label>
+                      <input type="range" min="0" max="360" step="5" value={ig.angle ?? 135}
+                        onChange={(e) => updateGrad({ angle: parseInt(e.target.value) })}
+                        className="w-full accent-indigo-500" />
+                    </div>
+                    <div className="w-full h-5 rounded" style={{ background: `linear-gradient(${ig.angle ?? 135}deg, ${ig.color1 || "#8b5cf6"}, ${ig.color2 || "#ec4899"})` }} />
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-2 gap-2">
             <div>

@@ -21,22 +21,22 @@ const FEATURES = [
     textColor: "text-indigo-400",
   },
   {
-    path: "/VideoEditor",
-    titleAr: "محرر الفيديو",
-    titleEn: "Video Editor",
-    descAr: "حرّر فيديوهاتك بخطوط متعددة وتأثيرات احترافية",
-    descEn: "Edit your videos with multi-track timelines and professional effects",
+    path: "/GreetingCards",
+    titleAr: "بطاقات التهنئة",
+    titleEn: "Greeting Cards",
+    descAr: "ارفع قالباً وقائمة أسماء، وأصدِر بطاقات شخصية بالجملة",
+    descEn: "Upload a template + names list, generate personalised cards in bulk",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <rect x="2" y="2" width="20" height="20" rx="3"/>
-        <polygon points="10 8 16 12 10 16 10 8"/>
+        <path d="M4 4h16v16H4z"/>
+        <path d="M4 8l8 5 8-5"/>
       </svg>
     ),
-    gradient: "from-cyan-500 to-blue-600",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/30",
-    hover: "hover:border-cyan-500/60",
-    textColor: "text-cyan-400",
+    gradient: "from-amber-500 to-pink-600",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    hover: "hover:border-amber-500/60",
+    textColor: "text-amber-400",
   },
   {
     path: "/DesignLibraryPage",

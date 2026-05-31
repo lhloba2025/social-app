@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { Upload, Trash2, Loader2 } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
+import { normalizeImageFile, isHeic } from "@/utils/imageConvert";
 
 function loadSavedLogos() {
   try { return JSON.parse(localStorage.getItem("saved_logos") || "[]"); } catch { return []; }
@@ -18,20 +19,23 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
   const [savedLogos, setSavedLogos] = useState(loadSavedLogos);
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await uploadFile({ file });
       const isSvg = file.type === "image/svg+xml";
       let svgContent = null;
       if (isSvg) svgContent = await file.text();
+      else if (isHeic(file)) file = await normalizeImageFile(file);
+      const { file_url } = await uploadFile({ file });
       const name = logoName.trim() || file.name.replace(/\.[^.]+$/, "");
       const newLogo = { id: `logo_${Date.now()}`, name, url: file_url, isSvg, svgContent };
       const updated = [newLogo, ...loadSavedLogos()];
       saveSavedLogos(updated);
       setSavedLogos(updated);
       setLogoName("");
+    } catch (err) {
+      alert((isRtl ? "تعذّر رفع الشعار: " : "Logo upload failed: ") + (err?.message || err));
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -72,7 +76,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           {uploading ? (isRtl ? "جاري الرفع..." : "Uploading...") : (isRtl ? "رفع لوقو جديد" : "Upload New Logo")}
         </button>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+        <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleUpload} />
       </div>
 
       {/* Saved logos library */}

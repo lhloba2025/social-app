@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Film, Home, CalendarDays, PenSquare, ListChecks } from "lucide-react";
+import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/", labelAr: "الرئيسية", labelEn: "Home", icon: Home, exact: true },
   { path: "/DesignStudio", labelAr: "منشئ التصاميم", labelEn: "Design Studio", icon: LayoutGrid },
-  { path: "/VideoEditor", labelAr: "محرر الفيديو", labelEn: "Video Editor", icon: Film },
+  { path: "/GreetingCards", labelAr: "بطاقات التهنئة", labelEn: "Greeting Cards", icon: MailPlus },
   { path: "/DesignLibraryPage", labelAr: "مكتبة التصاميم", labelEn: "Design Library", icon: BookImage },
   { divider: true, labelAr: "السوشيال ميديا", labelEn: "Social Media" },
   { path: "/PostComposer", labelAr: "إنشاء منشور", labelEn: "New Post", icon: PenSquare },

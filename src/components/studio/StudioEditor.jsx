@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { flushSync } from "react-dom";
-import { Download, Sparkles, Copy, Plus, ChevronDown, Save, Loader2, LayoutGrid, Undo2, Redo2 } from "lucide-react";
+import { Download, Sparkles, Copy, Plus, ChevronDown, Save, Loader2, LayoutGrid, Undo2, Redo2, Grid3x3, Ruler } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as htmlToImage from "html-to-image";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { localApi, uploadFile } from "@/api/localClient";
 import StudioCanvas from "./StudioCanvas";
 import TextPanel from "./panels/TextPanel";
@@ -13,17 +13,20 @@ import LogoLibraryPanel from "./panels/LogoLibraryPanel";
 import BackgroundPanel from "./panels/BackgroundPanel";
 import AIPanel from "./panels/AIPanel";
 import IconsPanel from "./panels/IconsPanel.jsx";
+import SocialPanel from "./panels/SocialPanel.jsx";
 import SymbolsPanel from "./panels/SymbolsPanel";
 import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
 import TemplatesPanel from "./panels/TemplatesPanel";
 import BrandKitPanel from "./panels/BrandKitPanel";
+import TextEffectsPanel from "./panels/TextEffectsPanel";
 import FramesPanel from "./panels/FramesPanel";
 import CustomColorPicker from "./CustomColorPicker";
 import AlignmentTools from "./AlignmentTools";
 import { SIZES } from "./sizes";
 import SizeSelector from "./SizeSelector";
 import ShareModal from "./ShareModal";
+import { applyProfileTo, saveSocialProfile } from "@/utils/socialProfileStore";
 
 const DECO_TYPE_IDS = new Set(["chain","rope","arc_ribbon","wave_ribbon","ring_chain","dots_line","zigzag","crescent"]);
 
@@ -35,6 +38,7 @@ const TABS = [
   { id: "icons", labelAr: "أيقونات", labelEn: "Icons" },
   { id: "symbols", labelAr: "رموز", labelEn: "Symbols" },
   { id: "logo", labelAr: "لوقو", labelEn: "Logo" },
+  { id: "social", labelAr: "تواصل", labelEn: "Social" },
   { id: "images", labelAr: "صور", labelEn: "Images" },
   { id: "bg", labelAr: "خلفية", labelEn: "BG" },
   { id: "frames", labelAr: "إطارات", labelEn: "Frames" },
@@ -44,6 +48,7 @@ const TABS = [
   { id: "draw", labelAr: "رسم", labelEn: "Draw" },
   { id: "layers", labelAr: "طبقات", labelEn: "Layers" },
   { id: "brand", labelAr: "البراند", labelEn: "Brand" },
+  { id: "effects", labelAr: "تأثيرات", labelEn: "Effects" },
 ];
 
 function genId() { return Math.random().toString(36).slice(2, 9); }
@@ -82,11 +87,29 @@ const defaultText = () => ({
   rotation: 0, blur: 0, brightness: 100,
 });
 
-const defaultShape = (type, canvasAspect = 1) => ({
-  id: genId(), shapeType: type, x: 20, y: 20, width: 25, height: 20 * canvasAspect,
-  fillColor: "#8b5cf6", borderColor: "#ffffff", borderWidth: 0,
-  opacity: 1, visible: true, rotation: 0, borderRadius: 0,
-});
+const defaultShape = (type, canvasAspect = 1) => {
+  // Mockups need specific aspect ratios so the device looks right out of the box
+  let w = 25, h = 20 * canvasAspect;
+  let fill = "#8b5cf6";
+  if (type === "phone_mockup")    { w = 25; h = 50 * canvasAspect; }
+  if (type === "tablet_mockup")   { w = 40; h = 45 * canvasAspect; }
+  if (type === "laptop_mockup")   { w = 50; h = 35 * canvasAspect; }
+  if (type === "browser_window")  { w = 50; h = 40 * canvasAspect; }
+  if (type === "monitor_mockup")  { w = 50; h = 50 * canvasAspect; }
+  if (type === "tv_mockup")       { w = 55; h = 38 * canvasAspect; }
+  if (type === "watch_mockup")    { w = 25; h = 45 * canvasAspect; fill = "#ec4899"; }
+  if (type === "car_side")        { w = 50; h = 30 * canvasAspect; fill = "#1e293b"; }
+  if (type === "tshirt_mockup")   { w = 40; h = 45 * canvasAspect; fill = "#ffffff"; }
+  if (type === "saudi_map")       { w = 50; h = (50 / 1.143) * canvasAspect; fill = "#16a34a"; }
+  if (type === "saudi_regions")   { w = 60; h = (60 / 1.143) * canvasAspect; fill = "#cbd5e1"; }
+  if (type === "gcc_map")         { w = 55; h = 50 * canvasAspect; fill = "#16a34a"; }
+  if (type === "arabia_map")      { w = 52; h = 55 * canvasAspect; fill = "#16a34a"; }
+  return {
+    id: genId(), shapeType: type, x: 20, y: 20, width: w, height: h,
+    fillColor: fill, borderColor: "#ffffff", borderWidth: 0,
+    opacity: 1, visible: true, rotation: 0, borderRadius: 0,
+  };
+};
 
 // canvasAspect = canvasWidth / canvasHeight (e.g. 0.5625 for 9:16, 1.778 for 16:9)
 // height% means % of canvas height. To appear proportional, we normalise:
@@ -108,6 +131,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const isRtl = language === "ar";
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("text");
+  const [drawMode, setDrawMode] = useState(false);
 
   const draft = !loadedDesign ? loadDraft() : null;
 
@@ -127,6 +151,55 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [groups, setGroups] = useState(initDraft?.groups || []);
   const [bg, setBg] = useState(initDraft?.bg || { mode: "color", color: "#1e293b", gradientAngle: 135, gradientStops: null, imageUrl: null, imageOpacity: 1 });
   const [frames, setFrames] = useState(initDraft?.frames || []);
+  // ── Social contact box ──────────────────────────────────────────────
+  // One live, editable box per design — mirrors the GreetingCardsPage
+  // implementation so the panel UI (and visual output) match exactly.
+  // Lives as a single state object (not an array) because a design
+  // realistically only needs one contact strip.
+  // Default box used when the design has no saved socialBox AND no
+  // social profile in localStorage. The profile (if any) overrides
+  // these defaults — see `applyProfileTo` — so a returning user starts
+  // with their accounts pre-populated and doesn't re-enter handles.
+  const [socialBox, setSocialBox] = useState(() => {
+    const defaultBox = {
+      show: false,
+      x: 50,
+      y: 90,
+      iconSize: 7,
+      spacing: 30,
+      layout: "vertical",
+      colorMode: "brand",
+      monoColor: "#ffffff",
+      textColor: "#ffffff",
+      bgEnabled: false,
+      bgMode: "solid",          // "solid" | "gradient"
+      bgColor: "#000000",
+      bgGradColor2: "#1e293b",
+      bgGradAngle: 135,
+      bgOpacity: 0.4,
+      bgRadius: 25,
+      bgPadding: 35,
+      showLabels: true,
+      fontFamily: "Tajawal",
+      rotation: 0,
+      items: [],
+    };
+    // Resuming an existing design — preserve whatever was last saved
+    // on that draft, including an empty items[] if that was the user's
+    // choice on this specific design.
+    if (initDraft?.socialBox) return initDraft.socialBox;
+    // Fresh design — bootstrap from the user's saved profile (if any).
+    return applyProfileTo(defaultBox);
+  });
+
+  // Auto-persist the profile whenever the box changes. We exclude
+  // positional fields (x/y/show) inside the store, so moving the box
+  // around on this design doesn't pollute future designs. A side
+  // effect: if the user empties their accounts here, they're empty
+  // next time too — by design (no save = no profile).
+  useEffect(() => {
+    saveSocialProfile(socialBox);
+  }, [socialBox]);
 
   // ─── Multi-Page (كاروسيل / صفحات متعددة) ─────────────────────────────────
   const pagesData = useRef(null);
@@ -153,7 +226,13 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showRulers, setShowRulers] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState("idle"); // idle | saving | saved
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, id, type }
+  const [selectedRegion, setSelectedRegion] = useState(null); // active region id for multi-region map
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -258,34 +337,98 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     return () => clearTimeout(historyTimerRef.current);
   }, [textLayers, shapes, images, logos, groups, bg]);
 
-  // Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo), Ctrl+Shift+D (duplicate)
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName;
       const isEditing = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
 
+      // Undo / Redo
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z" && !isEditing) {
         e.preventDefault();
         handleUndo();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z")) && !isEditing) {
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z")) && !isEditing) {
         e.preventDefault();
         handleRedo();
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
+        return;
+      }
+
+      // Duplicate (Ctrl+D) — works for all selection types
+      if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D") && !isEditing) {
         e.preventDefault();
         if (!selectedId || !selectedType) return;
         if (selectedType === "shape") duplicateShape(selectedId);
         else if (selectedType === "image") duplicateImage(selectedId);
         else if (selectedType === "logo") duplicateLogo(selectedId);
         else if (selectedType === "text") duplicateText(selectedId);
+        return;
+      }
+
+      // Z-order shortcuts
+      // Ctrl+] = bring forward, Ctrl+[ = send backward
+      // Ctrl+Shift+] = bring to front, Ctrl+Shift+[ = send to back
+      if ((e.ctrlKey || e.metaKey) && !isEditing && (e.key === "]" || e.key === "[")) {
+        e.preventDefault();
+        if (e.shiftKey) zOrder(e.key === "]" ? "front" : "back");
+        else zOrder(e.key === "]" ? "forward" : "backward");
+        return;
+      }
+
+      // Esc — clear selection
+      if (e.key === "Escape" && !isEditing) {
+        setSelectedId(null);
+        setSelectedType(null);
+        setMultiSelected([]);
+        return;
+      }
+
+      // Delete / Backspace — delete selected element
+      if ((e.key === "Delete" || (e.key === "Backspace" && (e.ctrlKey || e.metaKey))) && !isEditing && selectedId) {
+        e.preventDefault();
+        if (selectedType === "shape") deleteShape(selectedId);
+        else if (selectedType === "image") deleteImage(selectedId);
+        else if (selectedType === "logo") deleteLogo(selectedId);
+        else if (selectedType === "text") deleteText(selectedId);
+        setSelectedId(null);
+        setSelectedType(null);
+        return;
+      }
+
+      // Arrow keys — nudge selected element (1% normally, 5% with Shift)
+      if (!isEditing && selectedId && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 5 : 1;
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp") dy = -step;
+        if (e.key === "ArrowDown") dy = step;
+        if (e.key === "ArrowLeft") dx = -step;
+        if (e.key === "ArrowRight") dx = step;
+
+        if (selectedType === "text") {
+          const l = textLayers.find(t => t.id === selectedId);
+          if (l) updateText(selectedId, { x: Math.max(0, Math.min(100, (l.x || 0) + dx)), y: Math.max(0, Math.min(100, (l.y || 0) + dy)) });
+        } else if (selectedType === "shape") {
+          const s = shapes.find(sh => sh.id === selectedId);
+          if (s) updateShape(selectedId, { x: Math.max(0, Math.min(100, (s.x || 0) + dx)), y: Math.max(0, Math.min(100, (s.y || 0) + dy)) });
+        } else if (selectedType === "image") {
+          const i = images.find(im => im.id === selectedId);
+          if (i) updateImage(selectedId, { x: Math.max(0, Math.min(100, (i.x || 0) + dx)), y: Math.max(0, Math.min(100, (i.y || 0) + dy)) });
+        } else if (selectedType === "logo") {
+          const l = logos.find(lg => lg.id === selectedId);
+          if (l) updateLogo(selectedId, { x: Math.max(0, Math.min(100, (l.x || 0) + dx)), y: Math.max(0, Math.min(100, (l.y || 0) + dy)) });
+        }
       }
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [selectedId, selectedType, handleUndo, handleRedo]);
+  }, [selectedId, selectedType, handleUndo, handleRedo, textLayers, shapes, images, logos]);
 
   // Auto-save draft to localStorage on every change
   useEffect(() => {
     if (loadedDesign) return; // don't overwrite draft when editing saved design
+    setAutoSaveStatus("saving");
     // Sync current page into pagesData before persisting
     const _draftExisting = pagesData.current[currentPageIdx];
     pagesData.current[currentPageIdx] = {
@@ -303,13 +446,34 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     const draft = { textLayers, shapes, images, logos, bg, groups, pages: draftPages, currentPageIdx };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setLastSavedAt(Date.now());
+      setAutoSaveStatus("saved");
     } catch {
       // Quota exceeded — save minimal draft without pages
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({ textLayers, shapes, images, logos, bg, groups, currentPageIdx }));
-      } catch { /* ignore */ }
+        setLastSavedAt(Date.now());
+        setAutoSaveStatus("saved");
+      } catch { setAutoSaveStatus("idle"); }
     }
   }, [textLayers, shapes, images, logos, bg, groups]);
+
+  // Tick to keep "Xs ago" label fresh
+  const [, setTickCount] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTickCount(c => c + 1), 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  const formatSavedAgo = () => {
+    if (!lastSavedAt) return isRtl ? "غير محفوظ" : "Not saved";
+    const diff = Math.floor((Date.now() - lastSavedAt) / 1000);
+    if (diff < 5) return isRtl ? "محفوظ الآن" : "Saved just now";
+    if (diff < 60) return isRtl ? `محفوظ قبل ${diff} ث` : `Saved ${diff}s ago`;
+    const m = Math.floor(diff / 60);
+    if (m < 60) return isRtl ? `محفوظ قبل ${m} د` : `Saved ${m}m ago`;
+    return isRtl ? "محفوظ" : "Saved";
+  };
 
   // Load design data when opening saved design
   useEffect(() => {
@@ -729,6 +893,30 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const reorderImages = (newArr) => setImages(newArr);
   const reorderLogos = (newArr) => setLogos(newArr);
 
+  // Z-order core — reorders a specific element of a given type within its array
+  const zOrderById = (id, type, action) => {
+    const setter = ({ text: setTextLayers, shape: setShapes, image: setImages, logo: setLogos })[type];
+    if (!setter || !id) return;
+    setter(prev => {
+      const idx = prev.findIndex(el => el.id === id);
+      if (idx < 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      if (action === "front") next.push(item);
+      else if (action === "back") next.unshift(item);
+      else if (action === "forward") next.splice(Math.min(prev.length, idx + 1), 0, item);
+      else if (action === "backward") next.splice(Math.max(0, idx - 1), 0, item);
+      if (type === "image") imagesRef.current = next;
+      return next;
+    });
+  };
+
+  // Z-order for the current selection (used by keyboard shortcuts / context menu)
+  const zOrder = (action) => {
+    if (!selectedId || !selectedType) return;
+    zOrderById(selectedId, selectedType, action);
+  };
+
   // Group ops
   const groupElements = () => {
     if (multiSelected.length < 2) return;
@@ -857,6 +1045,44 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setPagesCount(pagesData.current.length);
     loadPage(newPage);
   }, [currentPageIdx, saveCurrentPage, loadPage]);
+
+  // نسخ محتوى الصفحة الحالية إلى صفحة مستهدفة (تحل محلها)
+  const copyCurrentPageTo = useCallback((targetIdx) => {
+    if (targetIdx === currentPageIdx) return;
+    saveCurrentPage();
+    const source = pagesData.current[currentPageIdx];
+    pagesData.current[targetIdx] = {
+      id: pagesData.current[targetIdx]?.id || genId(),
+      textLayers: JSON.parse(JSON.stringify(source.textLayers)),
+      shapes: JSON.parse(JSON.stringify(source.shapes)),
+      images: JSON.parse(JSON.stringify(source.images)),
+      logos: JSON.parse(JSON.stringify(source.logos)),
+      groups: JSON.parse(JSON.stringify(source.groups)),
+      bg: JSON.parse(JSON.stringify(source.bg)),
+    };
+    setCurrentPageIdx(targetIdx);
+    loadPage(pagesData.current[targetIdx]);
+  }, [currentPageIdx, saveCurrentPage, loadPage]);
+
+  // نسخ الصفحة الحالية كصفحة جديدة في النهاية
+  const copyCurrentPageAsNew = useCallback(() => {
+    saveCurrentPage();
+    const source = pagesData.current[currentPageIdx];
+    const newPage = {
+      id: genId(),
+      textLayers: JSON.parse(JSON.stringify(source.textLayers)),
+      shapes: JSON.parse(JSON.stringify(source.shapes)),
+      images: JSON.parse(JSON.stringify(source.images)),
+      logos: JSON.parse(JSON.stringify(source.logos)),
+      groups: JSON.parse(JSON.stringify(source.groups)),
+      bg: JSON.parse(JSON.stringify(source.bg)),
+    };
+    pagesData.current.push(newPage);
+    const newIdx = pagesData.current.length - 1;
+    setCurrentPageIdx(newIdx);
+    setPagesCount(pagesData.current.length);
+    loadPage(newPage);
+  }, [currentPageIdx, saveCurrentPage, loadPage]);
   // ──────────────────────────────────────────────────────────────────────────
 
   const moveGroupElements = (groupId, deltaX, deltaY) => {
@@ -871,10 +1097,72 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setGroups(newGroups);
   };
 
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState("png");
+  const [exportQuality, setExportQuality] = useState(0.92);
+  const [exportScaleMul, setExportScaleMul] = useState(1);
+  const [exportTransparent, setExportTransparent] = useState(false);
+  const [exportAllPages, setExportAllPages] = useState(false);
+
+  // Capture the canvas as a data URL with the chosen format / scale / transparency
+  const captureCanvas = async (format, quality, scaleMul, transparent) => {
+    const element = /** @type {HTMLElement} */ (/** @type {unknown} */ (canvasWrapRef.current));
+    if (!element) return null;
+    const clientW = element.offsetWidth;
+    const baseScale = size.width / clientW;
+    const pixelRatio = baseScale * (scaleMul || 1);
+
+    // Hide background temporarily for transparent export (PNG/WebP only)
+    let prevBg = null;
+    if (transparent && format !== "jpeg" && format !== "jpg") {
+      prevBg = bg;
+      flushSync(() => setBg({ mode: "color", color: "transparent" }));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
+
+    let dataUrl = null;
+    try {
+      if (format === "svg") {
+        dataUrl = await htmlToImage.toSvg(element, { pixelRatio });
+      } else if (format === "jpeg" || format === "jpg") {
+        dataUrl = await htmlToImage.toJpeg(element, { pixelRatio, quality, backgroundColor: "#ffffff" });
+      } else if (format === "webp") {
+        // html-to-image lacks WebP; render as PNG canvas first then re-encode to WebP
+        const png = await htmlToImage.toPng(element, { pixelRatio });
+        dataUrl = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement("canvas");
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(c.toDataURL("image/webp", quality));
+          };
+          img.src = png;
+        });
+      } else {
+        // png (default)
+        dataUrl = await htmlToImage.toPng(element, { pixelRatio });
+      }
+    } finally {
+      if (prevBg) {
+        flushSync(() => setBg(prevBg));
+        await new Promise(r => requestAnimationFrame(r));
+      }
+    }
+    return dataUrl;
+  };
+
   const handleExport = async () => {
+    setShowExportModal(true);
+  };
+
+  const runExport = async () => {
     if (!canvasRef.current) return;
 
     const originalLogos = logos;
+    setShowExportModal(false);
 
     if (logos.some(l => l.logoColor && !l.isSvg)) {
       const recoloredLogos = await Promise.all(logos.map(async (logo) => {
@@ -895,30 +1183,51 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     noSelectStyle.innerHTML = `* { -webkit-user-select: none !important; user-select: none !important; } ::selection { background: transparent !important; color: inherit !important; }`;
     document.head.appendChild(noSelectStyle);
     window.getSelection()?.removeAllRanges();
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
 
     await new Promise(resolve => {
       flushSync(() => setExporting(true));
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     });
 
-    const element = /** @type {HTMLElement} */ (/** @type {unknown} */ (canvasWrapRef.current));
-    if (!element) return;
-    const clientW = element.offsetWidth;
-    const exportScale = size.width / clientW;
+    const ext = exportFormat === "jpeg" ? "jpg" : exportFormat;
 
-    const dataUrl = await htmlToImage.toPng(element, { pixelRatio: exportScale });
-
-    document.getElementById("export-no-select")?.remove();
-    setLogos(originalLogos);
-    const link = document.createElement("a");
-    link.download = `design-${size.id || "custom"}.png`;
-    link.href = dataUrl;
-    link.click();
-
-    setExportedImageUrl(dataUrl);
-    setExporting(false);
-    setShowShareModal(true);
+    try {
+      if (exportAllPages && pagesData.current.length > 1) {
+        // Save current page first, then iterate every page
+        saveCurrentPage();
+        const startIdx = currentPageIdx;
+        for (let i = 0; i < pagesData.current.length; i++) {
+          loadPage(pagesData.current[i]);
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          await new Promise(r => setTimeout(r, 250));
+          const dataUrl = await captureCanvas(exportFormat, exportQuality, exportScaleMul, exportTransparent);
+          if (dataUrl) {
+            const link = document.createElement("a");
+            link.download = `${(designName || "design")}-page-${i + 1}.${ext}`;
+            link.href = dataUrl;
+            link.click();
+            await new Promise(r => setTimeout(r, 200));
+          }
+        }
+        // Restore original active page
+        loadPage(pagesData.current[startIdx]);
+      } else {
+        const dataUrl = await captureCanvas(exportFormat, exportQuality, exportScaleMul, exportTransparent);
+        if (dataUrl) {
+          const link = document.createElement("a");
+          link.download = `${(designName || "design")}-${size.id || "custom"}.${ext}`;
+          link.href = dataUrl;
+          link.click();
+          setExportedImageUrl(dataUrl);
+          setShowShareModal(true);
+        }
+      }
+    } finally {
+      document.getElementById("export-no-select")?.remove();
+      setLogos(originalLogos);
+      setExporting(false);
+    }
   };
 
   const handleDownloadExported = () => {
@@ -1030,6 +1339,65 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     }).filter(Boolean);
   };
 
+  // Open context menu at click position for the given element
+  const openContextMenu = (e, id, type) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedId(id);
+    setSelectedType(type);
+    setContextMenu({ x: e.clientX, y: e.clientY, id, type });
+  };
+
+  // Close context menu on outside click / Escape
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
+
+  const ctxAction = (action) => {
+    const { id, type } = contextMenu || {};
+    setContextMenu(null);
+    if (!id || !type) return;
+    if (action === "duplicate") {
+      if (type === "shape") duplicateShape(id);
+      else if (type === "image") duplicateImage(id);
+      else if (type === "logo") duplicateLogo(id);
+      else if (type === "text") duplicateText(id);
+    } else if (action === "delete") {
+      if (type === "shape") deleteShape(id);
+      else if (type === "image") deleteImage(id);
+      else if (type === "logo") deleteLogo(id);
+      else if (type === "text") deleteText(id);
+      setSelectedId(null); setSelectedType(null);
+    } else if (action === "front" || action === "back" || action === "forward" || action === "backward") {
+      zOrder(action);
+    } else if (action === "lock") {
+      const upd = { locked: true };
+      if (type === "shape") updateShape(id, upd);
+      else if (type === "image") updateImage(id, upd);
+      else if (type === "logo") updateLogo(id, upd);
+      else if (type === "text") updateText(id, upd);
+    } else if (action === "unlock") {
+      const upd = { locked: false };
+      if (type === "shape") updateShape(id, upd);
+      else if (type === "image") updateImage(id, upd);
+      else if (type === "logo") updateLogo(id, upd);
+      else if (type === "text") updateText(id, upd);
+    } else if (action === "hide") {
+      const upd = { visible: false };
+      if (type === "shape") updateShape(id, upd);
+      else if (type === "image") updateImage(id, upd);
+      else if (type === "logo") updateLogo(id, upd);
+      else if (type === "text") updateText(id, upd);
+    }
+  };
+
   const handleAlignElement = (id, type, updates) => {
     if (type === "text") updateText(id, updates);
     else if (type === "shape") updateShape(id, updates);
@@ -1077,6 +1445,42 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         </button>
 
         <div className="flex-1" />
+
+        {/* Auto-save status */}
+        <div className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${
+          autoSaveStatus === "saving" ? "bg-amber-500/10 text-amber-400" :
+          autoSaveStatus === "saved" ? "bg-emerald-500/10 text-emerald-400" :
+          "text-slate-500"
+        }`} title={lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : ""}>
+          {autoSaveStatus === "saving" ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="hidden md:inline">{isRtl ? "حفظ..." : "Saving..."}</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-current" />
+              <span className="hidden md:inline">{formatSavedAgo()}</span>
+            </>
+          )}
+        </div>
+
+        {/* Grid toggle */}
+        <button
+          onClick={() => setShowGrid(g => !g)}
+          title={isRtl ? "شبكة" : "Grid"}
+          className={`p-1.5 rounded transition ${showGrid ? "bg-indigo-600 text-white" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+        >
+          <Grid3x3 className="w-4 h-4" />
+        </button>
+        {/* Ruler toggle */}
+        <button
+          onClick={() => setShowRulers(r => !r)}
+          title={isRtl ? "مسطرة" : "Rulers"}
+          className={`p-1.5 rounded transition ${showRulers ? "bg-indigo-600 text-white" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+        >
+          <Ruler className="w-4 h-4" />
+        </button>
 
         {/* Undo / Redo */}
         <button
@@ -1167,6 +1571,15 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 language={language}
               />
             </div>
+            <div style={{ display: activeTab === "effects" ? "block" : "none" }}>
+              <TextEffectsPanel
+                layers={textLayers}
+                selectedId={selectedType === "text" ? selectedId : null}
+                onSelect={(id) => handleSelectWithTabSwitch(id, "text")}
+                onUpdate={updateText}
+                language={language}
+              />
+            </div>
             <div style={{ display: activeTab === "text" ? "block" : "none" }}>
               <TextPanel
                 layers={textLayers}
@@ -1214,6 +1627,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 onDuplicate={duplicateShape}
                 onReorder={reorderShapes}
                 language={language}
+                selectedRegion={selectedRegion}
+                onSelectRegion={setSelectedRegion}
               />
             </div>
             <div style={{ display: activeTab === "deco" ? "block" : "none" }}>
@@ -1241,6 +1656,18 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 language={language}
               />
             </div>
+            <div style={{ display: activeTab === "social" ? "block" : "none" }}>
+              {/* Live editor — the actual box lives on the canvas as a
+                  DOM overlay (see StudioCanvas "Social contact box
+                  overlay"), this panel just edits its state. Drag,
+                  render, and export all happen there so the result is
+                  identical to GreetingCardsPage. */}
+              <SocialPanel
+                language={language}
+                box={socialBox}
+                onUpdate={(patch) => setSocialBox((s) => ({ ...s, ...patch }))}
+              />
+            </div>
             <div style={{ display: activeTab === "images" ? "block" : "none" }}>
               <ImagesPanel
                 images={images.filter(i => !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol && !i.isText)}
@@ -1250,8 +1677,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 onUpdate={updateImage}
                 onDelete={deleteImage}
                 onDuplicate={duplicateImage}
+                onZOrder={(id, action) => zOrderById(id, "image", action)}
                 language={language}
                 isLogo={false}
+                canvasAspect={canvasAspect}
               />
             </div>
 
@@ -1278,6 +1707,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 drawings={images}
                 onUpdate={updateImage}
                 language={language}
+                drawMode={drawMode}
+                setDrawMode={setDrawMode}
               />
             </div>
             <div style={{ display: activeTab === "layers" ? "block" : "none" }}>
@@ -1395,6 +1826,41 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               groups={groups}
               onMoveGroup={moveGroupElements}
               frames={frames}
+              drawMode={drawMode}
+              showGrid={showGrid}
+              showRulers={showRulers}
+              onContextMenu={openContextMenu}
+              selectedRegion={selectedRegion}
+              onSelectRegion={setSelectedRegion}
+              socialBox={socialBox}
+              onUpdateSocialBox={(patch) => setSocialBox((s) => ({ ...s, ...patch }))}
+              onAddShape={(payload) => {
+                const newShape = {
+                  id: genId(),
+                  fillColor: "#8b5cf6",
+                  borderColor: "#ffffff",
+                  borderWidth: 0,
+                  opacity: 1,
+                  visible: true,
+                  rotation: 0,
+                  borderRadius: 0,
+                  ...payload,
+                };
+                setShapes(p => [...p, newShape]);
+                setSelectedId(newShape.id);
+                setSelectedType("shape");
+              }}
+              onConvertSelectedShape={(payload) => {
+                // Replace the selected shape's geometry with the recognized clean shape.
+                // We strip pathData/isClosed since the new shape doesn't need them.
+                if (selectedId && selectedType === "shape") {
+                  setShapes(p => p.map(s => s.id === selectedId
+                    ? { ...s, pathData: undefined, isClosed: undefined, ...payload }
+                    : s
+                  ));
+                }
+              }}
+              onExitDrawMode={() => setDrawMode(false)}
             />
           </div>
         </div>
@@ -1427,11 +1893,20 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             )}
             <button
               onClick={(e) => { e.stopPropagation(); duplicatePage(i); }}
-              title={isRtl ? "نسخ الصفحة" : "Duplicate page"}
+              title={isRtl ? "تكرار الصفحة" : "Duplicate page"}
               className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-500 hover:bg-slate-400 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
             >
               ⧉
             </button>
+            {i !== currentPageIdx && (
+              <button
+                onClick={(e) => { e.stopPropagation(); copyCurrentPageTo(i); }}
+                title={isRtl ? `نسخ الصفحة الحالية هنا (${i + 1})` : `Copy current page here (${i + 1})`}
+                className="absolute -bottom-1 -left-1 w-4 h-4 bg-indigo-600 hover:bg-indigo-500 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
+              >
+                📋
+              </button>
+            )}
           </div>
         ))}
         <button
@@ -1440,6 +1915,13 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 text-lg flex items-center justify-center transition"
         >
           +
+        </button>
+        <button
+          onClick={copyCurrentPageAsNew}
+          title={isRtl ? "نسخ الصفحة الحالية كصفحة جديدة" : "Copy current page as new page"}
+          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-indigo-700 hover:border-indigo-500 text-indigo-500 hover:text-indigo-300 text-sm flex items-center justify-center transition"
+        >
+          📋+
         </button>
         <span className="text-slate-500 text-xs ms-2">
           {currentPageIdx + 1} / {pagesCount}
@@ -1505,6 +1987,145 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           onClose={() => setShowShareModal(false)}
           onDownload={handleDownloadExported}
         />
+      )}
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: Math.min(contextMenu.y, window.innerHeight - 280),
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            zIndex: 9999,
+          }}
+          className="bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 min-w-[180px]"
+        >
+          {[
+            { id: "duplicate", label: isRtl ? "تكرار" : "Duplicate", hint: "Ctrl+D" },
+            { id: "front", label: isRtl ? "للأمام بالكامل" : "Bring to Front", hint: "Ctrl+Shift+]" },
+            { id: "forward", label: isRtl ? "للأمام خطوة" : "Bring Forward", hint: "Ctrl+]" },
+            { id: "backward", label: isRtl ? "للخلف خطوة" : "Send Backward", hint: "Ctrl+[" },
+            { id: "back", label: isRtl ? "للخلف بالكامل" : "Send to Back", hint: "Ctrl+Shift+[" },
+            { id: "_sep1" },
+            { id: "lock", label: isRtl ? "🔒 قفل" : "🔒 Lock" },
+            { id: "hide", label: isRtl ? "👁️ إخفاء" : "👁️ Hide" },
+            { id: "_sep2" },
+            { id: "delete", label: isRtl ? "🗑️ حذف" : "🗑️ Delete", hint: "Del", danger: true },
+          ].map((item) => item.id.startsWith("_sep") ? (
+            <div key={item.id} className="my-1 border-t border-slate-700" />
+          ) : (
+            <button
+              key={item.id}
+              onClick={() => ctxAction(item.id)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs transition ${item.danger ? "text-red-400 hover:bg-red-500/10" : "text-slate-200 hover:bg-slate-700"}`}
+            >
+              <span>{item.label}</span>
+              {item.hint && <span className="text-[10px] text-slate-500">{item.hint}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Pro Export modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowExportModal(false)}>
+          <div className="bg-slate-800 rounded-2xl p-6 w-[480px] max-w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              {isRtl ? "تصدير احترافي" : "Pro Export"}
+            </h3>
+
+            {/* Format */}
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 mb-2 block">{isRtl ? "صيغة الملف" : "Format"}</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: "png",  label: "PNG",  hint: isRtl ? "شفاف" : "Transparent" },
+                  { id: "jpeg", label: "JPG",  hint: isRtl ? "أصغر حجم" : "Smaller" },
+                  { id: "webp", label: "WebP", hint: isRtl ? "حديث" : "Modern" },
+                  { id: "svg",  label: "SVG",  hint: isRtl ? "متجه" : "Vector" },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setExportFormat(f.id)}
+                    className={`px-2 py-3 rounded-lg border text-center transition ${exportFormat === f.id ? "bg-indigo-600 border-indigo-500 text-white" : "bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-500"}`}
+                  >
+                    <div className="font-bold text-sm">{f.label}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{f.hint}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Scale multiplier */}
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 mb-2 block">
+                {isRtl ? "حجم التصدير" : "Export Size"} — {Math.round(size.width * exportScaleMul)}×{Math.round(size.height * exportScaleMul)} px
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { v: 0.5, label: "0.5×" },
+                  { v: 1,   label: "1×" },
+                  { v: 2,   label: "2× HD" },
+                  { v: 3,   label: "3× 4K" },
+                ].map(s => (
+                  <button
+                    key={s.v}
+                    onClick={() => setExportScaleMul(s.v)}
+                    className={`py-2 rounded-lg text-xs font-semibold transition ${exportScaleMul === s.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quality slider (JPG / WebP only) */}
+            {(exportFormat === "jpeg" || exportFormat === "webp") && (
+              <div className="mb-4">
+                <label className="text-xs text-slate-400 mb-2 block">
+                  {isRtl ? "الجودة" : "Quality"}: {Math.round(exportQuality * 100)}%
+                </label>
+                <input
+                  type="range" min="0.3" max="1" step="0.05"
+                  value={exportQuality}
+                  onChange={(e) => setExportQuality(parseFloat(e.target.value))}
+                  className="w-full accent-indigo-500"
+                />
+              </div>
+            )}
+
+            {/* Transparent BG */}
+            {(exportFormat === "png" || exportFormat === "webp" || exportFormat === "svg") && (
+              <label className="flex items-center gap-2 mb-4 cursor-pointer text-sm">
+                <input type="checkbox" checked={exportTransparent} onChange={(e) => setExportTransparent(e.target.checked)} className="rounded" />
+                <span className="text-slate-300">{isRtl ? "خلفية شفافة" : "Transparent background"}</span>
+              </label>
+            )}
+
+            {/* Batch all pages */}
+            {pagesCount > 1 && (
+              <label className="flex items-center gap-2 mb-4 cursor-pointer text-sm">
+                <input type="checkbox" checked={exportAllPages} onChange={(e) => setExportAllPages(e.target.checked)} className="rounded" />
+                <span className="text-slate-300">
+                  {isRtl ? `تصدير كل الصفحات (${pagesCount})` : `Export all pages (${pagesCount})`}
+                </span>
+              </label>
+            )}
+
+            {/* Buttons */}
+            <div className="flex gap-2 pt-2 border-t border-slate-700">
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm transition">
+                {isRtl ? "إلغاء" : "Cancel"}
+              </button>
+              <button onClick={runExport} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition flex items-center justify-center gap-2">
+                <Download className="w-4 h-4" />
+                {isRtl ? "تصدير" : "Export"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Copy to size modal */}

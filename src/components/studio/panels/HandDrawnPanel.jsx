@@ -268,7 +268,7 @@ const HIGHLIGHT_COLORS = [
   "#1e3a5f", "#7c2d12", "#86efac", "#ff5722",
 ];
 
-export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, onDuplicate, drawings, onUpdate, language }) {
+export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, onDuplicate, drawings, onUpdate, language, drawMode, setDrawMode }) {
   const isRtl = language === "ar";
 
   const canvasDrawings = drawings?.filter(d => d.isHandDrawn) || [];
@@ -379,6 +379,36 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
 
   return (
     <div className="space-y-3 text-xs">
+
+      {/* ── Freehand Pen Tool ───────────────────────────────────── */}
+      <div className={`border rounded-lg p-3 space-y-2 transition ${drawMode ? "border-indigo-500 bg-indigo-950/40 shadow-[0_0_0_1px_rgba(139,92,246,0.5)]" : "border-slate-600 bg-slate-800/50"}`}>
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-[12px]">
+            {drawMode ? "✏️" : "🖊️"} {isRtl ? "ارسم بيدك على الكانفاس" : "Freehand draw on canvas"}
+          </span>
+          <button
+            onClick={() => setDrawMode && setDrawMode(!drawMode)}
+            className={`px-3 py-1 rounded text-[11px] font-bold transition ${
+              drawMode
+                ? "bg-rose-600 hover:bg-rose-500 text-white"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {drawMode ? (isRtl ? "إيقاف" : "Stop") : (isRtl ? "تفعيل" : "Activate")}
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          {isRtl
+            ? "اضغط (تفعيل)، ثم اسحب الماوس على الكانفاس لرسم أي شكل بحرية. الأشكال المغلقة تقبل تعبئة بصورة وتغيير لون. ESC للخروج."
+            : "Click Activate, then drag on canvas to draw any shape. Closed shapes accept image fills and colors. Press ESC to exit."}
+        </p>
+        {drawMode && (
+          <div className="text-[10px] text-indigo-300 font-semibold flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            {isRtl ? "وضع الرسم نشط — ارسم على الكانفاس" : "Draw mode active — draw on the canvas"}
+          </div>
+        )}
+      </div>
 
       {/* Canvas drawings list */}
       {canvasDrawings.length > 0 && (

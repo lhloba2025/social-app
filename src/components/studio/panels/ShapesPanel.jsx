@@ -4,6 +4,8 @@ import StudioColorPicker from "../StudioColorPicker";
 import FiltersPanel from "./FiltersPanel";
 import BlendModesPanel from "./BlendModesPanel";
 import { uploadFile } from "@/api/localClient";
+import { normalizeImageFile, isHeic } from "@/utils/imageConvert";
+import { SAUDI_MAP_PATH, SAUDI_REGIONS } from "../data/saudiMapPath";
 
 const SHAPE_TYPES = [
   { id: "rect", labelAr: "مستطيل", labelEn: "Rectangle" },
@@ -17,6 +19,45 @@ const SHAPE_TYPES = [
   { id: "arrow", labelAr: "سهم", labelEn: "Arrow" },
   { id: "ellipse", labelAr: "بيضاوي", labelEn: "Ellipse" },
   { id: "rounded", labelAr: "مستطيل مستدير", labelEn: "Rounded" },
+  // ── Wavy / professional photo-frame shapes (support fillImage) ──
+  { id: "blob",         labelAr: "بقعة عضوية",  labelEn: "Blob"         },
+  { id: "wave_shape",   labelAr: "إطار موجي",    labelEn: "Wave Frame"   },
+  { id: "cloud",        labelAr: "سحابة",       labelEn: "Cloud"        },
+  { id: "heart",        labelAr: "قلب",         labelEn: "Heart"        },
+  { id: "splash",       labelAr: "رشة",         labelEn: "Splash"       },
+  { id: "petal",        labelAr: "بتلة",        labelEn: "Petal"        },
+  { id: "flower",       labelAr: "زهرة",        labelEn: "Flower"       },
+  { id: "arch_top",     labelAr: "إطار قوسي",   labelEn: "Arch Top"     },
+  { id: "tag",          labelAr: "بطاقة سعر",   labelEn: "Price Tag"    },
+  { id: "shield",       labelAr: "درع",         labelEn: "Shield"       },
+  { id: "ticket",       labelAr: "تذكرة",       labelEn: "Ticket"       },
+  { id: "stadium",      labelAr: "قرص",         labelEn: "Stadium"      },
+  { id: "chevron_shape",labelAr: "شيفرون",      labelEn: "Chevron"      },
+  { id: "burst",        labelAr: "انفجار",      labelEn: "Burst"        },
+  { id: "octagon",      labelAr: "مثمن",        labelEn: "Octagon"      },
+  // ── Note stickers (sticky notes, speech bubbles, cards) ──
+  { id: "sticky_note",   labelAr: "📝 ملاحظة لاصقة", labelEn: "Sticky Note"  },
+  { id: "speech_bubble", labelAr: "💬 فقاعة حوار",   labelEn: "Speech Bubble"},
+  { id: "thought_bubble",labelAr: "💭 فقاعة فكرة",    labelEn: "Thought"      },
+  { id: "torn_paper",    labelAr: "📄 ورقة ممزقة",   labelEn: "Torn Paper"   },
+  { id: "index_card",    labelAr: "🗂️ بطاقة فهرس",   labelEn: "Index Card"   },
+  { id: "note_tape",     labelAr: "📌 ورقة ملصقة",   labelEn: "Tape Note"    },
+  { id: "note_pin",      labelAr: "📍 ورقة مثبتة",   labelEn: "Pinned Note"  },
+  // ── Device mockups (insert screen image into a phone/tablet/laptop) ──
+  { id: "phone_mockup",  labelAr: "📱 موكاب آيفون",   labelEn: "iPhone Mockup" },
+  { id: "tablet_mockup", labelAr: "🖥️ موكاب آيباد",   labelEn: "iPad Mockup"   },
+  { id: "laptop_mockup", labelAr: "💻 موكاب لابتوب",  labelEn: "Laptop Mockup" },
+  { id: "browser_window",labelAr: "🌐 نافذة متصفح",   labelEn: "Browser Window"},
+  { id: "monitor_mockup",labelAr: "🖥️ شاشة مكتب",      labelEn: "Monitor"        },
+  { id: "tv_mockup",     labelAr: "📺 تلفزيون",        labelEn: "TV"             },
+  { id: "watch_mockup",  labelAr: "⌚ ساعة ذكية",      labelEn: "Smart Watch"    },
+  { id: "car_side",      labelAr: "🚗 سيارة جانبي",    labelEn: "Car Side View"  },
+  { id: "tshirt_mockup", labelAr: "👕 تيشيرت",         labelEn: "T-Shirt"        },
+  // ── Country / region maps ────────────────────────────────────
+  { id: "saudi_map",     labelAr: "🇸🇦 خريطة السعودية", labelEn: "Saudi Map"      },
+  { id: "saudi_regions", labelAr: "🗺️ السعودية بالمناطق", labelEn: "Saudi (Regions)" },
+  { id: "gcc_map",       labelAr: "🌍 خريطة الخليج",   labelEn: "GCC Map"        },
+  { id: "arabia_map",    labelAr: "🗺️ شبه الجزيرة",    labelEn: "Arabian Peninsula" },
 ];
 
 const DECO_SHAPE_TYPES = [
@@ -32,13 +73,29 @@ const DECO_SHAPE_TYPES = [
 
 const DECO_IDS = new Set(DECO_SHAPE_TYPES.map(d => d.id));
 
-export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpdate, onDelete, onDuplicate, onReorder, language, decoMode = false }) {
+export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpdate, onDelete, onDuplicate, onReorder, language, decoMode = false, selectedRegion, onSelectRegion }) {
   const isRtl = language === "ar";
   const selected = shapes.find((s) => s.id === selectedId);
   const update = (key, val) => { if (selected) onUpdate(selected.id, { [key]: val }); };
   const [multiSelected, setMultiSelected] = useState([]);
   const [uploadingFill, setUploadingFill] = useState(false);
+  const [uploadingRegion, setUploadingRegion] = useState(null);
   const fillImgRef = useRef();
+  const regionImgRef = useRef();
+
+  // Per-region style helpers for the multi-region Saudi map
+  const setRegionStyle = (regionId, patch) => {
+    if (!selected) return;
+    const cur = selected.regionStyles || {};
+    const next = { ...cur, [regionId]: { ...(cur[regionId] || {}), ...patch } };
+    onUpdate(selected.id, { regionStyles: next });
+  };
+  const clearRegionStyle = (regionId) => {
+    if (!selected) return;
+    const next = { ...(selected.regionStyles || {}) };
+    delete next[regionId];
+    onUpdate(selected.id, { regionStyles: next });
+  };
   const [distributeGap, setDistributeGap] = useState(5);
   const [distributeDir, setDistributeDir] = useState("h"); // h or v
 
@@ -269,6 +326,149 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
       </div>
 
       {/* Selected shape settings */}
+      {selected && selected.shapeType === "saudi_regions" && (
+        <div className="space-y-2 border-t border-slate-700 pt-3">
+          <div className="flex items-center justify-between">
+            <label className="text-slate-200 font-bold text-xs">{isRtl ? "🗺️ مناطق المملكة" : "🗺️ Saudi Regions"}</label>
+            <span className="text-[10px] text-slate-500">{isRtl ? "13 منطقة" : "13 regions"}</span>
+          </div>
+          <p className="text-[10px] text-slate-400 leading-relaxed">
+            {isRtl
+              ? "انقر منطقة من القائمة (أو من الخريطة مباشرة) ثم لوّنها أو أضف لها صورة."
+              : "Pick a region from the list (or click it on the map), then color it or add an image."}
+          </p>
+
+          {/* Region list */}
+          <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
+            {SAUDI_REGIONS.map((r) => {
+              const st = (selected.regionStyles || {})[r.id] || {};
+              const isActive = selectedRegion === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => onSelectRegion && onSelectRegion(r.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition ${
+                    isActive ? "bg-indigo-600/30 border border-indigo-500/60" : "bg-slate-700 hover:bg-slate-600 border border-transparent"
+                  }`}
+                >
+                  <span
+                    className="w-5 h-5 rounded flex-shrink-0 border border-slate-500 overflow-hidden"
+                    style={{ background: st.fill || "#cbd5e1" }}
+                  >
+                    {st.image && <img src={st.image} alt="" className="w-full h-full object-cover" />}
+                  </span>
+                  <span className="flex-1 text-start text-slate-200 truncate">{isRtl ? r.nameAr : r.nameEn}</span>
+                  {(st.fill || st.image) && (
+                    <span className="text-[9px] text-emerald-400">●</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Selected region controls */}
+          {selectedRegion && (() => {
+            const region = SAUDI_REGIONS.find((r) => r.id === selectedRegion);
+            const st = (selected.regionStyles || {})[selectedRegion] || {};
+            return (
+              <div className="bg-slate-900/50 border border-indigo-500/40 rounded-lg p-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-300">{isRtl ? region?.nameAr : region?.nameEn}</span>
+                  {(st.fill || st.image) && (
+                    <button onClick={() => clearRegionStyle(selectedRegion)}
+                      className="text-[10px] text-red-400 hover:text-red-300">
+                      {isRtl ? "✕ إعادة تعيين" : "✕ Reset"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Color */}
+                <StudioColorPicker
+                  label={isRtl ? "لون المنطقة" : "Region color"}
+                  value={st.fill || "#cbd5e1"}
+                  onChange={(v) => setRegionStyle(selectedRegion, { fill: v })}
+                />
+
+                {/* Image */}
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "صورة داخل المنطقة" : "Image inside region"}</label>
+                  {st.image ? (
+                    <div className="flex items-center gap-2">
+                      <img src={st.image} alt="" className="w-12 h-12 object-cover rounded border border-slate-600" />
+                      <button onClick={() => setRegionStyle(selectedRegion, { image: null })}
+                        className="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+                        {isRtl ? "إزالة الصورة" : "Remove image"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setUploadingRegion(selectedRegion); regionImgRef.current?.click(); }}
+                      disabled={uploadingRegion === selectedRegion}
+                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 text-slate-200 text-[11px] font-semibold transition disabled:opacity-50"
+                    >
+                      {uploadingRegion === selectedRegion ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {isRtl ? "رفع صورة للمنطقة" : "Upload region image"}
+                    </button>
+                  )}
+                  {st.image && (
+                    <div className="mt-1.5">
+                      <label className="text-[10px] text-slate-400 block">{isRtl ? "تكبير الصورة" : "Image zoom"}: {st.imageScale || 100}%</label>
+                      <input type="range" min="100" max="300" value={st.imageScale || 100}
+                        onChange={(e) => setRegionStyle(selectedRegion, { imageScale: parseInt(e.target.value) })}
+                        className="w-full accent-indigo-500" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Quick actions */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => {
+                // Auto-color all regions with a distinct palette
+                const palette = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#3b82f6","#6366f1","#8b5cf6","#ec4899","#f43f5e","#10b981","#0ea5e9","#a855f7"];
+                const next = {};
+                SAUDI_REGIONS.forEach((r, i) => {
+                  next[r.id] = { ...((selected.regionStyles || {})[r.id] || {}), fill: palette[i % palette.length] };
+                });
+                onUpdate(selected.id, { regionStyles: next });
+              }}
+              className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 text-[10px] text-slate-200 transition"
+            >
+              {isRtl ? "🎨 تلوين تلقائي" : "🎨 Auto-color"}
+            </button>
+            <button
+              onClick={() => onUpdate(selected.id, { regionStyles: {} })}
+              className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-red-600 text-[10px] text-slate-200 transition"
+            >
+              {isRtl ? "↺ مسح الكل" : "↺ Clear all"}
+            </button>
+          </div>
+
+          {/* Hidden region image input */}
+          <input
+            ref={regionImgRef} type="file" accept="image/*,.heic,.heif" className="hidden"
+            onChange={async (e) => {
+              let file = e.target.files[0];
+              const regionId = uploadingRegion;
+              if (!file || !regionId) { setUploadingRegion(null); return; }
+              try {
+                if (isHeic(file)) file = await normalizeImageFile(file);
+                const { file_url } = await uploadFile({ file });
+                setRegionStyle(regionId, { image: file_url });
+              } catch (err) {
+                alert((isRtl ? "تعذّر رفع الصورة: " : "Upload failed: ") + (err?.message || err));
+              } finally {
+                setUploadingRegion(null);
+                e.target.value = "";
+              }
+            }}
+          />
+        </div>
+      )}
+
       {selected && (
         <div className="space-y-3 border-t border-slate-700 pt-3">
           {/* Fill: Solid / Gradient */}
@@ -293,6 +493,65 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
             {(!selected.fillMode || selected.fillMode === "solid") && (
               <StudioColorPicker label={isRtl ? "لون التعبئة" : "Fill Color"} value={selected.fillColor} onChange={(v) => update("fillColor", v)} />
+            )}
+
+            {/* ── Mockup-specific color controls ───────────────────────── */}
+            {["phone_mockup","tablet_mockup","laptop_mockup","browser_window","monitor_mockup","tv_mockup","watch_mockup"].includes(selected.shapeType) && (
+              <div className="border border-indigo-700/50 rounded-lg p-2.5 space-y-2 bg-indigo-950/20">
+                <p className="text-indigo-300 font-semibold text-[11px]">
+                  {isRtl ? "🎨 لون جسم الجهاز (الإطار الخارجي)" : "🎨 Device Body Color"}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { c: "#1e293b", n: "أسود" }, { c: "#0f172a", n: "أسود غامق" },
+                    { c: "#475569", n: "رمادي" }, { c: "#94a3b8", n: "فضي" },
+                    { c: "#cbd5e1", n: "فضي فاتح" }, { c: "#fbbf24", n: "ذهبي" },
+                    { c: "#f97316", n: "نحاسي" }, { c: "#dc2626", n: "أحمر" },
+                    { c: "#2563eb", n: "أزرق" }, { c: "#7c3aed", n: "بنفسجي" },
+                    { c: "#16a34a", n: "أخضر" }, { c: "#ec4899", n: "وردي" },
+                  ].map(({ c }) => (
+                    <button
+                      key={c}
+                      onClick={() => update("bezelColor", c)}
+                      style={{ background: c }}
+                      className={`w-6 h-6 rounded-full border-2 hover:scale-110 transition ${selected.bezelColor === c ? "border-white" : "border-slate-600"}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={selected.bezelColor || "#1e293b"}
+                    onInput={(e) => update("bezelColor", e.target.value)}
+                    className="w-8 h-7 rounded border border-slate-600 cursor-pointer bg-transparent"
+                  />
+                  <input
+                    type="text"
+                    value={selected.bezelColor || "#1e293b"}
+                    onChange={(e) => update("bezelColor", e.target.value)}
+                    className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white font-mono"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selected.shapeType === "watch_mockup" && (
+              <p className="text-[10px] text-slate-500">
+                {isRtl ? "💡 لون السوار يُتحكّم به من \"لون التعبئة\" أعلاه" : "💡 Band color is controlled by Fill Color above"}
+              </p>
+            )}
+
+            {selected.shapeType === "car_side" && (
+              <p className="text-[10px] text-slate-500">
+                {isRtl ? "💡 لون السيارة يُتحكّم به من \"لون التعبئة\" أعلاه" : "💡 Car body color is controlled by Fill Color above"}
+              </p>
+            )}
+
+            {selected.shapeType === "tshirt_mockup" && (
+              <p className="text-[10px] text-slate-500">
+                {isRtl ? "💡 لون التيشيرت من \"لون التعبئة\". ضع تصميمك على الصدر عبر \"تعبئة بصورة\"" : "💡 Shirt color uses Fill Color. Upload your design via Image Fill (chest area)"}
+              </p>
             )}
 
             {selected.fillMode === "gradient" && (
@@ -389,8 +648,83 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             </div>
           </div>
 
-          {/* Border radius - for rect, triangle, diamond */}
-          {(selected.shapeType === "rect" || selected.shapeType === "triangle" || selected.shapeType === "diamond") && (
+          {/* Drop shadow + Inner shadow */}
+          <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
+            <label className="text-xs font-semibold text-slate-300">{isRtl ? "🌑 الظلال" : "🌑 Shadows"}</label>
+
+            {/* Outer shadow */}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-300">{isRtl ? "ظل خارجي" : "Drop shadow"}</span>
+              <button
+                onClick={() => update("outerShadow", { ...(selected.outerShadow || { x: 0, y: 6, blur: 12, spread: 0, color: "rgba(0,0,0,0.4)" }), enabled: !selected.outerShadow?.enabled })}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.outerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+              >
+                {selected.outerShadow?.enabled ? (isRtl ? "On" : "On") : (isRtl ? "Off" : "Off")}
+              </button>
+            </div>
+            {selected.outerShadow?.enabled && (
+              <div className="grid grid-cols-2 gap-2 pl-1">
+                <div>
+                  <label className="text-[10px] text-slate-400 block">X: {selected.outerShadow.x ?? 0}</label>
+                  <input type="range" min="-30" max="30" value={selected.outerShadow.x ?? 0}
+                    onChange={(e) => update("outerShadow", { ...selected.outerShadow, x: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">Y: {selected.outerShadow.y ?? 6}</label>
+                  <input type="range" min="-30" max="30" value={selected.outerShadow.y ?? 6}
+                    onChange={(e) => update("outerShadow", { ...selected.outerShadow, y: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">{isRtl ? "تمويه" : "Blur"}: {selected.outerShadow.blur ?? 12}</label>
+                  <input type="range" min="0" max="50" value={selected.outerShadow.blur ?? 12}
+                    onChange={(e) => update("outerShadow", { ...selected.outerShadow, blur: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">{isRtl ? "اللون" : "Color"}</label>
+                  <input type="color" value={(selected.outerShadow.color || "#000000").startsWith("rgba") ? "#000000" : selected.outerShadow.color}
+                    onChange={(e) => update("outerShadow", { ...selected.outerShadow, color: e.target.value })} className="w-full h-7 rounded cursor-pointer" />
+                </div>
+              </div>
+            )}
+
+            {/* Inner shadow */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-700/50">
+              <span className="text-[11px] text-slate-300">{isRtl ? "ظل داخلي" : "Inner shadow"}</span>
+              <button
+                onClick={() => update("innerShadow", { ...(selected.innerShadow || { x: 0, y: 4, blur: 8, spread: 0, color: "rgba(0,0,0,0.5)" }), enabled: !selected.innerShadow?.enabled })}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.innerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+              >
+                {selected.innerShadow?.enabled ? (isRtl ? "On" : "On") : (isRtl ? "Off" : "Off")}
+              </button>
+            </div>
+            {selected.innerShadow?.enabled && (
+              <div className="grid grid-cols-2 gap-2 pl-1">
+                <div>
+                  <label className="text-[10px] text-slate-400 block">X: {selected.innerShadow.x ?? 0}</label>
+                  <input type="range" min="-30" max="30" value={selected.innerShadow.x ?? 0}
+                    onChange={(e) => update("innerShadow", { ...selected.innerShadow, x: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">Y: {selected.innerShadow.y ?? 4}</label>
+                  <input type="range" min="-30" max="30" value={selected.innerShadow.y ?? 4}
+                    onChange={(e) => update("innerShadow", { ...selected.innerShadow, y: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">{isRtl ? "تمويه" : "Blur"}: {selected.innerShadow.blur ?? 8}</label>
+                  <input type="range" min="0" max="50" value={selected.innerShadow.blur ?? 8}
+                    onChange={(e) => update("innerShadow", { ...selected.innerShadow, blur: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block">{isRtl ? "اللون" : "Color"}</label>
+                  <input type="color" value={(selected.innerShadow.color || "#000000").startsWith("rgba") ? "#000000" : selected.innerShadow.color}
+                    onChange={(e) => update("innerShadow", { ...selected.innerShadow, color: e.target.value })} className="w-full h-7 rounded cursor-pointer" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Border radius - all shapes except circle/ellipse/line */}
+          {!["circle", "ellipse", "line"].includes(selected.shapeType) && (
             <div className="bg-slate-700/50 rounded-lg p-2 space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-slate-300 font-semibold">{isRtl ? "⬛ تدوير الحواف" : "⬛ Corner Radius"}</label>
@@ -460,19 +794,316 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
-              <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
-                onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
+          <div>
+            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}: {Math.round((selected.opacity ?? 1) * 100)}%</label>
+            <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
+              onChange={(e) => update("opacity", parseFloat(e.target.value))}
+              className="w-full accent-indigo-500" />
+          </div>
+
+          {/* ── Rotation (with slider + presets + manual input) ── */}
+          <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-200 font-semibold text-[11px]">
+                🔄 {isRtl ? "دوران الشكل" : "Rotate Shape"}
+              </label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={selected.rotation || 0}
+                  onChange={(e) => update("rotation", parseInt(e.target.value) || 0)}
+                  className="w-14 bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-white text-center"
+                />
+                <span className="text-slate-400 text-xs">°</span>
+                {(selected.rotation || 0) !== 0 && (
+                  <button
+                    onClick={() => update("rotation", 0)}
+                    className="text-[10px] text-slate-400 hover:text-white bg-slate-700 px-1.5 py-0.5 rounded transition"
+                    title={isRtl ? "إعادة لـ 0°" : "Reset to 0°"}
+                  >↺</button>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
-              <input type="number" value={selected.rotation || 0}
-                onChange={(e) => update("rotation", parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+            <input
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              value={selected.rotation || 0}
+              onChange={(e) => update("rotation", parseInt(e.target.value))}
+              className="w-full accent-indigo-500"
+            />
+            <div className="grid grid-cols-8 gap-0.5">
+              {[-90, -45, 0, 30, 45, 90, 135, 180].map(deg => (
+                <button
+                  key={deg}
+                  onClick={() => update("rotation", deg)}
+                  className={`py-1 rounded text-[9px] font-semibold transition ${
+                    (selected.rotation || 0) === deg
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white"
+                  }`}
+                  title={`${deg}°`}
+                >
+                  {deg}°
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => update("rotation", ((selected.rotation || 0) - 15))}
+                className="flex-1 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] transition"
+              >
+                ↶ -15°
+              </button>
+              <button
+                onClick={() => update("rotation", ((selected.rotation || 0) + 15))}
+                className="flex-1 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] transition"
+              >
+                +15° ↷
+              </button>
             </div>
           </div>
+
+          {/* ── Text inside shape (rotates with the shape) ────────────── */}
+          <div className="border border-indigo-700/50 rounded-lg p-2.5 space-y-2 bg-indigo-950/20">
+            <div className="flex items-center justify-between">
+              <label className="text-indigo-300 font-semibold text-[11px]">
+                {isRtl ? "📝 نص داخل الشكل" : "📝 Text inside shape"}
+              </label>
+              {selected.text && (
+                <button
+                  onClick={() => update("text", "")}
+                  className="text-[10px] text-slate-400 hover:text-red-400 bg-slate-700 px-2 py-0.5 rounded transition"
+                >
+                  {isRtl ? "مسح" : "Clear"}
+                </button>
+              )}
+            </div>
+            <textarea
+              value={selected.text || ""}
+              onChange={(e) => update("text", e.target.value)}
+              placeholder={isRtl ? "اكتب النص هنا..." : "Type text here..."}
+              rows={2}
+              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 resize-none outline-none focus:border-indigo-500"
+              style={{ fontFamily: selected.textFontFamily || "Tajawal" }}
+            />
+            {selected.text && (
+              <>
+                {/* Font family — full width */}
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "الخط" : "Font"}</label>
+                  <select
+                    value={selected.textFontFamily || "Tajawal"}
+                    onChange={(e) => update("textFontFamily", e.target.value)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[11px] text-white"
+                  >
+                    {["Tajawal","Cairo","Almarai","Readex Pro","El Messiri","Amiri","Reem Kufi","Lalezar","Aref Ruqaa","Marhey","Aladin","Caveat","Pacifico","Dancing Script","Permanent Marker","Satisfy","Indie Flower","Patrick Hand","Arial","Georgia"].map(f => (
+                      <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Size + color — single compact row */}
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "حجم الخط" : "Size"}</label>
+                    <input
+                      type="number"
+                      value={selected.textFontSize || 24}
+                      onChange={(e) => update("textFontSize", parseInt(e.target.value) || 24)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex-shrink-0">
+                    <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "اللون" : "Color"}</label>
+                    <input
+                      type="color"
+                      value={selected.textColor || "#ffffff"}
+                      onInput={(e) => update("textColor", e.target.value)}
+                      className="w-9 h-7 rounded cursor-pointer border border-slate-600 bg-transparent"
+                      title={selected.textColor || "#ffffff"}
+                    />
+                  </div>
+                </div>
+
+                {/* Quick color swatches */}
+                <div className="flex flex-wrap gap-1">
+                  {["#ffffff","#000000","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#fbbf24","#94a3b8"].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => update("textColor", c)}
+                      style={{ background: c, border: c === "#ffffff" ? "1px solid #475569" : "none" }}
+                      className={`w-5 h-5 rounded-full hover:scale-110 transition ${selected.textColor === c ? "ring-2 ring-indigo-400" : ""}`}
+                      title={c}
+                    />
+                  ))}
+                </div>
+
+                {/* Style buttons */}
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    onClick={() => update("textBold", !selected.textBold)}
+                    className={`py-1 rounded text-[11px] font-bold transition ${selected.textBold ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  >B</button>
+                  <button
+                    onClick={() => update("textItalic", !selected.textItalic)}
+                    className={`py-1 rounded text-[11px] italic transition ${selected.textItalic ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  >I</button>
+                  <button
+                    onClick={() => update("textShadow", !selected.textShadow)}
+                    className={`py-1 rounded text-[10px] transition ${selected.textShadow ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  >{isRtl ? "ظل" : "Shadow"}</button>
+                </div>
+
+                {/* Alignment — combined into a single 3x2 grid */}
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "محاذاة أفقية" : "H Align"}</label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { v: "left",   labelAr: "يسار",  labelEn: "Left"   },
+                      { v: "center", labelAr: "وسط",   labelEn: "Center" },
+                      { v: "right",  labelAr: "يمين",  labelEn: "Right"  },
+                    ].map(opt => (
+                      <button
+                        key={opt.v}
+                        onClick={() => update("textAlign", opt.v)}
+                        className={`py-1 rounded text-[10px] transition ${(selected.textAlign || "center") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                      >{isRtl ? opt.labelAr : opt.labelEn}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "محاذاة عمودية" : "V Align"}</label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { v: "top",    labelAr: "أعلى",  labelEn: "Top"    },
+                      { v: "middle", labelAr: "وسط",   labelEn: "Middle" },
+                      { v: "bottom", labelAr: "أسفل",  labelEn: "Bottom" },
+                    ].map(opt => (
+                      <button
+                        key={opt.v}
+                        onClick={() => update("textVAlign", opt.v)}
+                        className={`py-1 rounded text-[10px] transition ${(selected.textVAlign || "middle") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                      >{isRtl ? opt.labelAr : opt.labelEn}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-0.5">
+                    {isRtl ? `الحشو الداخلي: ${selected.textPadding ?? 8}%` : `Inner Padding: ${selected.textPadding ?? 8}%`}
+                  </label>
+                  <input type="range" min="0" max="30" step="0.5" value={selected.textPadding ?? 8}
+                    onChange={(e) => update("textPadding", parseFloat(e.target.value))}
+                    className="w-full accent-indigo-500" />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── 3D / Extrude effect ──────────────────────────────────── */}
+          {(() => {
+            const td = selected.threeD || {};
+            const updateTd = (patch) => update("threeD", { ...td, ...patch });
+            const PRESETS_3D = [
+              { name: "Off",       depth: 0,  angle: 135, color: "#1e1b4b" },
+              { name: "Subtle",    depth: 3,  angle: 135, color: "#1e1b4b" },
+              { name: "Medium",    depth: 6,  angle: 135, color: "#312e81" },
+              { name: "Heavy",     depth: 10, angle: 135, color: "#1e1b4b" },
+              { name: "Extreme",   depth: 12, angle: 135, color: "#0f172a" },
+            ];
+            return (
+              <div className="border border-fuchsia-700/50 rounded-lg p-2.5 space-y-2 bg-fuchsia-950/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-fuchsia-300 font-semibold text-[11px]">
+                    {isRtl ? "🧊 تأثير ثلاثي الأبعاد" : "🧊 3D Extrude Effect"}
+                  </span>
+                  <button
+                    onClick={() => updateTd({ enabled: !td.enabled, depth: td.depth || 10, angle: td.angle ?? 135, color: td.color || "#312e81" })}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${td.enabled ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                  >
+                    {td.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
+                  </button>
+                </div>
+
+                {/* Quick presets */}
+                <div className="grid grid-cols-5 gap-1">
+                  {PRESETS_3D.map(p => (
+                    <button
+                      key={p.name}
+                      onClick={() => updateTd({ enabled: p.depth > 0, depth: p.depth, angle: p.angle, color: p.color })}
+                      className={`py-1 rounded text-[9px] font-semibold transition ${td.depth === p.depth && (p.depth === 0 ? !td.enabled : td.enabled) ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+
+                {td.enabled && (
+                  <>
+                    <div>
+                      <label className="text-slate-400 text-[10px] block mb-0.5">
+                        {isRtl ? `العمق: ${td.depth ?? 10}px` : `Depth: ${td.depth ?? 10}px`}
+                      </label>
+                      <input
+                        type="range" min="0" max="15" step="1"
+                        value={Math.min(15, td.depth ?? 10)}
+                        onChange={(e) => updateTd({ depth: parseInt(e.target.value) })}
+                        className="w-full accent-fuchsia-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[10px] block mb-0.5">
+                        {isRtl ? `زاوية الإضاءة: ${td.angle ?? 135}°` : `Light angle: ${td.angle ?? 135}°`}
+                      </label>
+                      <input
+                        type="range" min="0" max="360" step="5"
+                        value={td.angle ?? 135}
+                        onChange={(e) => updateTd({ angle: parseInt(e.target.value) })}
+                        className="w-full accent-fuchsia-500"
+                      />
+                      <div className="flex gap-0.5 mt-1">
+                        {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
+                          <button
+                            key={a}
+                            onClick={() => updateTd({ angle: a })}
+                            className={`flex-1 py-0.5 rounded text-[8px] transition ${(td.angle ?? 135) === a ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                          >{a}°</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون العمق" : "Depth Color"}</label>
+                      <div className="flex gap-1 items-center">
+                        <input
+                          type="color"
+                          value={td.color || "#312e81"}
+                          onInput={(e) => updateTd({ color: e.target.value })}
+                          className="w-8 h-7 rounded cursor-pointer border border-slate-600 bg-transparent"
+                        />
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {["#1e1b4b","#312e81","#0f172a","#1e293b","#7f1d1d","#7c2d12","#365314","#0c4a6e"].map(c => (
+                            <button
+                              key={c}
+                              onClick={() => updateTd({ color: c })}
+                              style={{ background: c }}
+                              className={`w-5 h-5 rounded-full border-2 transition ${td.color === c ? "border-white" : "border-slate-600"}`}
+                              title={c}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      {isRtl ? "💡 يعمل على كل الأشكال بما فيها رسماتك اليدوية" : "💡 Works on any shape — including your freehand drawings"}
+                    </p>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── أشكال مرنة / Flex Transform ── */}
           <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
@@ -616,14 +1247,17 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 </button>
               )}
               <input
-                ref={fillImgRef} type="file" accept="image/*" className="hidden"
+                ref={fillImgRef} type="file" accept="image/*,.heic,.heif" className="hidden"
                 onChange={async (e) => {
-                  const file = e.target.files[0];
+                  let file = e.target.files[0];
                   if (!file || !selected) return;
                   setUploadingFill(true);
                   try {
+                    if (isHeic(file)) file = await normalizeImageFile(file);
                     const { file_url } = await uploadFile({ file });
                     update("fillImage", file_url);
+                  } catch (err) {
+                    alert((isRtl ? "تعذّر رفع الصورة: " : "Image upload failed: ") + (err?.message || err));
                   } finally {
                     setUploadingFill(false);
                     e.target.value = "";
@@ -698,6 +1332,116 @@ function ShapeIcon({ type, size = 16 }) {
   );
   if (type === "arrow") return (
     <svg width={s} height={s} viewBox="0 0 16 16"><path d="M2,8 L12,8 M10,6 L12,8 L10,10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  );
+  if (type === "blob") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M50,5 C70,8 88,22 88,45 C92,65 78,85 60,90 C40,95 18,88 12,68 C8,48 18,28 32,15 C40,8 45,5 50,5 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "wave_shape") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M0,15 Q25,0 50,15 T100,15 L100,85 Q75,100 50,85 T0,85 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "cloud") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M22,72 C5,72 0,52 18,46 C15,28 38,22 42,40 C48,18 75,22 70,42 C88,40 95,62 80,72 L22,72 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "heart") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M50,90 C20,68 5,42 25,22 C40,12 50,28 50,38 C50,28 60,12 75,22 C95,42 80,68 50,90 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "splash") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><polygon points="50,5 60,22 78,15 72,33 90,32 80,48 95,55 78,60 88,76 72,74 75,92 58,82 50,95 42,82 25,92 28,74 12,76 22,60 5,55 20,48 10,32 28,33 22,15 40,22" fill="none" stroke="currentColor" strokeWidth="5"/></svg>
+  );
+  if (type === "petal") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M50,5 Q88,40 50,95 Q12,40 50,5 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "flower") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M50,12 C62,8 72,22 65,35 C80,30 88,48 75,55 C82,68 65,78 55,68 C58,82 38,82 42,68 C32,78 18,68 25,55 C12,48 20,30 35,35 C28,22 38,8 50,12 Z" fill="none" stroke="currentColor" strokeWidth="5"/></svg>
+  );
+  if (type === "arch_top") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,95 L5,42 Q5,5 50,5 Q95,5 95,42 L95,95 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "tag") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,30 L25,5 L95,5 L95,95 L25,95 L5,70 Z" fill="none" stroke="currentColor" strokeWidth="6"/><circle cx="20" cy="50" r="6" fill="none" stroke="currentColor" strokeWidth="3"/></svg>
+  );
+  if (type === "shield") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M50,5 L90,15 L90,55 Q90,85 50,95 Q10,85 10,55 L10,15 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "ticket") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,5 L95,5 L95,40 Q88,50 95,60 L95,95 L5,95 L5,60 Q12,50 5,40 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "stadium") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M30,5 L70,5 Q95,5 95,50 Q95,95 70,95 L30,95 Q5,95 5,50 Q5,5 30,5 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "chevron_shape") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,5 L65,5 L95,50 L65,95 L5,95 L30,50 Z" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "burst") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><polygon points="50,3 58,18 73,8 75,25 92,22 86,38 99,48 86,58 92,75 75,72 73,89 58,80 50,97 42,80 27,89 25,72 8,75 14,58 1,48 14,38 8,22 25,25 27,8 42,18" fill="none" stroke="currentColor" strokeWidth="4"/></svg>
+  );
+  if (type === "octagon") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><polygon points="30,5 70,5 95,30 95,70 70,95 30,95 5,70 5,30" fill="none" stroke="currentColor" strokeWidth="6"/></svg>
+  );
+  if (type === "sticky_note") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,5 L95,5 L95,80 L80,95 L5,95 Z" fill="none" stroke="currentColor" strokeWidth="6"/><path d="M95,80 L80,80 L80,95" fill="none" stroke="currentColor" strokeWidth="4"/></svg>
+  );
+  if (type === "speech_bubble") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M15,10 L85,10 Q95,10 95,25 L95,65 Q95,80 85,80 L40,80 L25,95 L28,80 L15,80 Q5,80 5,65 L5,25 Q5,10 15,10 Z" fill="none" stroke="currentColor" strokeWidth="5"/></svg>
+  );
+  if (type === "thought_bubble") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M30,15 C18,10 8,22 18,32 C5,38 8,55 22,55 C18,68 35,72 42,62 C50,72 70,70 70,58 C82,60 90,48 82,40 C92,30 80,18 70,25 C65,12 45,10 30,15 Z" fill="none" stroke="currentColor" strokeWidth="4"/><circle cx="32" cy="78" r="6" fill="none" stroke="currentColor" strokeWidth="3"/><circle cx="22" cy="92" r="3" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+  );
+  if (type === "torn_paper") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M5,15 L15,8 L25,16 L40,9 L55,17 L70,10 L82,18 L95,12 L95,85 L88,93 L75,86 L60,93 L48,85 L35,93 L20,86 L8,93 Z" fill="none" stroke="currentColor" strokeWidth="4"/></svg>
+  );
+  if (type === "index_card") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="4" fill="none" stroke="currentColor" strokeWidth="5"/><line x1="5" y1="25" x2="95" y2="25" stroke="currentColor" strokeWidth="3"/><line x1="15" y1="45" x2="85" y2="45" stroke="currentColor" strokeWidth="2" opacity="0.6"/><line x1="15" y1="60" x2="85" y2="60" stroke="currentColor" strokeWidth="2" opacity="0.6"/><line x1="15" y1="75" x2="70" y2="75" stroke="currentColor" strokeWidth="2" opacity="0.6"/></svg>
+  );
+  if (type === "note_tape") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="10" y="15" width="80" height="80" fill="none" stroke="currentColor" strokeWidth="5"/><polygon points="0,5 30,2 22,18 -2,12" fill="none" stroke="currentColor" strokeWidth="3"/><polygon points="100,5 70,2 78,18 102,12" fill="none" stroke="currentColor" strokeWidth="3"/></svg>
+  );
+  if (type === "note_pin") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="10" y="20" width="80" height="75" fill="none" stroke="currentColor" strokeWidth="5"/><circle cx="50" cy="15" r="7" fill="none" stroke="currentColor" strokeWidth="3"/><line x1="50" y1="22" x2="50" y2="30" stroke="currentColor" strokeWidth="3"/></svg>
+  );
+  if (type === "phone_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="28" y="5" width="44" height="90" rx="8" fill="none" stroke="currentColor" strokeWidth="4"/><rect x="32" y="14" width="36" height="72" rx="3" fill="none" stroke="currentColor" strokeWidth="2.5"/><rect x="42" y="7" width="16" height="3.5" rx="1.5" fill="currentColor"/></svg>
+  );
+  if (type === "tablet_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="12" y="14" width="76" height="72" rx="5" fill="none" stroke="currentColor" strokeWidth="4"/><rect x="17" y="20" width="66" height="60" rx="2" fill="none" stroke="currentColor" strokeWidth="2.5"/><circle cx="84" cy="50" r="1.2" fill="currentColor"/></svg>
+  );
+  if (type === "laptop_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="14" y="18" width="72" height="50" rx="3" fill="none" stroke="currentColor" strokeWidth="4"/><rect x="18" y="22" width="64" height="42" fill="none" stroke="currentColor" strokeWidth="2.5"/><path d="M5,72 L95,72 L88,82 L12,82 Z" fill="none" stroke="currentColor" strokeWidth="3.5"/></svg>
+  );
+  if (type === "browser_window") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="6" y="18" width="88" height="68" rx="3" fill="none" stroke="currentColor" strokeWidth="4"/><line x1="6" y1="30" x2="94" y2="30" stroke="currentColor" strokeWidth="2"/><circle cx="13" cy="24" r="1.8" fill="currentColor"/><circle cx="20" cy="24" r="1.8" fill="currentColor"/><circle cx="27" cy="24" r="1.8" fill="currentColor"/></svg>
+  );
+  if (type === "monitor_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="8" y="14" width="84" height="56" rx="3" fill="none" stroke="currentColor" strokeWidth="4"/><rect x="46" y="70" width="8" height="14" fill="none" stroke="currentColor" strokeWidth="3"/><path d="M 30 84 L 70 84 L 75 92 L 25 92 Z" fill="none" stroke="currentColor" strokeWidth="3"/></svg>
+  );
+  if (type === "tv_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="6" y="14" width="88" height="62" rx="3" fill="none" stroke="currentColor" strokeWidth="4"/><line x1="40" y1="80" x2="60" y2="80" stroke="currentColor" strokeWidth="3"/><line x1="50" y1="76" x2="50" y2="84" stroke="currentColor" strokeWidth="3"/></svg>
+  );
+  if (type === "watch_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><rect x="42" y="8" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3"/><rect x="32" y="28" width="36" height="44" rx="6" fill="none" stroke="currentColor" strokeWidth="4"/><rect x="42" y="72" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3"/><circle cx="72" cy="48" r="2" fill="currentColor"/></svg>
+  );
+  if (type === "car_side") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M 5 65 L 14 50 Q 22 38 40 36 L 60 36 Q 70 36 78 46 L 92 52 L 95 65 L 88 70 L 12 70 Z" fill="none" stroke="currentColor" strokeWidth="4"/><circle cx="28" cy="72" r="8" fill="none" stroke="currentColor" strokeWidth="3"/><circle cx="72" cy="72" r="8" fill="none" stroke="currentColor" strokeWidth="3"/><path d="M 24 50 L 38 42 L 60 42 L 70 50" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+  );
+  if (type === "tshirt_mockup") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M 25 18 L 38 12 Q 50 22 62 12 L 75 18 L 90 28 L 80 42 L 72 38 L 72 92 L 28 92 L 28 38 L 20 42 L 10 28 Z" fill="none" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/></svg>
+  );
+  if (type === "saudi_map") return (
+    <svg width={s} height={s} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"><path d={SAUDI_MAP_PATH} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+  );
+  if (type === "saudi_regions") return (
+    <svg width={s} height={s} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+      {SAUDI_REGIONS.map((r, i) => (
+        <path key={r.id} d={r.d} fill={["#a5b4fc","#fca5a5","#86efac","#fde047","#7dd3fc"][i % 5]}
+          stroke="#fff" strokeWidth="0.6" strokeLinejoin="round" />
+      ))}
+    </svg>
+  );
+  if (type === "gcc_map") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M 8 22 L 12 15 L 17 10 L 24 6 L 33 4 L 44 4 L 54 5 L 63 7 L 71 12 L 77 19 L 81 27 L 81 33 L 80 36 L 83 38 L 86 36 L 90 38 L 89 44 L 85 46 L 82 47 L 86 49 L 91 51 L 95 56 L 96 64 L 94 73 L 89 81 L 81 86 L 73 83 L 65 80 L 56 82 L 47 84 L 38 87 L 32 86 L 28 80 L 25 72 L 22 62 L 19 51 L 15 39 L 11 27 Z" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/></svg>
+  );
+  if (type === "arabia_map") return (
+    <svg width={s} height={s} viewBox="0 0 100 100"><path d="M 6 18 L 11 11 L 18 6 L 28 3 L 42 2 L 56 3 L 67 6 L 75 12 L 81 20 L 84 28 L 84 34 L 81 38 L 78 42 L 81 44 L 87 45 L 92 49 L 95 56 L 96 64 L 94 73 L 91 81 L 86 87 L 78 92 L 68 94 L 56 95 L 44 95 L 34 93 L 27 89 L 22 82 L 19 73 L 16 62 L 13 50 L 10 38 L 7 26 Z" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/></svg>
   );
   return null;
 }

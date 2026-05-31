@@ -9,8 +9,8 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import DesignStudio from './pages/DesignStudio';
 import DesignLibraryPage from './pages/DesignLibraryPage';
 import AccountsPage from './pages/AccountsPage';
-import VideoEditor from './pages/VideoEditor';
 import Dashboard from './pages/Dashboard';
+import GreetingCardsPage from './pages/GreetingCardsPage';
 import PostComposer from './pages/PostComposer';
 import PostsManager from './pages/PostsManager';
 import ContentCalendar from './pages/ContentCalendar';
@@ -69,7 +69,7 @@ const AuthenticatedApp = () => {
       <Route path="/DesignStudio" element={<LayoutWrapper currentPageName="DesignStudio"><DesignStudio /></LayoutWrapper>} />
       <Route path="/DesignLibraryPage" element={<LayoutWrapper currentPageName="DesignLibraryPage"><DesignLibraryPage /></LayoutWrapper>} />
       <Route path="/AccountsPage" element={<LayoutWrapper currentPageName="AccountsPage"><AccountsPage /></LayoutWrapper>} />
-      <Route path="/VideoEditor" element={<LayoutWrapper currentPageName="VideoEditor"><VideoEditor /></LayoutWrapper>} />
+      <Route path="/GreetingCards" element={<LayoutWrapper currentPageName="GreetingCards"><GreetingCardsPage /></LayoutWrapper>} />
       <Route path="/PostComposer" element={<LayoutWrapper currentPageName="PostComposer"><PostComposer /></LayoutWrapper>} />
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />
       <Route path="/ContentCalendar" element={<LayoutWrapper currentPageName="ContentCalendar"><ContentCalendar /></LayoutWrapper>} />

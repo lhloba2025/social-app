@@ -1,14 +1,32 @@
 import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import initSqlJs from 'sql.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
+import cron from 'node-cron';
+import axios from 'axios';
+
+import { initScheduler, runScheduler } from './services/scheduler.js';
+import {
+  exchangeCodeForToken as metaExchangeCode,
+  getLongLivedToken,
+  getUserPages,
+  getIgUserId,
+} from './services/meta.js';
+import { buildAuthUrl as tiktokAuthUrl, exchangeCodeForToken as tiktokExchangeCode } from './services/tiktok.js';
+import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
+
+dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FRONTEND  = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const app = express();
+app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
 // ── Static file serving for uploads ──────────────────────────────────────────
@@ -16,7 +34,7 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
-// ── sql.js setup (pure-JS SQLite, no native compilation needed) ───────────────
+// ── sql.js setup ──────────────────────────────────────────────────────────────
 const SQL = await initSqlJs();
 const dbPath = path.join(__dirname, 'data.db');
 
@@ -24,7 +42,6 @@ const db = fs.existsSync(dbPath)
   ? new SQL.Database(fs.readFileSync(dbPath))
   : new SQL.Database();
 
-// Persist in-memory database to disk after every write
 function save() {
   fs.writeFileSync(dbPath, Buffer.from(db.export()));
 }
@@ -53,6 +70,15 @@ db.run(`
     type TEXT,
     platform TEXT,
     size INTEGER,
+    -- Caption metadata — added so a bulk-uploaded image carries the title
+    -- and body the user wants to post with it on social media. `post_id`
+    -- groups multiple images that belong to one carousel post; `position`
+    -- preserves their order within that carousel. A standalone image just
+    -- gets its own post_id and position = 0.
+    caption_title TEXT,
+    caption_text  TEXT,
+    post_id       TEXT,
+    position      INTEGER DEFAULT 0,
     created_date TEXT DEFAULT (datetime('now'))
   );
 
@@ -71,11 +97,53 @@ db.run(`
     username TEXT,
     accountName TEXT,
     isConnected INTEGER DEFAULT 1,
+    access_token TEXT,
+    page_id TEXT,
+    ig_user_id TEXT,
+    tiktok_open_id TEXT,
+    token_expires_at TEXT,
     verifiedAt TEXT,
     created_date TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS scheduled_posts (
+    id TEXT PRIMARY KEY,
+    caption TEXT,
+    platforms TEXT,
+    schedule_date TEXT,
+    schedule_time TEXT,
+    status TEXT DEFAULT 'scheduled',
+    media_url TEXT,
+    media_thumbnail TEXT,
+    media_type TEXT,
+    design_id TEXT,
+    publish_results TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
-save(); // write schema to disk on first run
+
+// إضافة الأعمدة الجديدة لو لم تكن موجودة (لقواعد البيانات القديمة)
+const alterCols = [
+  `ALTER TABLE social_accounts ADD COLUMN access_token TEXT`,
+  `ALTER TABLE social_accounts ADD COLUMN page_id TEXT`,
+  `ALTER TABLE social_accounts ADD COLUMN ig_user_id TEXT`,
+  `ALTER TABLE social_accounts ADD COLUMN tiktok_open_id TEXT`,
+  `ALTER TABLE social_accounts ADD COLUMN token_expires_at TEXT`,
+  `ALTER TABLE designs ADD COLUMN pages TEXT`,
+  // Caption metadata for media library (added in bulk-upload feature).
+  // Wrapped in try/catch below so existing DBs without these columns get
+  // them migrated transparently on next server start.
+  `ALTER TABLE media ADD COLUMN caption_title TEXT`,
+  `ALTER TABLE media ADD COLUMN caption_text  TEXT`,
+  `ALTER TABLE media ADD COLUMN post_id       TEXT`,
+  `ALTER TABLE media ADD COLUMN position      INTEGER DEFAULT 0`,
+];
+alterCols.forEach((sql) => {
+  try { db.run(sql); } catch { /* العمود موجود مسبقاً */ }
+});
+
+save();
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 function queryAll(sql, params = []) {
@@ -96,7 +164,6 @@ function run(sql, params = []) {
   save();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function applySort(rows, sort) {
   if (!sort) return rows;
   const desc = sort.startsWith('-');
@@ -137,32 +204,42 @@ function crudRouter(table, transform) {
   });
 
   router.post('/', (req, res) => {
-    const id = randomUUID();
-    const data = { id, ...req.body };
-    const cols = Object.keys(data);
-    const placeholders = cols.map(() => '?').join(', ');
-    run(
-      `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`,
-      cols.map(c => toSqlVal(data[c]))
-    );
-    let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
-    if (transform) row = transform(row);
-    res.status(201).json(row);
+    try {
+      const id = randomUUID();
+      const data = { id, ...req.body };
+      const cols = Object.keys(data);
+      const placeholders = cols.map(() => '?').join(', ');
+      run(
+        `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`,
+        cols.map(c => toSqlVal(data[c]))
+      );
+      let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
+      if (transform) row = transform(row);
+      res.status(201).json(row);
+    } catch (err) {
+      console.error(`[POST /${table}] Error:`, err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.put('/:id', (req, res) => {
-    const existing = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
-    if (!existing) return res.status(404).json({ error: 'Not found' });
-    const updates = { ...req.body };
-    if (table === 'designs') updates.updated_date = new Date().toISOString();
-    const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-    run(
-      `UPDATE ${table} SET ${sets} WHERE id = ?`,
-      [...Object.values(updates).map(toSqlVal), req.params.id]
-    );
-    let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
-    if (transform) row = transform(row);
-    res.json(row);
+    try {
+      const existing = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      const updates = { ...req.body };
+      if (table === 'designs') updates.updated_date = new Date().toISOString();
+      const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+      run(
+        `UPDATE ${table} SET ${sets} WHERE id = ?`,
+        [...Object.values(updates).map(toSqlVal), req.params.id]
+      );
+      let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
+      if (transform) row = transform(row);
+      res.json(row);
+    } catch (err) {
+      console.error(`[PUT /${table}/:id] Error:`, err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.delete('/:id', (req, res) => {
@@ -173,7 +250,7 @@ function crudRouter(table, transform) {
   return router;
 }
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// ── CRUD Routes ────────────────────────────────────────────────────────────────
 app.use('/designs', crudRouter('designs'));
 app.use('/media', crudRouter('media'));
 app.use('/logos', crudRouter('logos', row => ({ ...row, isSvg: boolField(row.isSvg) })));
@@ -181,6 +258,224 @@ app.use('/social-accounts', crudRouter('social_accounts', row => ({
   ...row,
   isConnected: boolField(row.isConnected),
 })));
+
+// ── Scheduled Posts Routes ────────────────────────────────────────────────────
+const postsRouter = express.Router();
+
+// جلب كل المنشورات
+postsRouter.get('/', (req, res) => {
+  const { status, sort = '-created_at' } = req.query;
+  let rows = status
+    ? queryAll(`SELECT * FROM scheduled_posts WHERE status = ?`, [status])
+    : queryAll(`SELECT * FROM scheduled_posts`);
+  rows = applySort(rows, sort);
+  rows = rows.map(p => ({
+    ...p,
+    platforms:       tryParse(p.platforms, []),
+    publish_results: tryParse(p.publish_results, {}),
+  }));
+  res.json(rows);
+});
+
+// حفظ منشور جديد
+postsRouter.post('/', (req, res) => {
+  const id   = req.body.id || randomUUID();
+  const post = {
+    id,
+    caption:        req.body.caption || '',
+    platforms:      JSON.stringify(req.body.platforms || []),
+    schedule_date:  req.body.scheduleDate || req.body.schedule_date || '',
+    schedule_time:  req.body.scheduleTime || req.body.schedule_time || '',
+    status:         req.body.status || 'scheduled',
+    media_url:      req.body.media?.url || req.body.media_url || '',
+    media_thumbnail:req.body.media?.thumbnail || req.body.media_thumbnail || '',
+    media_type:     req.body.media?.type || req.body.media_type || 'image',
+    design_id:      req.body.designId || req.body.design_id || '',
+    publish_results:'{}',
+  };
+
+  // حذف المنشور القديم بنفس الـ id لو كان موجوداً (تحديث)
+  run(`DELETE FROM scheduled_posts WHERE id = ?`, [id]);
+  run(
+    `INSERT INTO scheduled_posts (${Object.keys(post).join(',')}) VALUES (${Object.keys(post).map(() => '?').join(',')})`,
+    Object.values(post)
+  );
+
+  res.status(201).json({ ...post, platforms: req.body.platforms || [] });
+});
+
+// تحديث حالة منشور
+postsRouter.put('/:id', (req, res) => {
+  const existing = queryOne(`SELECT * FROM scheduled_posts WHERE id = ?`, [req.params.id]);
+  if (!existing) return res.status(404).json({ error: 'المنشور غير موجود' });
+
+  const updates = {};
+  if (req.body.status)        updates.status = req.body.status;
+  if (req.body.caption)       updates.caption = req.body.caption;
+  if (req.body.platforms)     updates.platforms = JSON.stringify(req.body.platforms);
+  if (req.body.scheduleDate)  updates.schedule_date = req.body.scheduleDate;
+  if (req.body.scheduleTime)  updates.schedule_time = req.body.scheduleTime;
+  updates.updated_at = new Date().toISOString();
+
+  const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+  run(`UPDATE scheduled_posts SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
+
+  res.json({ success: true });
+});
+
+// حذف منشور
+postsRouter.delete('/:id', (req, res) => {
+  run(`DELETE FROM scheduled_posts WHERE id = ?`, [req.params.id]);
+  res.json({ success: true });
+});
+
+app.use('/api/posts', postsRouter);
+
+// ── OAuth: Meta (انستقرام + فيسبوك) ──────────────────────────────────────────
+
+// الخطوة 1: توجيه المستخدم إلى فيسبوك للمصادقة
+app.get('/auth/meta', (req, res) => {
+  const scopes = [
+    'pages_read_engagement',
+    'pages_manage_posts',
+    'instagram_basic',
+    'instagram_content_publish',
+  ].join(',');
+
+  const params = new URLSearchParams({
+    client_id:     process.env.META_APP_ID,
+    redirect_uri:  process.env.META_REDIRECT_URI,
+    scope:         scopes,
+    response_type: 'code',
+    state:         'meta_oauth',
+  });
+
+  res.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params}`);
+});
+
+// الخطوة 2: معالجة الـ Callback من فيسبوك
+app.get('/auth/meta/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error || !code) {
+    return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=meta`);
+  }
+
+  try {
+    // تبادل الكود بـ token
+    const tokenData = await metaExchangeCode(
+      code,
+      process.env.META_REDIRECT_URI
+    );
+
+    // تحويله إلى long-lived token (60 يوم)
+    const longToken = await getLongLivedToken(tokenData.access_token);
+    const accessToken = longToken.access_token || tokenData.access_token;
+
+    // جلب الصفحات المرتبطة بالحساب
+    const pages = await getUserPages(accessToken);
+    const page  = pages[0]; // نأخذ الصفحة الأولى
+
+    let igUserId = null;
+    let pageAccessToken = accessToken;
+    let pageId = null;
+    let accountName = 'Meta Account';
+
+    if (page) {
+      pageId          = page.id;
+      pageAccessToken = page.access_token || accessToken;
+      accountName     = page.name;
+      igUserId        = await getIgUserId(pageId, pageAccessToken);
+    }
+
+    // تاريخ انتهاء الـ token (60 يوم)
+    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
+    // حذف الحساب القديم وإضافة الجديد
+    run(`DELETE FROM social_accounts WHERE platform = ?`, ['meta']);
+    run(
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, ig_user_id, token_expires_at, verifiedAt)
+       VALUES (?, 'meta', ?, ?, 1, ?, ?, ?, ?, datetime('now'))`,
+      [randomUUID(), accountName, accountName, pageAccessToken, pageId || '', igUserId || '', expiresAt]
+    );
+
+    console.log(`[OAuth] ✅ تم ربط Meta: ${accountName}`);
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=meta`);
+  } catch (err) {
+    console.error('[OAuth Meta]', err.message);
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=meta`);
+  }
+});
+
+// ── OAuth: تيك توك ────────────────────────────────────────────────────────────
+
+// الخطوة 1: توجيه المستخدم إلى تيك توك
+app.get('/auth/tiktok', (req, res) => {
+  const url = tiktokAuthUrl('tiktok_oauth');
+  res.redirect(url);
+});
+
+// الخطوة 2: معالجة الـ Callback من تيك توك
+app.get('/auth/tiktok/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error || !code) {
+    return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=tiktok`);
+  }
+
+  try {
+    const tokenData = await tiktokExchangeCode(code);
+    const { access_token, open_id, refresh_token } = tokenData;
+
+    const expiresAt = new Date(Date.now() + (tokenData.expires_in || 86400) * 1000).toISOString();
+
+    run(`DELETE FROM social_accounts WHERE platform = ?`, ['tiktok']);
+    run(
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, tiktok_open_id, token_expires_at, verifiedAt)
+       VALUES (?, 'tiktok', ?, 'TikTok Account', 1, ?, ?, ?, datetime('now'))`,
+      [randomUUID(), open_id || 'tiktok_user', access_token, open_id || '', expiresAt]
+    );
+
+    console.log('[OAuth] ✅ تم ربط تيك توك');
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=tiktok`);
+  } catch (err) {
+    console.error('[OAuth TikTok]', err.message);
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=tiktok`);
+  }
+});
+
+// ── OAuth: سناب شات ───────────────────────────────────────────────────────────
+
+app.get('/auth/snapchat', (req, res) => {
+  const url = snapAuthUrl('snapchat_oauth');
+  res.redirect(url);
+});
+
+app.get('/auth/snapchat/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) {
+    return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=snapchat`);
+  }
+  try {
+    const tokenData = await snapExchangeCode(code);
+    const { access_token, refresh_token, expires_in } = tokenData;
+    const userInfo = await snapGetUser(access_token).catch(() => ({ username: 'snapchat_user', accountName: 'Snapchat Account', avatar: null }));
+    const expiresAt = new Date(Date.now() + (expires_in || 86400) * 1000).toISOString();
+
+    run(`DELETE FROM social_accounts WHERE platform = ?`, ['snapchat']);
+    run(
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, token_expires_at, verifiedAt)
+       VALUES (?, 'snapchat', ?, ?, 1, ?, ?, datetime('now'))`,
+      [randomUUID(), userInfo.username, userInfo.accountName, access_token, expiresAt]
+    );
+
+    console.log('[OAuth] ✅ تم ربط سناب شات');
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=snapchat`);
+  } catch (err) {
+    console.error('[OAuth Snapchat]', err.message);
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=snapchat`);
+  }
+});
 
 // ── File upload endpoint ──────────────────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -192,13 +487,56 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
-app.post('/upload', upload.single('file'), (_req, res) => {
-  if (!_req.file) return res.status(400).json({ error: 'No file provided' });
-  res.json({ file_url: `/api/uploads/${_req.file.filename}` });
+app.post('/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+  const url = `${process.env.BASE_URL || 'http://localhost:3001'}/uploads/${req.file.filename}`;
+  res.json({ file_url: url, url });
+});
+
+// رفع صورة base64
+app.post('/api/upload-base64', (req, res) => {
+  try {
+    const { base64, filename } = req.body;
+    if (!base64) return res.status(400).json({ error: 'لا توجد صورة' });
+    const data = base64.replace(/^data:image\/\w+;base64,/, '');
+    const ext  = base64.match(/data:image\/(\w+);/)?.[1] || 'png';
+    const name = filename || `img_${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(uploadsDir, name), Buffer.from(data, 'base64'));
+    const url = `${process.env.BASE_URL || 'http://localhost:3001'}/uploads/${name}`;
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Health check ──────────────────────────────────────────────────────────────
+app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+// ── Serve the built frontend (production / single Railway service) ────────────
+// `npm run build` outputs the SPA to <project-root>/dist. Serve those static
+// assets, and fall back to index.html for any non-API route so client-side
+// routing (react-router) works on refresh / deep links.
+const distDir = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+} else {
+  console.warn('⚠️  dist/ not found — run "npm run build" before starting in production.');
+}
+
+// ── Scheduler init ────────────────────────────────────────────────────────────
+initScheduler(() => db, save);
+
+// تشغيل الجدولة كل دقيقة
+cron.schedule('* * * * *', () => {
+  runScheduler().catch(e => console.error('[Scheduler Error]', e.message));
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Backend running at http://localhost:${PORT}`);
+  console.log(`✅ الخادم يعمل: http://localhost:${PORT}`);
+  console.log(`📅 الجدولة التلقائية: كل دقيقة`);
 });

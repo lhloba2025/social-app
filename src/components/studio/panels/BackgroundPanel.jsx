@@ -1,8 +1,16 @@
 import React, { useRef, useState } from "react";
-import { Upload, Trash2, Loader2, Wand2 } from "lucide-react";
+import { Upload, Trash2, Loader2, Wand2, Plus } from "lucide-react";
+import { normalizeImageFile, isHeic } from "@/utils/imageConvert";
 import { uploadFile } from "@/api/localClient";
 import StudioColorPicker from "../StudioColorPicker";
 import { SVG_TYPES, SVG_TYPE_DEFAULTS, generateSvgBackground } from "../svgBackgrounds";
+
+function genLayerId() { return `svgl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
+
+function makeDefaultLayer(svgType = "swoosh") {
+  const d = SVG_TYPE_DEFAULTS[svgType] || SVG_TYPE_DEFAULTS.swoosh;
+  return { id: genLayerId(), svgType, ...d, offsetX: 0, offsetY: 0, layerOpacity: 1, blur: 0 };
+}
 
 const PRESET_CATEGORIES = [
   {
@@ -88,17 +96,24 @@ export default function BackgroundPanel({ bg, onChange, language }) {
   const [uploading, setUploading] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [svgSelId, setSvgSelId] = useState(null);
 
   const update = (key, val) => onChange({ ...bg, [key]: val });
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await uploadFile({ file });
-    onChange({ ...bg, imageUrl: file_url, mode: "image" });
-    setUploading(false);
-    e.target.value = "";
+    try {
+      if (isHeic(file)) file = await normalizeImageFile(file);
+      const { file_url } = await uploadFile({ file });
+      onChange({ ...bg, imageUrl: file_url, mode: "image" });
+    } catch (err) {
+      alert("تعذّر رفع الخلفية: " + (err?.message || err));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const stops = bg.gradientStops || [{ color: "#667eea", position: 0, opacity: 1 }, { color: "#764ba2", position: 100, opacity: 1 }];
@@ -270,102 +285,172 @@ export default function BackgroundPanel({ bg, onChange, language }) {
         </div>
       )}
 
-      {bg.mode === "svgDesign" && (
-        <div className="space-y-3">
-          {/* Shape type grid */}
-          <div>
-            <p className="text-slate-400 text-[11px] mb-2">{isRtl ? "نوع الشكل:" : "Shape Type:"}</p>
-            <div className="grid grid-cols-5 gap-1.5">
-              {SVG_TYPES.map((type, i) => {
-                const isActive = (bg.svgType || "swoosh") === type.id;
-                const prevSvg = generateSvgBackground({
-                  svgType: type.id,
-                  ...SVG_TYPE_DEFAULTS[type.id],
-                  uid: `p${i}`,
-                });
+      {bg.mode === "svgDesign" && (() => {
+        // Migrate old single-layer state to layers array
+        const layers = bg.svgLayers && bg.svgLayers.length > 0
+          ? bg.svgLayers
+          : [{ id: genLayerId(), svgType: bg.svgType || "swoosh", bgColor: bg.bgColor || "#09071f",
+               color1: bg.color1 || "#4c1d95", color2: bg.color2 || "#7c3aed",
+               size: bg.size ?? 50, position: bg.position ?? 65, angle: bg.angle ?? 0,
+               offsetX: 0, offsetY: 0, layerOpacity: 1, blur: bg.blur || 0 }];
+
+        const setLayers = (newLayers) => onChange({ ...bg, svgLayers: newLayers });
+        const sel = layers.find(l => l.id === svgSelId) || layers[0] || null;
+        const selIdx = layers.findIndex(l => l.id === sel?.id);
+
+        const updateSel = (key, val) => {
+          const updated = layers.map(l => l.id === sel.id ? { ...l, [key]: val } : l);
+          setLayers(updated);
+        };
+
+        const addLayer = () => {
+          const nl = makeDefaultLayer("swoosh");
+          nl.bgColor = "transparent";
+          nl.layerOpacity = 0.85;
+          const updated = [...layers, nl];
+          setLayers(updated);
+          setSvgSelId(nl.id);
+        };
+
+        const deleteLayer = (id) => {
+          if (layers.length === 1) return;
+          const updated = layers.filter(l => l.id !== id);
+          setLayers(updated);
+          if (svgSelId === id) setSvgSelId(updated[0].id);
+        };
+
+        return (
+          <div className="space-y-3">
+            {/* Layers list */}
+            <div className="flex items-center justify-between">
+              <p className="text-slate-300 font-bold text-sm">{isRtl ? "🎨 الطبقات الفنية" : "🎨 SVG Layers"}</p>
+              <button onClick={addLayer}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+                <Plus className="w-3 h-3" />
+                {isRtl ? "إضافة" : "Add"}
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              {layers.map((layer, idx) => {
+                const typeInfo = SVG_TYPES.find(t => t.id === layer.svgType);
+                const prevSvg = generateSvgBackground({ ...layer, uid: `lst${idx}`, transparentBg: false });
                 return (
-                  <button
-                    key={type.id}
-                    onClick={() => {
-                      const d = SVG_TYPE_DEFAULTS[type.id] || {};
-                      onChange({
-                        ...bg,
-                        svgType: type.id,
-                        bgColor: bg.bgColor || d.bgColor,
-                        color1:  bg.color1  || d.color1,
-                        color2:  bg.color2  || d.color2,
-                        size:     d.size,
-                        position: d.position,
-                        angle:    0,
-                      });
-                    }}
-                    className={`flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition ${
-                      isActive ? "border-indigo-500 bg-indigo-900/30" : "border-slate-600 hover:border-slate-400"
-                    }`}
-                  >
-                    <div className="w-full aspect-square bg-slate-900 rounded overflow-hidden relative">
+                  <div key={layer.id}
+                    onClick={() => setSvgSelId(layer.id)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
+                      layer.id === sel?.id ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
+                    }`}>
+                    <div className="w-8 h-6 bg-slate-900 rounded overflow-hidden relative flex-shrink-0">
                       <div dangerouslySetInnerHTML={{ __html: prevSvg }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
                     </div>
-                    <span className="text-[9px] text-slate-400 text-center leading-tight">
-                      {isRtl ? type.nameAr : type.nameEn}
+                    <span className="flex-1 text-slate-300 text-[11px] truncate">
+                      {isRtl ? typeInfo?.nameAr : typeInfo?.nameEn} #{idx + 1}
                     </span>
-                  </button>
+                    {layers.length > 1 && (
+                      <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
+                        className="text-red-400 hover:text-red-300 flex-shrink-0">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
-          </div>
 
-          {/* Color pickers */}
-          <StudioColorPicker
-            label={isRtl ? "🖌️ لون الخلفية" : "🖌️ Background"}
-            value={bg.bgColor || "#09071f"}
-            onChange={(v) => onChange({ ...bg, bgColor: v })}
-          />
-          <StudioColorPicker
-            label={isRtl ? "🎨 اللون الأول" : "🎨 Color 1"}
-            value={bg.color1 || "#4c1d95"}
-            onChange={(v) => onChange({ ...bg, color1: v })}
-          />
-          <StudioColorPicker
-            label={isRtl ? "🎨 اللون الثاني" : "🎨 Color 2"}
-            value={bg.color2 || "#7c3aed"}
-            onChange={(v) => onChange({ ...bg, color2: v })}
-          />
+            {sel && (
+              <div className="space-y-3 border-t border-slate-700 pt-3">
+                <p className="text-slate-400 font-semibold text-[11px]">{isRtl ? "تعديل الطبقة المحددة:" : "Edit Selected Layer:"}</p>
 
-          {/* Sliders */}
-          <div>
-            <label className="text-slate-400 block mb-1 text-[11px]">
-              {isRtl ? "الحجم" : "Size"}: {bg.size ?? 50}%
-            </label>
-            <input type="range" min="5" max="95" value={bg.size ?? 50}
-              onChange={(e) => onChange({ ...bg, size: parseInt(e.target.value) })} className="w-full" />
-          </div>
+                {/* Shape type grid */}
+                <div className="grid grid-cols-5 gap-1.5">
+                  {SVG_TYPES.map((type, i) => {
+                    const prevSvg = generateSvgBackground({ svgType: type.id, ...SVG_TYPE_DEFAULTS[type.id], uid: `p${i}` });
+                    return (
+                      <button key={type.id}
+                        onClick={() => {
+                          const d = SVG_TYPE_DEFAULTS[type.id] || {};
+                          const updated = layers.map(l => l.id === sel.id ? { ...l, svgType: type.id, size: d.size, position: d.position, angle: 0 } : l);
+                          setLayers(updated);
+                        }}
+                        className={`flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition ${
+                          sel.svgType === type.id ? "border-indigo-500 bg-indigo-900/30" : "border-slate-600 hover:border-slate-400"
+                        }`}>
+                        <div className="w-full aspect-square bg-slate-900 rounded overflow-hidden relative">
+                          <div dangerouslySetInnerHTML={{ __html: prevSvg }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+                        </div>
+                        <span className="text-[9px] text-slate-400 text-center leading-tight">
+                          {isRtl ? type.nameAr : type.nameEn}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-          <div>
-            <label className="text-slate-400 block mb-1 text-[11px]">
-              {isRtl ? "الموضع" : "Position"}: {bg.position ?? 65}%
-            </label>
-            <input type="range" min="0" max="100" value={bg.position ?? 65}
-              onChange={(e) => onChange({ ...bg, position: parseInt(e.target.value) })} className="w-full" />
-          </div>
+                {/* Background color — only for first layer */}
+                {selIdx === 0 && (
+                  <StudioColorPicker label={isRtl ? "🖌️ لون الخلفية" : "🖌️ Background"}
+                    value={sel.bgColor || "#09071f"}
+                    onChange={(v) => updateSel("bgColor", v)} />
+                )}
+                <StudioColorPicker label={isRtl ? "🎨 اللون الأول" : "🎨 Color 1"}
+                  value={sel.color1 || "#4c1d95"}
+                  onChange={(v) => updateSel("color1", v)} />
+                <StudioColorPicker label={isRtl ? "🎨 اللون الثاني" : "🎨 Color 2"}
+                  value={sel.color2 || "#7c3aed"}
+                  onChange={(v) => updateSel("color2", v)} />
 
-          <div>
-            <label className="text-slate-400 block mb-1 text-[11px]">
-              {isRtl ? "الدوران" : "Rotation"}: {bg.angle ?? 0}°
-            </label>
-            <input type="range" min="-180" max="180" value={bg.angle ?? 0}
-              onChange={(e) => onChange({ ...bg, angle: parseInt(e.target.value) })} className="w-full" />
-          </div>
+                {/* Size & shape position */}
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الحجم" : "Size"}: {sel.size ?? 50}%</label>
+                  <input type="range" min="5" max="95" value={sel.size ?? 50}
+                    onChange={(e) => updateSel("size", parseInt(e.target.value))} className="w-full" />
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "انتشار الشكل" : "Shape Spread"}: {sel.position ?? 65}%</label>
+                  <input type="range" min="0" max="100" value={sel.position ?? 65}
+                    onChange={(e) => updateSel("position", parseInt(e.target.value))} className="w-full" />
+                </div>
 
-          <div>
-            <label className="text-yellow-400 font-semibold block mb-1">
-              {isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {bg.blur || 0}px
-            </label>
-            <input type="range" min="0" max="40" value={bg.blur || 0}
-              onChange={(e) => onChange({ ...bg, blur: parseInt(e.target.value) })} className="w-full" />
+                {/* X / Y offset */}
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "تحريك أفقي ←→" : "Move X ←→"}: {sel.offsetX ?? 0}%</label>
+                  <input type="range" min="-80" max="80" value={sel.offsetX ?? 0}
+                    onChange={(e) => updateSel("offsetX", parseInt(e.target.value))} className="w-full" />
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "تحريك عمودي ↑↓" : "Move Y ↑↓"}: {sel.offsetY ?? 0}%</label>
+                  <input type="range" min="-80" max="80" value={sel.offsetY ?? 0}
+                    onChange={(e) => updateSel("offsetY", parseInt(e.target.value))} className="w-full" />
+                </div>
+
+                {/* Rotation */}
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الدوران" : "Rotation"}: {sel.angle ?? 0}°</label>
+                  <input type="range" min="-180" max="180" value={sel.angle ?? 0}
+                    onChange={(e) => updateSel("angle", parseInt(e.target.value))} className="w-full" />
+                </div>
+
+                {/* Opacity (only for additional layers) */}
+                {selIdx > 0 && (
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((sel.layerOpacity ?? 1) * 100)}%</label>
+                    <input type="range" min="0" max="1" step="0.05" value={sel.layerOpacity ?? 1}
+                      onChange={(e) => updateSel("layerOpacity", parseFloat(e.target.value))} className="w-full" />
+                  </div>
+                )}
+
+                {/* Blur */}
+                <div>
+                  <label className="text-yellow-400 font-semibold block mb-1 text-[11px]">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {sel.blur || 0}px</label>
+                  <input type="range" min="0" max="40" value={sel.blur || 0}
+                    onChange={(e) => updateSel("blur", parseInt(e.target.value))} className="w-full" />
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {bg.mode === "image" && (
         <div className="space-y-3">
@@ -374,7 +459,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {isRtl ? "رفع صورة" : "Upload Image"}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleImageUpload} />
 
           {bg.imageUrl && (
             <div className="relative">

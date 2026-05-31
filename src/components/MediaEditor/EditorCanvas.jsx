@@ -78,26 +78,11 @@ const EditorCanvas = forwardRef(({ media, edits, zoom }, ref) => {
 
   return (
     <div className="flex-1 bg-slate-950 rounded-lg overflow-auto flex items-center justify-center p-4">
-      {media.type === "video" ? (
-        <video
-          ref={ref}
-          src={media.url}
-          controls
-          style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            border: "2px solid #334155",
-            borderRadius: "0.5rem",
-            transform: `scale(${zoom / 100})`,
-          }}
-        />
-      ) : (
-        <canvas
+      <canvas
           ref={ref}
           className="max-w-full max-h-full border-2 border-slate-700 rounded-lg"
           style={{ transform: `scale(${zoom / 100})` }}
         />
-      )}
     </div>
   );
 });

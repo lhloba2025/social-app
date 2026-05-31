@@ -1,5 +1,5 @@
-import React from "react";
-import { Eye, EyeOff, Lock, Unlock, ChevronUp, ChevronDown, Type, Square, Image, Star } from "lucide-react";
+import React, { useState } from "react";
+import { Eye, EyeOff, Lock, Unlock, ChevronUp, ChevronDown, Type, Square, Image, Star, Pencil } from "lucide-react";
 
 const TYPE_ICONS = {
   text: Type,
@@ -15,10 +15,14 @@ const TYPE_LABELS = {
   logo: { ar: "لوقو", en: "Logo" },
 };
 
-function LayerItem({ item, isSelected, isMultiSelected, onSelect, onMultiSelect, onToggleVisible, onToggleLock, onMoveUp, onMoveDown, isFirst, isLast, language, onHover }) {
+function LayerItem({ item, isSelected, isMultiSelected, onSelect, onMultiSelect, onToggleVisible, onToggleLock, onMoveUp, onMoveDown, onRename, isFirst, isLast, language, onHover }) {
   const isRtl = language === "ar";
   const Icon = TYPE_ICONS[item.type] || Square;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
   const getLabel = () => {
+    if (item.layerName) return item.layerName;
     if (item.isLucideIcon) return item.iconName || (isRtl ? "أيقونة" : "Icon");
     if (item.isSocialIcon) return item.socialIconKey || (isRtl ? "أيقونة سوشيال" : "Social Icon");
     if (item.isText) return item.text || (isRtl ? "رمز" : "Symbol");
@@ -28,6 +32,7 @@ function LayerItem({ item, isSelected, isMultiSelected, onSelect, onMultiSelect,
   const label = getLabel();
 
   const handleClick = (e) => {
+    if (editing) return;
     if (e.shiftKey) {
       onMultiSelect(item.id, item.type, e);
     } else {
@@ -35,9 +40,21 @@ function LayerItem({ item, isSelected, isMultiSelected, onSelect, onMultiSelect,
     }
   };
 
+  const startEdit = (e) => {
+    e.stopPropagation();
+    setDraft(label);
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    setEditing(false);
+    if (draft.trim() && draft !== label) onRename(draft.trim());
+  };
+
   return (
     <div
       onClick={handleClick}
+      onDoubleClick={startEdit}
       onMouseEnter={() => onHover(item.id, item.type)}
       onMouseLeave={() => onHover(null, null)}
       className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition text-xs ${
@@ -52,9 +69,31 @@ function LayerItem({ item, isSelected, isMultiSelected, onSelect, onMultiSelect,
         className="w-3 h-3 accent-purple-500 cursor-pointer flex-shrink-0"
       />
       <Icon className="w-3 h-3 text-slate-400 flex-shrink-0" />
-      <span className="flex-1 truncate text-slate-200">{label}</span>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 bg-slate-800 border border-indigo-500 rounded px-1 text-slate-100 text-xs outline-none"
+        />
+      ) : (
+        <span className="flex-1 truncate text-slate-200" title={isRtl ? "نقر مزدوج لإعادة التسمية" : "Double-click to rename"}>{label}</span>
+      )}
 
       <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          onClick={startEdit}
+          className="text-slate-400 hover:text-white transition"
+          title={isRtl ? "إعادة تسمية" : "Rename"}
+        >
+          <Pencil className="w-3 h-3" />
+        </button>
         <button
           onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
           disabled={isFirst}
@@ -172,6 +211,7 @@ export default function LayersPanel({
                onToggleLock={() => getUpdateFn(item.type)(item.id, { locked: !item.locked })}
                onMoveUp={() => handleMoveUp(item)}
                onMoveDown={() => handleMoveDown(item)}
+               onRename={(name) => getUpdateFn(item.type)(item.id, { layerName: name })}
                isFirst={isFirst(item)}
                isLast={isLast(item)}
                language={language}

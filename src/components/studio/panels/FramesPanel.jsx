@@ -185,6 +185,64 @@ export default function FramesPanel({ frames, onChange, language }) {
             onChange={(v) => updateSelected("color", v)}
           />
 
+          {/* ── Gradient fill for frame ── */}
+          {(() => {
+            const fg = selected.gradient || {};
+            const updateGrad = (patch) => updateSelected("gradient", { ...fg, ...patch });
+            const GRAD_PRESETS = [
+              ["#8b5cf6","#ec4899"], ["#3b82f6","#06b6d4"], ["#f97316","#eab308"],
+              ["#10b981","#3b82f6"], ["#f43f5e","#f97316"], ["#a855f7","#6366f1"],
+              ["#fbbf24","#f87171"], ["#c9a227","#7c3aed"], ["#e11d48","#7c3aed"],
+              ["#0ea5e9","#6366f1"],
+            ];
+            return (
+              <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-200 font-semibold text-[11px]">{isRtl ? "✨ لون مدرج للإطار" : "✨ Gradient Fill"}</span>
+                  <button
+                    onClick={() => updateGrad({ enabled: !fg.enabled })}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${fg.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                  >
+                    {fg.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {GRAD_PRESETS.map(([c1, c2], i) => (
+                    <button
+                      key={i}
+                      onClick={() => updateGrad({ color1: c1, color2: c2, enabled: true })}
+                      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${fg.color1 === c1 && fg.color2 === c2 ? "border-white" : "border-slate-600"}`}
+                    />
+                  ))}
+                </div>
+                {fg.enabled && (
+                  <>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
+                        <input type="color" value={fg.color1 || "#8b5cf6"} onInput={(e) => updateGrad({ color1: e.target.value })}
+                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
+                        <input type="color" value={fg.color2 || "#ec4899"} onInput={(e) => updateGrad({ color2: e.target.value })}
+                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${fg.angle ?? 135}°` : `Angle: ${fg.angle ?? 135}°`}</label>
+                      <input type="range" min="0" max="360" step="5" value={fg.angle ?? 135}
+                        onChange={(e) => updateGrad({ angle: parseInt(e.target.value) })}
+                        className="w-full accent-indigo-500" />
+                    </div>
+                    <div className="w-full h-5 rounded" style={{ background: `linear-gradient(${fg.angle ?? 135}deg, ${fg.color1 || "#8b5cf6"}, ${fg.color2 || "#ec4899"})` }} />
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
           <div>
             <label className="text-slate-400 block mb-1">
               {isRtl ? "السُمك / الحجم" : "Thickness / Size"}: {selected.thickness ?? 3}px
@@ -207,6 +265,41 @@ export default function FramesPanel({ frames, onChange, language }) {
             </label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
               onChange={(e) => updateSelected("opacity", parseFloat(e.target.value))} className="w-full" />
+          </div>
+
+          {/* ── Position / scale offsets ─────────────────────── */}
+          <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+            <p className="text-slate-200 font-semibold text-[11px]">{isRtl ? "📍 الموقع والحجم" : "📍 Position & Size"}</p>
+            <div>
+              <label className="text-slate-400 block mb-1 text-[10px]">
+                {isRtl ? "إزاحة أفقية X" : "Horizontal offset X"}: {selected.offsetX ?? 0}%
+              </label>
+              <input type="range" min="-50" max="50" step="0.5" value={selected.offsetX ?? 0}
+                onChange={(e) => updateSelected("offsetX", parseFloat(e.target.value))}
+                className="w-full accent-indigo-500" />
+            </div>
+            <div>
+              <label className="text-slate-400 block mb-1 text-[10px]">
+                {isRtl ? "إزاحة عمودية Y" : "Vertical offset Y"}: {selected.offsetY ?? 0}%
+              </label>
+              <input type="range" min="-50" max="50" step="0.5" value={selected.offsetY ?? 0}
+                onChange={(e) => updateSelected("offsetY", parseFloat(e.target.value))}
+                className="w-full accent-indigo-500" />
+            </div>
+            <div>
+              <label className="text-slate-400 block mb-1 text-[10px]">
+                {isRtl ? "الحجم" : "Scale"}: {Math.round((selected.scale ?? 1) * 100)}%
+              </label>
+              <input type="range" min="0.3" max="2" step="0.05" value={selected.scale ?? 1}
+                onChange={(e) => updateSelected("scale", parseFloat(e.target.value))}
+                className="w-full accent-indigo-500" />
+            </div>
+            <button
+              onClick={() => { updateSelected("offsetX", 0); updateSelected("offsetY", 0); updateSelected("scale", 1); }}
+              className="w-full py-1 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 transition"
+            >
+              {isRtl ? "🔄 إعادة ضبط الموقع" : "🔄 Reset position"}
+            </button>
           </div>
         </div>
       )}

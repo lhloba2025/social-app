@@ -155,8 +155,32 @@ function AdvancedColorPicker({ value, onChange }) {
   );
 }
 
+// Recent-colors persistence — shared globally so every picker shows the same history
+const RECENT_KEY = "studio_recent_colors";
+function loadRecent() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    return Array.isArray(arr) ? arr.slice(0, 12) : [];
+  } catch { return []; }
+}
+function pushRecent(color) {
+  if (!color || typeof color !== "string" || !/^#[0-9a-fA-F]{6,8}$/.test(color)) return;
+  const list = loadRecent().filter(c => c.toLowerCase() !== color.toLowerCase());
+  list.unshift(color);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 12))); } catch { /* ignore */ }
+}
+
 export default function StudioColorPicker({ value, onChange, label }) {
   const [showWheel, setShowWheel] = useState(false);
+  const [recent, setRecent] = useState(loadRecent());
+  const lastCommittedRef = useRef(value);
+
+  const commit = useCallback((c) => {
+    onChange(c);
+    pushRecent(c);
+    setRecent(loadRecent());
+    lastCommittedRef.current = c;
+  }, [onChange]);
 
   return (
     <div className="space-y-1.5">
@@ -167,10 +191,33 @@ export default function StudioColorPicker({ value, onChange, label }) {
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={() => { if (value && /^#[0-9a-fA-F]{6,8}$/.test(value)) commit(value); }}
           className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white font-mono"
           placeholder="#ffffff"
           dir="ltr"
         />
+        {/* Eyedropper — uses native EyeDropper API (Chrome/Edge 95+) */}
+        {typeof window !== "undefined" && "EyeDropper" in window && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const ed = new window.EyeDropper();
+                const r = await ed.open();
+                if (r?.sRGBHex) commit(r.sRGBHex);
+              } catch { /* user cancelled */ }
+            }}
+            title="🎯 اقتنص لوناً من الشاشة (Eyedropper)"
+            className="w-8 h-8 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 flex items-center justify-center transition flex-shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
+              <path d="m11 5-3 3 5 5 3-3"/>
+              <path d="M16.5 5.5 19 8l-3 3-2.5-2.5z"/>
+              <path d="M3 21l4-4"/>
+              <path d="M11 13l-4 4"/>
+            </svg>
+          </button>
+        )}
         {/* Color swatch — opens advanced picker */}
         <div
           onClick={() => setShowWheel(p => !p)}
@@ -183,7 +230,38 @@ export default function StudioColorPicker({ value, onChange, label }) {
       {/* Advanced picker */}
       {showWheel && (
         <div className="bg-slate-800 border border-slate-600 rounded-xl p-3">
-          <AdvancedColorPicker value={value || "#ff0000"} onChange={onChange} />
+          <AdvancedColorPicker
+            value={value || "#ff0000"}
+            onChange={(c) => { onChange(c); /* commit on close */ }}
+          />
+          <button
+            onClick={() => { if (value) commit(value); setShowWheel(false); }}
+            className="mt-2 w-full text-[10px] py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition"
+          >
+            ✓ تأكيد
+          </button>
+        </div>
+      )}
+
+      {/* Recent colors */}
+      {recent.length > 0 && (
+        <div>
+          <p className="text-[10px] text-slate-500 mb-1">🕒 آخر الألوان المستخدمة</p>
+          <div className="flex flex-wrap gap-1">
+            {recent.map((c, i) => (
+              <button
+                key={`${c}-${i}`}
+                onClick={() => commit(c)}
+                title={c}
+                className="w-5 h-5 rounded-full hover:scale-110 transition-transform"
+                style={{
+                  backgroundColor: c,
+                  outline: (value || "").toLowerCase() === c.toLowerCase() ? "2px solid #818cf8" : "1px solid rgba(255,255,255,0.15)",
+                  outlineOffset: "1px",
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -192,7 +270,7 @@ export default function StudioColorPicker({ value, onChange, label }) {
         {PRESET_COLORS.map((c) => (
           <button
             key={c}
-            onClick={() => onChange(c)}
+            onClick={() => commit(c)}
             title={c}
             className="w-full aspect-square rounded-full hover:scale-110 transition-transform"
             style={{

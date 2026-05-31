@@ -29,6 +29,30 @@ const FONTS = [
   { name: "Lalezar", label: "لالهزار" },
   { name: "Mirza", label: "ميرزا" },
   { name: "Katibeh", label: "كاتبة" },
+  // ── خطوط اليد العربية (Arabic handwriting) ─────────────
+  { name: "Aref Ruqaa",     label: "✍️ رقعة عارف" },
+  { name: "Aref Ruqaa Ink", label: "✍️ رقعة حبر" },
+  { name: "Marhey",         label: "✍️ مرحى" },
+  { name: "Aladin",         label: "✍️ علاء الدين" },
+  { name: "Gulzar",         label: "✍️ گلزار" },
+  { name: "Rakkas",         label: "✍️ رقاص" },
+  { name: "Lemonada",       label: "✍️ ليمونادا" },
+  // ── خطوط اليد اللاتينية (English handwriting) ──────────
+  { name: "Caveat",            label: "✍️ Caveat" },
+  { name: "Pacifico",          label: "✍️ Pacifico" },
+  { name: "Dancing Script",    label: "✍️ Dancing Script" },
+  { name: "Kalam",             label: "✍️ Kalam" },
+  { name: "Permanent Marker",  label: "✍️ Permanent Marker" },
+  { name: "Shadows Into Light",label: "✍️ Shadows Into Light" },
+  { name: "Satisfy",           label: "✍️ Satisfy" },
+  { name: "Great Vibes",       label: "✍️ Great Vibes" },
+  { name: "Indie Flower",      label: "✍️ Indie Flower" },
+  { name: "Homemade Apple",    label: "✍️ Homemade Apple" },
+  { name: "Patrick Hand",      label: "✍️ Patrick Hand" },
+  { name: "Sacramento",        label: "✍️ Sacramento" },
+  { name: "Architects Daughter",label: "✍️ Architects Daughter" },
+  { name: "Gloria Hallelujah", label: "✍️ Gloria Hallelujah" },
+  { name: "Just Another Hand", label: "✍️ Just Another Hand" },
   // لاتينية
   { name: "Arial", label: "Arial" },
   { name: "Georgia", label: "Georgia" },
@@ -50,6 +74,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
   const selected = layers.find((l) => l.id === selectedId);
   const editorRef = useRef(null);
   const lastIdRef = useRef(null);
+  const panelRef = useRef(null);
 
   // Reset content when switching to a different layer
   useEffect(() => {
@@ -57,13 +82,27 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
     editorRef.current.innerHTML = selected.richHtml || selected.text || "";
   }, [selected?.id]);
 
-  // Sync styles (without resetting content)
+  // Sync font family and line-height only — font size is never applied to the editor
   useEffect(() => {
     if (!editorRef.current || !selected) return;
     editorRef.current.style.fontFamily = selected.fontFamily || "Tajawal";
     editorRef.current.style.lineHeight = String(selected.lineHeight || 1.4);
-    editorRef.current.style.fontSize = `${Math.min(selected.fontSize || 24, 48)}px`;
-  }, [selected?.fontFamily, selected?.lineHeight, selected?.fontSize]);
+  }, [selected?.fontFamily, selected?.lineHeight]);
+
+  // Capture selection before ANY mousedown on the panel (capture phase fires before children)
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const handler = (e) => {
+      if (editorRef.current?.contains(e.target)) return; // click inside editor — no need
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+        savedSelectionRef.current = sel.getRangeAt(0).cloneRange();
+      }
+    };
+    panel.addEventListener("mousedown", handler, { capture: true });
+    return () => panel.removeEventListener("mousedown", handler, { capture: true });
+  }, []);
 
   const update = (key, val) => {
     if (!selected) return;
@@ -125,15 +164,18 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
   const applyFormat = useCallback((cmd, value) => {
     if (!editorRef.current || !savedSelectionRef.current) return;
-    
+
+    // execCommand requires the contentEditable to be focused — if focus is
+    // elsewhere (e.g. user typed in a hex input), restore it first.
+    editorRef.current.focus();
     const sel = window.getSelection();
     const range = savedSelectionRef.current.cloneRange();
     sel.removeAllRanges();
     sel.addRange(range);
-    
+
     // Get the current font family before applying format
     const currentFont = selected?.fontFamily || "Tajawal";
-    
+
     // Apply the format
     document.execCommand("styleWithCSS", false, true);
     document.execCommand(cmd, false, value || null);
@@ -151,6 +193,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
   const applyTextColor = (color) => applyFormat("foreColor", color);
   const applyHighlight = (color) => {
     if (!editorRef.current || !savedSelectionRef.current) return;
+    editorRef.current.focus();
     if (color === "transparent") {
       // Remove all highlight spans
       const sel = window.getSelection();
@@ -201,27 +244,113 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
   };
 
   const applyFontSize = (newSize) => {
-    // Always update global fontSize — no inline sizes in richHtml to avoid canvas scaling bugs
     update("fontSize", newSize);
-    // Strip any previously-applied inline font-size from richHtml
-    if (!editorRef.current) return;
-    const html = editorRef.current.innerHTML;
-    const stripped = html.replace(/font-size\s*:\s*[^;}"]+;?\s*/gi, "");
-    if (stripped !== html) {
-      editorRef.current.innerHTML = stripped;
-      update("richHtml", stripped);
-    }
+  };
+
+  // Selection is already saved by the capture listener on the panel; just prevent focus loss then run
+  const withSelection = (fn) => (e) => { e.preventDefault(); fn(); };
+
+  const applySelectedFontSize = (sizePx) => {
+    if (!editorRef.current || !savedSelectionRef.current) return;
+    const range = savedSelectionRef.current.cloneRange();
+    if (range.collapsed) return;
+    editorRef.current.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const fragment = range.extractContents();
+    const span = document.createElement("span");
+    span.style.fontSize = `${sizePx}px`;
+    span.appendChild(fragment);
+    range.insertNode(span);
+    sel.removeAllRanges();
+    update("richHtml", editorRef.current.innerHTML);
+  };
+
+  // Find & Replace state — operates on plain text of all layers
+  const [findOpen, setFindOpen] = React.useState(false);
+  const [findQuery, setFindQuery] = React.useState("");
+  const [replaceVal, setReplaceVal] = React.useState("");
+
+  const findMatchCount = React.useMemo(() => {
+    if (!findQuery) return 0;
+    const q = findQuery.toLowerCase();
+    return layers.reduce((n, l) => {
+      const plain = l.richHtml
+        ? (() => { const d = document.createElement("div"); d.innerHTML = l.richHtml; return d.textContent || d.innerText || ""; })()
+        : (l.text || "");
+      const matches = plain.toLowerCase().split(q).length - 1;
+      return n + matches;
+    }, 0);
+  }, [findQuery, layers]);
+
+  const doReplaceAll = () => {
+    if (!findQuery) return;
+    const q = findQuery;
+    const r = replaceVal;
+    layers.forEach((l) => {
+      if (l.richHtml) {
+        const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+        const next = l.richHtml.replace(re, r);
+        if (next !== l.richHtml) onUpdate(l.id, { richHtml: next });
+      }
+      if (l.text) {
+        const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+        const next = l.text.replace(re, r);
+        if (next !== l.text) onUpdate(l.id, { text: next });
+      }
+    });
   };
 
   return (
-    <div className="space-y-3 text-xs">
-      <button
-        onClick={onAdd}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition"
-      >
-        <Plus className="w-4 h-4" />
-        {isRtl ? "إضافة نص" : "Add Text"}
-      </button>
+    <div ref={panelRef} className="space-y-3 text-xs">
+      <div className="flex gap-1">
+        <button
+          onClick={onAdd}
+          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition"
+        >
+          <Plus className="w-4 h-4" />
+          {isRtl ? "إضافة نص" : "Add Text"}
+        </button>
+        <button
+          onClick={() => setFindOpen(o => !o)}
+          title={isRtl ? "بحث واستبدال" : "Find & Replace"}
+          className={`px-3 py-2 rounded-lg transition ${findOpen ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-300"}`}
+        >
+          🔍
+        </button>
+      </div>
+
+      {findOpen && (
+        <div className="bg-slate-900/60 border border-slate-700 rounded p-2 space-y-1.5">
+          <input
+            type="text"
+            placeholder={isRtl ? "ابحث..." : "Find..."}
+            value={findQuery}
+            onChange={(e) => setFindQuery(e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+          />
+          <input
+            type="text"
+            placeholder={isRtl ? "استبدل بـ..." : "Replace with..."}
+            value={replaceVal}
+            onChange={(e) => setReplaceVal(e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 flex-1">
+              {findQuery ? (isRtl ? `${findMatchCount} تطابق` : `${findMatchCount} matches`) : ""}
+            </span>
+            <button
+              onClick={doReplaceAll}
+              disabled={!findQuery || findMatchCount === 0}
+              className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition disabled:opacity-40"
+            >
+              {isRtl ? "استبدال الكل" : "Replace All"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Layer list */}
       <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -234,10 +363,14 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
             }`}
           >
             <span
-              className="flex-1 truncate text-slate-200"
+              className="flex-1 truncate text-slate-200 text-[12px]"
               style={{ fontFamily: l.fontFamily }}
-              dangerouslySetInnerHTML={{ __html: l.richHtml || l.text || (isRtl ? "نص" : "Text") }}
-            />
+            >
+              {l.richHtml
+                ? (() => { const d = document.createElement("div"); d.innerHTML = l.richHtml; return d.textContent || d.innerText || (isRtl ? "نص" : "Text"); })()
+                : (l.text || (isRtl ? "نص" : "Text"))
+              }
+            </span>
             <button onClick={(e) => { e.stopPropagation(); onUpdate(l.id, { visible: !l.visible }); }} className="text-slate-400 hover:text-white">
               {l.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             </button>
@@ -255,17 +388,22 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
       {selected && (
         <div className="space-y-3 border-t border-slate-700 pt-3">
 
-          {/* Rich text editor */}
+          {/* Rich text editor — fixed size, never reflects canvas font sizes */}
           <div>
             <label className="text-slate-400 block mb-1">{isRtl ? "✏️ حدّد نصاً لتلوينه" : "✏️ Select text to color it"}</label>
+            <style>{`#studio-text-editor * { font-size: 13px !important; }`}</style>
             <div
+              id="studio-text-editor"
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
+              spellCheck={true}
+              lang={isRtl ? "ar" : "en"}
               onInput={handleEditorInput}
               style={{
                 fontFamily: selected.fontFamily || "Tajawal",
                 direction: "auto",
+                fontSize: "13px",
                 minHeight: 48,
                 lineHeight: selected.lineHeight || 1.4,
               }}
@@ -333,9 +471,38 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
             </div>
           </div>
 
-          {/* Font size */}
+          {/* Selected text font size */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط" : "Font Size"}</label>
+            <label className="text-slate-400 block mb-1">{isRtl ? "🔡 حجم النص المحدد" : "🔡 Selected Text Size"}</label>
+            <div className="flex items-center gap-1 flex-wrap">
+              {[10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64].map((sz) => (
+                <button
+                  key={sz}
+                  onMouseDown={withSelection(() => applySelectedFontSize(sz))}
+                  className="px-2 py-1 rounded text-[11px] font-semibold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition"
+                >
+                  {sz}
+                </button>
+              ))}
+              <input
+                type="number"
+                min="6"
+                max="300"
+                placeholder="px"
+                className="w-14 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-[11px]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const val = parseInt(e.target.value);
+                    if (val > 0) applySelectedFontSize(val);
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Font size (whole layer) */}
+          <div>
+            <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط (الطبقة كلها)" : "Font Size (whole layer)"}</label>
             <div className="flex items-center gap-1 flex-wrap">
               {[12, 16, 20, 24, 32, 40, 48, 64, 80].map((sz) => (
                 <button
@@ -363,19 +530,19 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           {/* Format buttons */}
           <div className="flex gap-2">
             <button
-              onMouseDown={(e) => { e.preventDefault(); applyFormat("bold"); }}
+              onMouseDown={withSelection(() => applyFormat("bold"))}
               className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
             >
               <Bold className="w-4 h-4 mx-auto" />
             </button>
             <button
-              onMouseDown={(e) => { e.preventDefault(); applyFormat("italic"); }}
+              onMouseDown={withSelection(() => applyFormat("italic"))}
               className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
             >
               <Italic className="w-4 h-4 mx-auto" />
             </button>
             <button
-              onMouseDown={(e) => { e.preventDefault(); applyFormat("underline"); }}
+              onMouseDown={withSelection(() => applyFormat("underline"))}
               className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
             >
               <Underline className="w-4 h-4 mx-auto" />
@@ -388,7 +555,32 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
           {/* Global text color (fallback for whole layer) */}
           <StudioColorPicker label={isRtl ? "لون النص الكامل" : "Whole Text Color"} value={selected.color} onChange={(v) => update("color", v)} />
-          <StudioColorPicker label={isRtl ? "خلفية الطبقة" : "Layer Background"} value={selected.bgColor} onChange={(v) => update("bgColor", v)} />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-slate-400">{isRtl ? "خلفية الطبقة" : "Layer Background"}</label>
+              {selected.bgColor && selected.bgColor !== "transparent" && (
+                <button
+                  onClick={() => update("bgColor", "transparent")}
+                  className="text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 transition"
+                >
+                  {isRtl ? "✕ حذف الخلفية" : "✕ Remove"}
+                </button>
+              )}
+            </div>
+            <StudioColorPicker value={selected.bgColor} onChange={(v) => update("bgColor", v)} />
+            {selected.bgColor && selected.bgColor !== "transparent" && (
+              <div className="mt-2">
+                <label className="text-slate-400 block mb-1">
+                  {isRtl ? `شفافية الخلفية: ${Math.round((selected.bgOpacity ?? 1) * 100)}%` : `Background Opacity: ${Math.round((selected.bgOpacity ?? 1) * 100)}%`}
+                </label>
+                <input type="range" min="0" max="1" step="0.05"
+                  value={selected.bgOpacity ?? 1}
+                  onChange={(e) => update("bgOpacity", parseFloat(e.target.value))}
+                  className="w-full accent-indigo-500"
+                />
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="text-slate-400 block mb-1">{isRtl ? "نوع الخط" : "Font Family"}</label>
@@ -430,6 +622,41 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
               onChange={(e) => update("lineHeight", parseFloat(e.target.value))}
               className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
             />
+          </div>
+
+          {/* Curved text */}
+          <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-300">{isRtl ? "🌀 نص منحني" : "🌀 Curved Text"}</label>
+              <button
+                onClick={() => update("curve", { ...(selected.curve || { angle: 180 }), enabled: !selected.curve?.enabled })}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.curve?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+              >
+                {selected.curve?.enabled ? (isRtl ? "مفعّل" : "On") : (isRtl ? "إيقاف" : "Off")}
+              </button>
+            </div>
+            {selected.curve?.enabled && (
+              <>
+                <label className="text-[10px] text-slate-400 block">{isRtl ? "زاوية القوس" : "Arc angle"}: {selected.curve.angle || 180}°</label>
+                <input
+                  type="range"
+                  min="-340"
+                  max="340"
+                  step="5"
+                  value={selected.curve.angle || 180}
+                  onChange={(e) => update("curve", { ...selected.curve, angle: parseInt(e.target.value) })}
+                  className="w-full accent-indigo-500"
+                />
+                <div className="flex flex-wrap gap-1">
+                  {[60, 120, 180, 270, 360, -180].map(a => (
+                    <button key={a} onClick={() => update("curve", { ...selected.curve, angle: a })}
+                      className="px-2 py-0.5 rounded text-[10px] bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+                      {a}°
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           <div>

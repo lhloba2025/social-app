@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { localApi, uploadFile } from "@/api/localClient";
+import { normalizeImageFile, isHeic } from "@/utils/imageConvert";
 
 const PLATFORMS = [
   { id: "facebook", label: "Facebook", labelAr: "فيسبوك" },
@@ -14,7 +15,6 @@ const PLATFORMS = [
 
 export default function MediaUploadModal({ isOpen, onClose, language, onUploadSuccess }) {
   const isRtl = language === "ar";
-  const [mediaType, setMediaType] = useState("image");
   const [platform, setPlatform] = useState("instagram");
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -24,16 +24,12 @@ export default function MediaUploadModal({ isOpen, onClose, language, onUploadSu
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    // التحقق من النوع
-    const isImage = selectedFile.type.startsWith("image/");
-    const isVideo = selectedFile.type.startsWith("video/");
-
-    if (!isImage && !isVideo) {
-      setError(isRtl ? "يجب أن يكون الملف صورة أو فيديو" : "File must be image or video");
+    // HEIC files sometimes have an empty MIME type — accept them via extension too
+    if (!selectedFile.type.startsWith("image/") && !isHeic(selectedFile)) {
+      setError(isRtl ? "يجب أن يكون الملف صورة" : "File must be an image");
       return;
     }
 
-    setMediaType(isVideo ? "video" : "image");
     setFile(selectedFile);
     setError(null);
   };
@@ -48,26 +44,23 @@ export default function MediaUploadModal({ isOpen, onClose, language, onUploadSu
     setError(null);
 
     try {
-      // رفع الملف
-      const { file_url } = await uploadFile({ file });
+      // HEIC (iPhone) photos can't render in the browser — convert to JPEG first
+      const uploadReady = isHeic(file) ? await normalizeImageFile(file) : file;
+      const { file_url } = await uploadFile({ file: uploadReady });
 
-      // حفظ في database
       await localApi.entities.Media.create({
-        name: file.name,
+        name: uploadReady.name,
         url: file_url,
-        type: mediaType,
+        type: "image",
         platform,
-        size: file.size,
+        size: uploadReady.size,
       });
 
-      // نجح
       if (onUploadSuccess) {
-        onUploadSuccess({ url: file_url, type: mediaType });
+        onUploadSuccess({ url: file_url, type: "image" });
       }
 
-      // إعادة تعيين الـ modal
       setFile(null);
-      setMediaType("image");
       setPlatform("instagram");
       onClose();
     } catch (err) {
@@ -84,30 +77,10 @@ export default function MediaUploadModal({ isOpen, onClose, language, onUploadSu
       <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">{isRtl ? "📤 رفع محتوى" : "📤 Upload Media"}</h3>
+          <h3 className="font-bold text-lg">{isRtl ? "📤 رفع صورة" : "📤 Upload Image"}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Media Type Selection */}
-        <div className="space-y-2 mb-4">
-          <label className="text-slate-400 block text-sm">{isRtl ? "نوع المحتوى" : "Content Type"}</label>
-          <div className="flex gap-2">
-            {["image", "video"].map((type) => (
-              <button
-                key={type}
-                onClick={() => { setMediaType(type); setFile(null); }}
-                className={`flex-1 py-2 rounded transition ${
-                  mediaType === type
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                }`}
-              >
-                {type === "image" ? (isRtl ? "📷 صورة" : "📷 Image") : (isRtl ? "🎥 فيديو" : "🎥 Video")}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Platform Selection */}
@@ -132,7 +105,7 @@ export default function MediaUploadModal({ isOpen, onClose, language, onUploadSu
           <div className="relative">
             <input
               type="file"
-              accept={mediaType === "image" ? "image/*" : "video/*"}
+              accept="image/*,.heic,.heif"
               onChange={handleFileChange}
               disabled={loading}
               className="hidden"
