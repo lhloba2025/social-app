@@ -345,6 +345,9 @@ export default function GreetingCardsPage({ language }) {
   // Names from Excel
   const [names, setNames] = useState([]);
   const [previewIdx, setPreviewIdx] = useState(0);
+  // Recipient-name overlay is hidden by default; shown when the user enables it
+  // or uploads a names list.
+  const [showName, setShowName] = useState(false);
 
   // Name text styling
   const [style, setStyle] = useState({
@@ -1269,6 +1272,7 @@ export default function GreetingCardsPage({ language }) {
     if (s.style) setStyle((prev) => ({ ...prev, ...s.style }));
     setStockObjects(s.stockObjects || []);
     if (s.socialBox) setSocialBox(s.socialBox);
+    if (s.showName) setShowName(true);
   };
 
   // Restore the saved draft once on mount.
@@ -1302,14 +1306,14 @@ export default function GreetingCardsPage({ language }) {
           templateUrl: tpl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY,
           outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched,
           logo: logo ? { ...logo, url: logoUrl } : null,
-          decorations: decoData, headings, style, stockObjects, socialBox,
+          decorations: decoData, headings, style, stockObjects, socialBox, showName,
         };
         await idbSaveCard({ id: DRAFT_ID, draft: true, savedAt: Date.now(), state });
       } catch { /* ignore */ }
     }, 2500);
     return () => clearTimeout(draftTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateUrl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY, outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched, logo, decorations, headings, style, stockObjects, socialBox]);
+  }, [templateUrl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY, outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched, logo, decorations, headings, style, stockObjects, socialBox, showName]);
 
   const templateInputRef = useRef(null);
   const namesInputRef = useRef(null);
@@ -1701,6 +1705,7 @@ export default function GreetingCardsPage({ language }) {
       }
       setNames(extracted);
       setPreviewIdx(0);
+      setShowName(true); // names uploaded → reveal the name overlay automatically
     } catch (err) {
       setError((isRtl ? "تعذّر قراءة الملف: " : "File parse failed: ") + (err?.message || err));
     } finally {
@@ -4971,10 +4976,24 @@ export default function GreetingCardsPage({ language }) {
 
             {/* Step 4: Text styling */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">4</span>
-                {isRtl ? "تنسيق الاسم" : "Name styling"}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">4</span>
+                  {isRtl ? "تنسيق الاسم" : "Name styling"}
+                </h3>
+                <button
+                  onClick={() => setShowName((v) => !v)}
+                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition ${showName ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  title={isRtl ? "إظهار/إخفاء اسم المستلم على البطاقة" : "Show/hide the recipient name on the card"}
+                >
+                  {showName ? (isRtl ? "👁️ ظاهر" : "👁️ Shown") : (isRtl ? "🚫 مخفي" : "🚫 Hidden")}
+                </button>
+              </div>
+              {!showName && (
+                <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-800/60 rounded p-2">
+                  {isRtl ? "اسم المستلم مخفي حالياً. فعّله من الزر فوق، أو ارفع قائمة أسماء في تبويب «أسماء» وبيظهر تلقائياً." : "The recipient name is hidden. Toggle it above, or upload a names list in the \"Names\" tab to reveal it automatically."}
+                </p>
+              )}
 
               <div>
                 <label className="text-[10px] text-slate-400 block mb-1">
@@ -5820,7 +5839,9 @@ export default function GreetingCardsPage({ language }) {
                     </div>
                   )}
 
-                  {/* Name overlay — fontSize derived from stage height to match the exported pixel size */}
+                  {/* Name overlay — hidden until enabled or a names list is loaded.
+                      fontSize derived from stage height to match the exported pixel size */}
+                  {(showName || names.length > 0) && (
                   <div
                     onMouseDown={(e) => { e.preventDefault(); draggingRef.current = true; }}
                     style={{
@@ -5870,6 +5891,7 @@ export default function GreetingCardsPage({ language }) {
                   >
                     {previewName}
                   </div>
+                  )}
 
                   {/* ── Social contact box (draggable) ─────────────────────
                       Renders the same chips the canvas export will produce,
