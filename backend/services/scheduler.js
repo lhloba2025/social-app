@@ -19,27 +19,38 @@ export function initScheduler(dbGetter, saveFunction) {
 
 // ─── دالة تشغيل الجدولة ────────────────────────────────────────────────────────
 
+// Current date/time in the business timezone (Riyadh, UTC+3). The server runs
+// on UTC, but users enter times in their local (Saudi) time — comparing against
+// UTC would publish 3 hours late. We compute "now" in Asia/Riyadh so the stored
+// "12:50" matches the user's intent.
+function nowInRiyadh() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date()).reduce((o, p) => (o[p.type] = p.value, o), {});
+  // en-CA gives ISO-ish parts; hour may come as "24" at midnight → normalize.
+  const hour = parts.hour === "24" ? "00" : parts.hour;
+  return { ymd: `${parts.year}-${parts.month}-${parts.day}`, hm: `${hour}:${parts.minute}` };
+}
+
 export async function runScheduler() {
   if (!getDB) return;
 
-  const db    = getDB();
-  const now   = new Date();
-  const today = toYMD(now);
-  const time  = toHM(now);
+  const db = getDB();
+  const { ymd, hm } = nowInRiyadh();
+  const nowStr = `${ymd}T${hm}`; // e.g. "2026-05-31T12:50"
 
-  // جلب كل المنشورات المجدولة التي حان وقتها
-  const posts = queryAll(
-    db,
-    `SELECT * FROM scheduled_posts
-     WHERE status = 'scheduled'
-       AND schedule_date <= ?
-       AND schedule_time <= ?`,
-    [today, time]
-  );
+  // Fetch all scheduled posts, then keep the ones whose combined date+time is
+  // due. Comparing the FULL "date T time" string (not date and time
+  // separately) avoids the bug where an overdue post from yesterday evening
+  // never fires because its time-of-day is "later" than the current clock.
+  const all = queryAll(db, `SELECT * FROM scheduled_posts WHERE status = 'scheduled'`);
+  const posts = all.filter((p) => `${p.schedule_date}T${p.schedule_time}` <= nowStr);
 
   if (posts.length === 0) return;
 
-  console.log(`[Scheduler] وجدت ${posts.length} منشور للنشر`);
+  console.log(`[Scheduler] وجدت ${posts.length} منشور للنشر (الآن: ${nowStr} الرياض)`);
 
   for (const post of posts) {
     await publishPost(db, post);
