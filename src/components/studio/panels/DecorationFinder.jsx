@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { uploadFile, fetchImageByUrl } from "@/api/localClient";
-import { normalizeImageFile, isHeic } from "@/utils/imageConvert";
+import { normalizeImageFile, isHeic, shrinkBlobToLimit } from "@/utils/imageConvert";
 import { REAL_IMAGE_CATEGORIES, googleImagesUrl } from "../data/stockIllustrations.jsx";
 
 // Shared "decorations" finder — paste an image (Ctrl+V) or an image URL straight
@@ -39,8 +39,11 @@ export default function DecorationFinder({ onAdd, language }) {
           if (f) {
             e.preventDefault();
             try {
-              const norm = isHeic(f) ? await normalizeImageFile(f) : f;
-              const { file_url } = await uploadFile({ file: norm });
+              let norm = isHeic(f) ? await normalizeImageFile(f) : f;
+              // Cloudinary caps uploads at 10MB — shrink large pastes first.
+              const shrunk = await shrinkBlobToLimit(norm, { maxBytes: 9_500_000 });
+              const file = new File([shrunk], norm.name || "pasted.png", { type: shrunk.type || "image/png" });
+              const { file_url } = await uploadFile({ file });
               onAdd({ url: file_url });
             } catch (err) { alert((isRtl ? "تعذّر لصق الصورة: " : "Paste failed: ") + (err?.message || err)); }
             return;

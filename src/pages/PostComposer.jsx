@@ -6,6 +6,7 @@ import {
   X, Plus, Loader2, BookImage, LayoutGrid
 } from "lucide-react";
 import { localApi, uploadFile } from "@/api/localClient";
+import { normalizeImageFile, isHeic, shrinkBlobToLimit } from "@/utils/imageConvert";
 
 // ─── Platform config ────────────────────────────────────────────────────────
 const PLATFORMS = [
@@ -261,7 +262,13 @@ export default function PostComposer({ language }) {
     // fetch the image server-side, so a blob: URL won't work — only a public
     // https URL can actually be published.
     try {
-      const { file_url } = await uploadFile({ file });
+      let ready = !isVideo && isHeic(file) ? await normalizeImageFile(file) : file;
+      // Cloudinary caps at 10MB — shrink large images first (images only).
+      if (!isVideo) {
+        const shrunk = await shrinkBlobToLimit(ready, { maxBytes: 9_500_000 });
+        ready = new File([shrunk], file.name || "image.png", { type: shrunk.type || "image/png" });
+      }
+      const { file_url } = await uploadFile({ file: ready });
       setSelectedMedia({ type: isVideo ? "video" : "image", name: file.name, thumbnail: file_url, url: file_url, file });
     } catch (err) {
       alert((ar ? "تعذّر رفع الصورة: " : "Upload failed: ") + (err?.message || err));
