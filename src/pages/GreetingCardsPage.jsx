@@ -1902,6 +1902,27 @@ export default function GreetingCardsPage({ language }) {
           ctx.clip();
         }
 
+        // Realistic tint — preserve the photo's shading, just shift its colour
+        // (white car → purple car). Multiply the colour over the original, then
+        // mask back to the original alpha shape.
+        if (!deco.paintMap && deco.tint && deco.color && !deco.useMultiColor && !deco.useGradient) {
+          const off = document.createElement("canvas");
+          off.width = Math.max(1, Math.round(dw));
+          off.height = Math.max(1, Math.round(dh));
+          const oc = off.getContext("2d");
+          oc.imageSmoothingEnabled = true;
+          oc.imageSmoothingQuality = "high";
+          oc.drawImage(decoImg, 0, 0, off.width, off.height);
+          oc.globalCompositeOperation = "multiply";
+          oc.fillStyle = deco.color;
+          oc.fillRect(0, 0, off.width, off.height);
+          oc.globalCompositeOperation = "destination-in";
+          oc.drawImage(decoImg, 0, 0, off.width, off.height);
+          ctx.drawImage(off, dx, dy, dw, dh);
+          ctx.restore();
+          continue;
+        }
+
         // When paintMap is present it already encodes the final per-pixel
         // colours, so skip the recolor branch and draw paintMap directly.
         if (!deco.paintMap && (deco.useMultiColor || deco.useGradient || deco.color)) {
@@ -4599,20 +4620,27 @@ export default function GreetingCardsPage({ language }) {
                       <label className="text-[10px] text-slate-400">{isRtl ? "🎨 تلوين الزخرفة" : "🎨 Recolor"}</label>
                       <div className="flex gap-1 flex-wrap">
                         <button
-                          onClick={() => updateDecoration(activeDecoration.id, { useGradient: !activeDecoration.useGradient, useMultiColor: false, color: activeDecoration.color || "#d4af37" })}
+                          onClick={() => updateDecoration(activeDecoration.id, { tint: !activeDecoration.tint, useGradient: false, useMultiColor: false, color: activeDecoration.color || "#7c3aed" })}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.tint ? "bg-fuchsia-500 text-white" : "bg-slate-900 text-slate-300"}`}
+                          title={isRtl ? "غيّر لون صورة واقعية (سيارة/منتج) مع الحفاظ على الظل والتفاصيل" : "Recolor a real photo while keeping its shading/detail"}
+                        >
+                          {isRtl ? (activeDecoration.tint ? "🪄 تلوين واقعي ✓" : "🪄 تلوين واقعي") : (activeDecoration.tint ? "🪄 Tint ✓" : "🪄 Tint")}
+                        </button>
+                        <button
+                          onClick={() => updateDecoration(activeDecoration.id, { useGradient: !activeDecoration.useGradient, useMultiColor: false, tint: false, color: activeDecoration.color || "#d4af37" })}
                           className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useGradient ? "bg-amber-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
                         >
                           {isRtl ? (activeDecoration.useGradient ? "🌈 تدرّج" : "+ تدرّج") : (activeDecoration.useGradient ? "🌈 Gradient" : "+ Gradient")}
                         </button>
                         <button
-                          onClick={() => updateDecoration(activeDecoration.id, { useMultiColor: !activeDecoration.useMultiColor, useGradient: false })}
+                          onClick={() => updateDecoration(activeDecoration.id, { useMultiColor: !activeDecoration.useMultiColor, useGradient: false, tint: false })}
                           className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useMultiColor ? "bg-emerald-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
                           title={isRtl ? "قسّم الزخرفة لمناطق ألوان" : "Split into colour zones"}
                         >
                           {isRtl ? (activeDecoration.useMultiColor ? "🎨 مناطق" : "+ 🎨 مناطق") : (activeDecoration.useMultiColor ? "🎨 Zones" : "+ 🎨 Zones")}
                         </button>
-                        {(activeDecoration.color || activeDecoration.useGradient || activeDecoration.useMultiColor) && (
-                          <button onClick={() => updateDecoration(activeDecoration.id, { color: "", useGradient: false, useMultiColor: false })}
+                        {(activeDecoration.color || activeDecoration.useGradient || activeDecoration.useMultiColor || activeDecoration.tint) && (
+                          <button onClick={() => updateDecoration(activeDecoration.id, { color: "", useGradient: false, useMultiColor: false, tint: false })}
                             className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-700 text-slate-300">
                             {isRtl ? "× أصلي" : "× Original"}
                           </button>
@@ -5422,6 +5450,24 @@ export default function GreetingCardsPage({ language }) {
                             // recolor modes are overridden while paint exists.
                             <img src={d.paintMap} alt="" draggable={false}
                               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none", userSelect: "none", clipPath, WebkitClipPath: clipPath }} />
+                          ) : (d.tint && d.color && !d.useMultiColor && !d.useGradient) ? (
+                            // Realistic tint — keep the photo's shading/detail, just shift its hue.
+                            // Original image + a colour layer blended "multiply", masked to the shape.
+                            <>
+                              <img src={d.url} alt="" draggable={false}
+                                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none", userSelect: "none", clipPath, WebkitClipPath: clipPath }} />
+                              <div style={{
+                                position: "absolute", inset: 0,
+                                background: d.color,
+                                mixBlendMode: "multiply",
+                                WebkitMaskImage: `url(${d.url})`, maskImage: `url(${d.url})`,
+                                WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+                                WebkitMaskSize: "contain", maskSize: "contain",
+                                WebkitMaskPosition: "center", maskPosition: "center",
+                                clipPath, WebkitClipPath: clipPath,
+                                pointerEvents: "none",
+                              }} />
+                            </>
                           ) : (d.useMultiColor || d.useGradient || d.color) ? (
                             // Solid / gradient / multi-zone — use the original shape as the mask
                             <div style={{
