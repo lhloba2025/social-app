@@ -15,6 +15,7 @@ import BackgroundPanel from "./panels/BackgroundPanel";
 import AIPanel from "./panels/AIPanel";
 import IconsPanel from "./panels/IconsPanel.jsx";
 import SocialPanel from "./panels/SocialPanel.jsx";
+import OffersPanel from "./panels/OffersPanel.jsx";
 import SymbolsPanel from "./panels/SymbolsPanel";
 import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
@@ -50,6 +51,7 @@ const TABS = [
   { id: "layers", labelAr: "طبقات", labelEn: "Layers" },
   { id: "brand", labelAr: "البراند", labelEn: "Brand" },
   { id: "effects", labelAr: "تأثيرات", labelEn: "Effects" },
+  { id: "offers", labelAr: "💰 عروض وأسعار", labelEn: "💰 Offers" },
 ];
 
 function genId() { return Math.random().toString(36).slice(2, 9); }
@@ -192,6 +194,30 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     // Fresh design — bootstrap from the user's saved profile (if any).
     return applyProfileTo(defaultBox);
   });
+
+  // ─── Offers / pricing block — one self-contained, draggable price list ──
+  const [offers, setOffers] = useState(() => {
+    if (initDraft?.offers) return initDraft.offers;
+    return {
+      show: false,
+      title: "عروض شهر يونيو",
+      subtitle: "قائمة الأسعار",
+      items: [
+        { service: "الخدمة الأولى", price: "350", oldPrice: "380" },
+        { service: "الخدمة الثانية", price: "400", oldPrice: "480" },
+        { service: "الخدمة الثالثة", price: "500", oldPrice: "550" },
+      ],
+      currency: "ريال",
+      accent: "#b76e79",
+      textColor: "#5b2333",
+      rowBg: "#ffffff",
+      showOld: true,
+      footer: "",
+      fontFamily: "Tajawal",
+      x: 50, y: 55, width: 72, rotation: 0,
+    };
+  });
+  const updateOffers = (patch) => setOffers((o) => ({ ...o, ...patch }));
 
   // Auto-persist the profile whenever the box changes. We exclude
   // positional fields (x/y/show) inside the store, so moving the box
@@ -444,7 +470,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     };
     // Strip thumbnails from pages before storing — base64 images fill up localStorage (5MB limit)
     const draftPages = pagesData.current.map(({ thumbnail, ...rest }) => rest);
-    const draft = { textLayers, shapes, images, logos, bg, groups, pages: draftPages, currentPageIdx };
+    const draft = { textLayers, shapes, images, logos, bg, groups, offers, pages: draftPages, currentPageIdx };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       setLastSavedAt(Date.now());
@@ -457,7 +483,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         setAutoSaveStatus("saved");
       } catch { setAutoSaveStatus("idle"); }
     }
-  }, [textLayers, shapes, images, logos, bg, groups]);
+  }, [textLayers, shapes, images, logos, bg, groups, offers]);
 
   // Tick to keep "Xs ago" label fresh
   const [, setTickCount] = useState(0);
@@ -1581,6 +1607,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 language={language}
               />
             </div>
+            <div style={{ display: activeTab === "offers" ? "block" : "none" }}>
+              <OffersPanel offers={offers} onChange={updateOffers} language={language} />
+            </div>
             <div style={{ display: activeTab === "text" ? "block" : "none" }}>
               <TextPanel
                 layers={textLayers}
@@ -1836,6 +1865,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               onSelectRegion={setSelectedRegion}
               socialBox={socialBox}
               onUpdateSocialBox={(patch) => setSocialBox((s) => ({ ...s, ...patch }))}
+              offers={offers}
+              onUpdateOffers={updateOffers}
               onAddShape={(payload) => {
                 const newShape = {
                   id: genId(),

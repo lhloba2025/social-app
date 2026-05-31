@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Copy, Trash2, Grid2X2, Palette } from "lucide-react";
+import { Eye, EyeOff, Copy, Trash2, Grid2X2 } from "lucide-react";
 import StudioColorPicker from "../StudioColorPicker";
 
 // Predefined symbols library - expanded

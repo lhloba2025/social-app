@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { X, Loader2, Download, RotateCw, ZoomIn, ZoomOut, Copy } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, Loader2, Download, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 import EditorCanvas from "./EditorCanvas";
 import EditorControls from "./EditorControls";
 import EditorLayers from "./EditorLayers";

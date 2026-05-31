@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, Maximize2, Grid3x3 } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, Grid3x3 } from "lucide-react";
 
 export default function AlignmentTools({ selectedElements, onAlign, language, multiSelectedCount = 0, onGroup, selectedGroupId, onUngroup }) {
   const isRtl = language === "ar";

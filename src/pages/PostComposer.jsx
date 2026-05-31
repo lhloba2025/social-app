@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Instagram, Facebook, Youtube, Twitter, Send,
-  ChevronDown, ChevronUp, Clock, Calendar, Hash,
-  Sparkles, ImagePlus, CheckCircle2, ArrowRight,
-  X, Plus, Loader2, BookImage, LayoutGrid, Film
+  Send, ChevronDown, ChevronUp, Clock, Calendar, Hash,
+  ImagePlus, CheckCircle2, ArrowRight,
+  X, Plus, Loader2, BookImage, LayoutGrid
 } from "lucide-react";
 import { localApi } from "@/api/localClient";
 

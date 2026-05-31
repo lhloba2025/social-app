@@ -1,5 +1,4 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
 
 export default function FiltersPanel({ element, onChange, language }) {
   const isRtl = language === "ar";

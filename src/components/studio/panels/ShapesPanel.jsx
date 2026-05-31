@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Copy, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Upload, X, Loader2 } from "lucide-react";
 import StudioColorPicker from "../StudioColorPicker";
 import FiltersPanel from "./FiltersPanel";

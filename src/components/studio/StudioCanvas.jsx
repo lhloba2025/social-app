@@ -1095,6 +1095,7 @@ export default function StudioCanvas({
   // Social contact box — single live editable overlay (see GreetingCardsPage
   // for the same shape). `onUpdateSocialBox(patch)` partially mutates state.
   socialBox, onUpdateSocialBox,
+  offers, onUpdateOffers,
 }) {
   // Helper that wraps any element's right-click — uses parent handler if provided
   const ctxHandler = (id, type) => onContextMenu ? (e) => onContextMenu(e, id, type) : undefined;
@@ -1406,6 +1407,7 @@ export default function StudioCanvas({
         else if (type === "logo") onUpdateLogo(id, { x: newX, y: newY });
         else if (type === "text") onUpdateText(id, { x: newX, y: newY });
         else if (type === "social") onUpdateSocialBox?.({ x: newX, y: newY });
+        else if (type === "offers") onUpdateOffers?.({ x: newX, y: newY });
         else if (type === "group") {
           const group = groups.find(g => g.id === id);
           if (group) {
@@ -2565,6 +2567,70 @@ export default function StudioCanvas({
             </div>
           );
         })}
+
+        {/* ── Offers / pricing block overlay ─────────────────────────────
+            Self-contained, draggable price list. Rendered inside canvasRef so
+            html-to-image exports it automatically. */}
+        {offers?.show && offers.items?.length > 0 && (() => {
+          const isOffSel = selectedId === "__offers" && selectedType === "offers";
+          const accent = offers.accent || "#b76e79";
+          const textCol = offers.textColor || "#5b2333";
+          const rowBg = offers.rowBg || "#ffffff";
+          const cur = offers.currency || "ريال";
+          const fw = (offers.width || 70);
+          return (
+            <div
+              onMouseDown={(e) => { e.stopPropagation(); onSelect?.("__offers", "offers"); startDrag(e, "__offers", "offers", offers.x ?? 50, offers.y ?? 55, false); }}
+              style={{
+                position: "absolute",
+                left: `${offers.x ?? 50}%`,
+                top: `${offers.y ?? 55}%`,
+                width: `${fw}%`,
+                transform: `translate(-50%, -50%) rotate(${offers.rotation || 0}deg)`,
+                cursor: "grab",
+                outline: isOffSel && !isExporting ? `${2 * scale}px dashed #818cf8` : "none",
+                outlineOffset: `${3 * scale}px`,
+                fontFamily: offers.fontFamily || "Tajawal",
+                direction: "rtl",
+                zIndex: 30,
+              }}
+            >
+              {/* Title + subtitle */}
+              {(offers.title || offers.subtitle) && (
+                <div style={{ textAlign: "center", marginBottom: `${1.4 * scale}px` }}>
+                  {offers.title && (
+                    <div style={{ color: accent, fontWeight: 800, fontSize: `${5.2 * scale}px`, lineHeight: 1.15 }}>{offers.title}</div>
+                  )}
+                  {offers.subtitle && (
+                    <div style={{ display: "inline-block", marginTop: `${2 * scale}px`, background: accent, color: "#fff", fontWeight: 700, fontSize: `${2.8 * scale}px`, padding: `${1.4 * scale}px ${5 * scale}px`, borderRadius: `${40 * scale}px` }}>{offers.subtitle}</div>
+                  )}
+                </div>
+              )}
+              {/* Rows */}
+              <div style={{ display: "flex", flexDirection: "column", gap: `${1.6 * scale}px` }}>
+                {offers.items.map((it, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: rowBg, borderRadius: `${10 * scale}px`,
+                    padding: `${2.4 * scale}px ${3.4 * scale}px`,
+                    boxShadow: `0 ${1 * scale}px ${4 * scale}px rgba(0,0,0,0.08)`,
+                  }}>
+                    <span style={{ color: textCol, fontWeight: 700, fontSize: `${3 * scale}px`, flex: 1, textAlign: "right" }}>{it.service}</span>
+                    {offers.showOld !== false && it.oldPrice ? (
+                      <span style={{ color: "#9ca3af", fontSize: `${2.2 * scale}px`, margin: `0 ${2.5 * scale}px`, whiteSpace: "nowrap" }}>
+                        بدلاً من <span style={{ textDecoration: "line-through" }}>{it.oldPrice} {cur}</span>
+                      </span>
+                    ) : null}
+                    <span style={{ color: accent, fontWeight: 800, fontSize: `${3.4 * scale}px`, whiteSpace: "nowrap", borderInlineStart: `${1.5 * scale}px solid ${accent}33`, paddingInlineStart: `${2.5 * scale}px` }}>{it.price} {cur}</span>
+                  </div>
+                ))}
+              </div>
+              {offers.footer && (
+                <div style={{ textAlign: "center", marginTop: `${2 * scale}px`, color: textCol, opacity: 0.8, fontSize: `${2.2 * scale}px` }}>{offers.footer}</div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Social contact box overlay ─────────────────────────────────
             One per design. Rendered INSIDE canvasRef so html-to-image

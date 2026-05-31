@@ -8,7 +8,15 @@
       "Bash(taskkill /F /IM node.exe)",
       "Bash(node_modules/.bin/vite --port 5173)",
       "Read(//tmp/**)",
-      "Bash(curl -s http://localhost:5173/VideoEditor)"
+      "Bash(curl -s http://localhost:5173/VideoEditor)",
+      "Bash(npm start *)",
+      "WebFetch(domain:species-contributors-apart-carolina.trycloudflare.com)",
+      "Bash(taskkill //PID 48744 //F)",
+      "Bash(taskkill //PID 22508 //F)",
+      "Bash(curl -s -o /dev/null -w \"backend /health: %{http_code}\\\\n\" http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w \"frontend 5173: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"backend: %{http_code}\\\\n\" http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w \"frontend: %{http_code}\\\\n\" http://localhost:5173/)"
     ]
   }
 }

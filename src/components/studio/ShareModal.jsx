@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Download, Share2, Check } from "lucide-react";
+import { X, Share2, Check } from "lucide-react";
 
 export default function ShareModal({ isRtl, imageDataUrl, onClose, onDownload }) {
   const [copied, setCopied] = useState(false);

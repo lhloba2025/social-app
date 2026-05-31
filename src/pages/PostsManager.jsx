@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Calendar, Clock, Trash2, Edit3,
-  Filter, LayoutGrid, List, CheckCircle2,
+  LayoutGrid, List, CheckCircle2,
   AlertCircle, Timer, FileText, Send,
-  Instagram, Facebook, Youtube, Twitter,
-  ImagePlus, MoreVertical, RefreshCw
+  ImagePlus, RefreshCw
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
