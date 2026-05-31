@@ -2,10 +2,31 @@
 
 const BASE = '/api';
 
+// ── Multi-tenant token ────────────────────────────────────────────────────────
+// When Hovera opens this app it appends `?t=<jwt>` (a token identifying the
+// salon). We capture it once into localStorage and send it on every API call so
+// the backend scopes data to that salon. Standalone (no token) → "default".
+const TOKEN_KEY = 'social_tenant_token';
+try {
+  const t = new URLSearchParams(window.location.search).get('t');
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+} catch { /* SSR / no window */ }
+
+export function tenantToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+}
+function authHeaders() {
+  const t = tenantToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 async function req(method, path, body) {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {},
+    headers: {
+      ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...authHeaders(),
+    },
     body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
   if (!res.ok) {

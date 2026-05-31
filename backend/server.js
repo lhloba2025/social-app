@@ -6,7 +6,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import cron from 'node-cron';
 import axios from 'axios';
 
@@ -39,6 +39,36 @@ const FRONTEND  = process.env.FRONTEND_URL || 'http://localhost:5173';
 const app = express();
 app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
+
+// ── Multi-tenant identity ─────────────────────────────────────────────────────
+// When embedded inside Hovera, every request carries a short-lived JWT signed by
+// Hovera with a shared secret (SOCIAL_JWT_SECRET) containing the salon id. We
+// verify it and scope ALL data to that salon. With no/invalid token we fall back
+// to the "default" tenant so the standalone app keeps working for the owner.
+const JWT_SECRET = process.env.SOCIAL_JWT_SECRET || '';
+function b64urlToBuf(s) { return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
+function verifyTenantToken(token) {
+  try {
+    if (!token || !JWT_SECRET) return null;
+    const [h, p, sig] = String(token).split('.');
+    if (!h || !p || !sig) return null;
+    const expected = createHmac('sha256', JWT_SECRET).update(`${h}.${p}`).digest('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const a = Buffer.from(sig), b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+    const payload = JSON.parse(b64urlToBuf(p).toString('utf8'));
+    if (payload.exp && Date.now() / 1000 > payload.exp) return null;
+    const id = payload.salon_id ?? payload.salonId ?? payload.tenant_id ?? payload.sub;
+    return id != null ? String(id) : null;
+  } catch { return null; }
+}
+app.use((req, _res, next) => {
+  const auth = req.headers['authorization'] || '';
+  const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const token = bearer || req.headers['x-social-token'] || req.query.t || '';
+  req.tenantId = verifyTenantToken(token) || 'default';
+  next();
+});
 
 // ---- Persistent data dir ----
 // Railway's container filesystem is EPHEMERAL — it resets on every redeploy/
@@ -164,6 +194,12 @@ const alterCols = [
   `ALTER TABLE media ADD COLUMN post_id       TEXT`,
   `ALTER TABLE media ADD COLUMN position      INTEGER DEFAULT 0`,
   `ALTER TABLE scheduled_posts ADD COLUMN post_type TEXT DEFAULT 'feed'`,
+  // Multi-tenant: every row belongs to a salon (tenant). "default" = standalone.
+  `ALTER TABLE designs ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
+  `ALTER TABLE media ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
+  `ALTER TABLE logos ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
+  `ALTER TABLE social_accounts ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
+  `ALTER TABLE scheduled_posts ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
 ];
 alterCols.forEach((sql) => {
   try { db.run(sql); } catch { /* column already exists */ }
@@ -219,7 +255,7 @@ function crudRouter(table, transform) {
 
   router.get('/', (req, res) => {
     const { sort, limit } = req.query;
-    let rows = queryAll(`SELECT * FROM ${table}`);
+    let rows = queryAll(`SELECT * FROM ${table} WHERE tenant_id = ?`, [req.tenantId]);
     if (transform) rows = rows.map(transform);
     rows = applySort(rows, sort);
     if (limit) rows = rows.slice(0, parseInt(limit));
@@ -227,7 +263,7 @@ function crudRouter(table, transform) {
   });
 
   router.get('/:id', (req, res) => {
-    let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
+    let row = queryOne(`SELECT * FROM ${table} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
     if (!row) return res.status(404).json({ error: 'Not found' });
     if (transform) row = transform(row);
     res.json(row);
@@ -236,7 +272,7 @@ function crudRouter(table, transform) {
   router.post('/', (req, res) => {
     try {
       const id = randomUUID();
-      const data = { id, ...req.body };
+      const data = { id, ...req.body, tenant_id: req.tenantId };
       const cols = Object.keys(data);
       const placeholders = cols.map(() => '?').join(', ');
       run(
@@ -254,16 +290,17 @@ function crudRouter(table, transform) {
 
   router.put('/:id', (req, res) => {
     try {
-      const existing = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
+      const existing = queryOne(`SELECT * FROM ${table} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
       if (!existing) return res.status(404).json({ error: 'Not found' });
       const updates = { ...req.body };
+      delete updates.tenant_id; // never let a client move a row to another tenant
       if (table === 'designs') updates.updated_date = new Date().toISOString();
       const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
       run(
-        `UPDATE ${table} SET ${sets} WHERE id = ?`,
-        [...Object.values(updates).map(toSqlVal), req.params.id]
+        `UPDATE ${table} SET ${sets} WHERE id = ? AND tenant_id = ?`,
+        [...Object.values(updates).map(toSqlVal), req.params.id, req.tenantId]
       );
-      let row = queryOne(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
+      let row = queryOne(`SELECT * FROM ${table} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
       if (transform) row = transform(row);
       res.json(row);
     } catch (err) {
@@ -273,7 +310,7 @@ function crudRouter(table, transform) {
   });
 
   router.delete('/:id', (req, res) => {
-    run(`DELETE FROM ${table} WHERE id = ?`, [req.params.id]);
+    run(`DELETE FROM ${table} WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
     res.json({ success: true });
   });
 
@@ -302,8 +339,8 @@ const postsRouter = express.Router();
 postsRouter.get('/', (req, res) => {
   const { status, sort = '-created_at' } = req.query;
   let rows = status
-    ? queryAll(`SELECT * FROM scheduled_posts WHERE status = ?`, [status])
-    : queryAll(`SELECT * FROM scheduled_posts`);
+    ? queryAll(`SELECT * FROM scheduled_posts WHERE status = ? AND tenant_id = ?`, [status, req.tenantId])
+    : queryAll(`SELECT * FROM scheduled_posts WHERE tenant_id = ?`, [req.tenantId]);
   rows = applySort(rows, sort);
   rows = rows.map(p => ({
     ...p,
@@ -328,9 +365,10 @@ postsRouter.post('/', (req, res) => {
     post_type:      req.body.postType || req.body.post_type || 'feed',
     design_id:      req.body.designId || req.body.design_id || '',
     publish_results:'{}',
+    tenant_id:      req.tenantId,
   };
 
-  run(`DELETE FROM scheduled_posts WHERE id = ?`, [id]);
+  run(`DELETE FROM scheduled_posts WHERE id = ? AND tenant_id = ?`, [id, req.tenantId]);
   run(
     `INSERT INTO scheduled_posts (${Object.keys(post).join(',')}) VALUES (${Object.keys(post).map(() => '?').join(',')})`,
     Object.values(post)
@@ -340,7 +378,7 @@ postsRouter.post('/', (req, res) => {
 });
 
 postsRouter.put('/:id', (req, res) => {
-  const existing = queryOne(`SELECT * FROM scheduled_posts WHERE id = ?`, [req.params.id]);
+  const existing = queryOne(`SELECT * FROM scheduled_posts WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
   if (!existing) return res.status(404).json({ error: 'Post not found' });
 
   const updates = {};
@@ -352,13 +390,13 @@ postsRouter.put('/:id', (req, res) => {
   updates.updated_at = new Date().toISOString();
 
   const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-  run(`UPDATE scheduled_posts SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
+  run(`UPDATE scheduled_posts SET ${sets} WHERE id = ? AND tenant_id = ?`, [...Object.values(updates), req.params.id, req.tenantId]);
 
   res.json({ success: true });
 });
 
 postsRouter.delete('/:id', (req, res) => {
-  run(`DELETE FROM scheduled_posts WHERE id = ?`, [req.params.id]);
+  run(`DELETE FROM scheduled_posts WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenantId]);
   res.json({ success: true });
 });
 
@@ -378,19 +416,24 @@ app.get('/auth/meta', (req, res) => {
     'business_management',
   ].join(',');
 
+  // Carry the tenant (salon) through OAuth via `state`, since the callback is a
+  // redirect from Facebook and won't have our token. Format: "meta_oauth.<tenant>".
   const params = new URLSearchParams({
     client_id:     process.env.META_APP_ID,
     redirect_uri:  process.env.META_REDIRECT_URI,
     scope:         scopes,
     response_type: 'code',
-    state:         'meta_oauth',
+    state:         `meta_oauth.${encodeURIComponent(req.tenantId)}`,
   });
 
   res.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params}`);
 });
 
 app.get('/auth/meta/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
+  // Recover the tenant we stashed in `state` ("meta_oauth.<tenant>").
+  const tenantId = (typeof state === 'string' && state.includes('.'))
+    ? decodeURIComponent(state.split('.').slice(1).join('.')) : 'default';
 
   if (error || !code) {
     return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=meta`);
@@ -424,11 +467,11 @@ app.get('/auth/meta/callback', async (req, res) => {
 
     const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
 
-    run(`DELETE FROM social_accounts WHERE platform = ?`, ['meta']);
+    run(`DELETE FROM social_accounts WHERE platform = ? AND tenant_id = ?`, ['meta', tenantId]);
     run(
-      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, ig_user_id, token_expires_at, verifiedAt)
-       VALUES (?, 'meta', ?, ?, 1, ?, ?, ?, ?, datetime('now'))`,
-      [randomUUID(), accountName, accountName, pageAccessToken, pageId || '', igUserId || '', expiresAt]
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, ig_user_id, token_expires_at, verifiedAt, tenant_id)
+       VALUES (?, 'meta', ?, ?, 1, ?, ?, ?, ?, datetime('now'), ?)`,
+      [randomUUID(), accountName, accountName, pageAccessToken, pageId || '', igUserId || '', expiresAt, tenantId]
     );
 
     console.log(`[OAuth] Meta connected: ${accountName}`);

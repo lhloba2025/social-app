@@ -14,14 +14,18 @@ const RAILWAY = "https://social-app-production-7cfd.up.railway.app";
 // server-side credentials (set in Railway Variables), so no build-time VITE_*
 // vars are needed and the flow always uses the correct App ID.
 function buildOAuthUrl(platform) {
+  // Pass the tenant token so the backend ties the connected account to THIS salon.
+  let t = "";
+  try { t = localStorage.getItem("social_tenant_token") || ""; } catch { /* ignore */ }
+  const q = t ? `?t=${encodeURIComponent(t)}` : "";
   switch (platform) {
     case "facebook":
     case "instagram":
-      return `${RAILWAY}/auth/meta`;
+      return `${RAILWAY}/auth/meta${q}`;
     case "tiktok":
-      return `${RAILWAY}/auth/tiktok`;
+      return `${RAILWAY}/auth/tiktok${q}`;
     case "snapchat":
-      return `${RAILWAY}/auth/snapchat`;
+      return `${RAILWAY}/auth/snapchat${q}`;
     default:
       return null;
   }

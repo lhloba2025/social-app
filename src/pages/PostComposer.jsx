@@ -5,7 +5,7 @@ import {
   ImagePlus, CheckCircle2, ArrowRight,
   X, Plus, Loader2, BookImage, LayoutGrid
 } from "lucide-react";
-import { localApi, uploadFile } from "@/api/localClient";
+import { localApi, uploadFile, tenantToken } from "@/api/localClient";
 import { normalizeImageFile, isHeic, shrinkBlobToLimit } from "@/utils/imageConvert";
 
 // ─── Platform config ────────────────────────────────────────────────────────
@@ -310,7 +310,10 @@ export default function PostComposer({ language }) {
     try {
       await fetch("/api/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(tenantToken() ? { Authorization: `Bearer ${tenantToken()}` } : {}),
+        },
         body: JSON.stringify(post),
       });
     } catch {

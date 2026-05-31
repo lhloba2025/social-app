@@ -19,8 +19,15 @@
 // to backend) without try/catch noise at every call site.
 
 import { appendScheduledPosts as appendLocal, listScheduledPosts as listLocal } from "./localScheduleStore";
+import { tenantToken } from "@/api/localClient";
 
 const API = "/api/posts";
+
+// Auth header so scheduled-post calls are scoped to the right salon (tenant).
+function authHeaders() {
+  const t = tenantToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
 
 // Probe the backend once per session; reuses the result so the schedule
 // flow doesn't fire a /health on every modal open. The result is cached
@@ -90,7 +97,7 @@ export async function createScheduledPosts(posts) {
     try {
       const res = await fetch(API, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(p),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -139,7 +146,7 @@ export async function listAllPosts() {
   const local = listLocal();
   if (!backendUp) return local;
   try {
-    const res = await fetch(`${API}?sort=-created_at`);
+    const res = await fetch(`${API}?sort=-created_at`, { headers: authHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const remote = await res.json();
     const remoteNorm = remote.map((r) => normalizeFromBackend(r, {}));
@@ -220,7 +227,7 @@ export async function deleteScheduledPost(postId) {
   const backendUp = await probeBackend();
   if (!backendUp) return { ok: true, localOnly: true };
   try {
-    await fetch(`${API}/${postId}`, { method: "DELETE" });
+    await fetch(`${API}/${postId}`, { method: "DELETE", headers: authHeaders() });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e?.message };

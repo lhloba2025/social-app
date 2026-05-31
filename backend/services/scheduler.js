@@ -70,7 +70,7 @@ async function publishPost(db, post) {
 
   for (const platform of platforms) {
     try {
-      const account = getAccount(db, platform);
+      const account = getAccount(db, platform, post.tenant_id || "default");
 
       if (!account) {
         results[platform] = { success: false, error: "الحساب غير مرتبط" };
@@ -139,15 +139,15 @@ async function publishPost(db, post) {
 
 // ─── مساعدات ──────────────────────────────────────────────────────────────────
 
-function getAccount(db, platform) {
+function getAccount(db, platform, tenantId = "default") {
   // instagram و facebook كلاهما يستخدم Meta tokens
   const lookupPlatform =
     platform === "instagram" || platform === "facebook" ? "meta" : platform;
 
   const rows = queryAll(
     db,
-    `SELECT * FROM social_accounts WHERE platform = ? AND isConnected = 1 LIMIT 1`,
-    [lookupPlatform]
+    `SELECT * FROM social_accounts WHERE platform = ? AND tenant_id = ? AND isConnected = 1 LIMIT 1`,
+    [lookupPlatform, tenantId]
   );
   return rows[0] || null;
 }
