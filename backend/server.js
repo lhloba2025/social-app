@@ -348,11 +348,15 @@ app.use('/api/posts', postsRouter);
 
 // ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {
+  // Exactly the permissions granted by the Instagram API "Manage content on
+  // Instagram" use case (Facebook-login setup). Requesting anything outside this
+  // set triggers Facebook's "Invalid Scopes" error.
   const scopes = [
-    'pages_read_engagement',
-    'pages_manage_posts',
     'instagram_basic',
     'instagram_content_publish',
+    'pages_show_list',
+    'pages_read_engagement',
+    'business_management',
   ].join(',');
 
   const params = new URLSearchParams({
