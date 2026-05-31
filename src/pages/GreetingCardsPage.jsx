@@ -89,6 +89,96 @@ import { applyProfileTo, saveSocialProfile } from "@/utils/socialProfileStore";
 // flattens them for any code path that just needs "find a def by id".
 const ALL_STOCK_DEFS = [...STOCK_ILLUSTRATIONS, ...CALLIGRAPHIC_MARKS, ...ARABIC_LETTER_SHAPES];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Perspective ("screen fit") math — used to drop an image exactly onto a phone
+// screen by dragging its 4 corners. The SAME homography drives the live preview
+// (CSS matrix3d) and the canvas export (triangle-mesh warp), so what you see is
+// what gets exported.
+// Corners order everywhere: [TL, TR, BR, BL].
+// ─────────────────────────────────────────────────────────────────────────────
+const DEFAULT_SCREEN_CORNERS = [
+  { x: 0.34, y: 0.30 }, { x: 0.66, y: 0.30 },
+  { x: 0.66, y: 0.70 }, { x: 0.34, y: 0.70 },
+];
+
+function _adj(m) {
+  return [
+    m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+    m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+    m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3],
+  ];
+}
+function _mulMM(a, b) {
+  const c = new Array(9);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    let s = 0; for (let k = 0; k < 3; k++) s += a[3*i+k]*b[3*k+j];
+    c[3*i+j] = s;
+  }
+  return c;
+}
+function _mulMV(m, v) {
+  return [
+    m[0]*v[0]+m[1]*v[1]+m[2]*v[2],
+    m[3]*v[0]+m[4]*v[1]+m[5]*v[2],
+    m[6]*v[0]+m[7]*v[1]+m[8]*v[2],
+  ];
+}
+function _basisToPoints(p) { // p = [[x,y]×4]
+  const m = [p[0][0], p[1][0], p[2][0], p[0][1], p[1][1], p[2][1], 1, 1, 1];
+  const v = _mulMV(_adj(m), [p[3][0], p[3][1], 1]);
+  return _mulMM(m, [v[0],0,0, 0,v[1],0, 0,0,v[2]]);
+}
+// Homography mapping src quad -> dst quad (each [[x,y]×4] in TL,TR,BR,BL order).
+function homography(src, dst) {
+  return _mulMM(_basisToPoints(dst), _adj(_basisToPoints(src)));
+}
+// CSS matrix3d string mapping the rect (0,0)-(w,h) onto dst corners (px).
+function cssMatrix3d(w, h, dst) {
+  const t = homography([[0,0],[w,0],[w,h],[0,h]], dst.map(c => [c.x, c.y]));
+  for (let i = 0; i < 9; i++) t[i] /= t[8];
+  const m = [t[0],t[3],0,t[6], t[1],t[4],0,t[7], 0,0,1,0, t[2],t[5],0,t[8]];
+  return `matrix3d(${m.join(",")})`;
+}
+// Draw `img` onto ctx warped so the unit square maps to dst corners (px),
+// using a triangle mesh for smooth perspective. Caller sets alpha/clip if needed.
+function drawImagePerspective(ctx, img, dst, subdiv = 18) {
+  const H = homography([[0,0],[1,0],[1,1],[0,1]], dst.map(c => [c.x, c.y]));
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const proj = (u, v) => {
+    const w = H[6]*u + H[7]*v + H[8];
+    return { x: (H[0]*u + H[1]*v + H[2]) / w, y: (H[3]*u + H[4]*v + H[5]) / w };
+  };
+  const tri = (sa, sb, sc, da, db, dc) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(da.x, da.y); ctx.lineTo(db.x, db.y); ctx.lineTo(dc.x, dc.y); ctx.closePath();
+    ctx.clip();
+    const denom = sa.x*(sc.y - sb.y) - sb.x*sc.y + sc.x*sb.y + (sb.x - sc.x)*sa.y;
+    if (denom !== 0) {
+      const a = -(sa.y*(dc.x - db.x) - sb.y*dc.x + sc.y*db.x + (sb.y - sc.y)*da.x) / denom;
+      const b =  (sb.y*dc.y + sa.y*(db.y - dc.y) - sc.y*db.y + (sc.y - sb.y)*da.y) / denom;
+      const c =  (sa.x*(dc.x - db.x) - sb.x*dc.x + sc.x*db.x + (sb.x - sc.x)*da.x) / denom;
+      const d = -(sb.x*dc.y + sa.x*(db.y - dc.y) - sc.x*db.y + (sc.x - sb.x)*da.y) / denom;
+      const e =  (sa.x*(sc.y*db.x - sb.y*dc.x) + sa.y*(sb.x*dc.x - sc.x*db.x) + (sc.x*sb.y - sb.x*sc.y)*da.x) / denom;
+      const f =  (sa.x*(sc.y*db.y - sb.y*dc.y) + sa.y*(sb.x*dc.y - sc.x*db.y) + (sc.x*sb.y - sb.x*sc.y)*da.y) / denom;
+      ctx.transform(a, b, c, d, e, f);
+      ctx.drawImage(img, 0, 0);
+    }
+    ctx.restore();
+  };
+  for (let i = 0; i < subdiv; i++) {
+    for (let j = 0; j < subdiv; j++) {
+      const u0 = i/subdiv, u1 = (i+1)/subdiv, v0 = j/subdiv, v1 = (j+1)/subdiv;
+      const sa = { x: u0*iw, y: v0*ih }, sb = { x: u1*iw, y: v0*ih },
+            sc = { x: u1*iw, y: v1*ih }, sd = { x: u0*iw, y: v1*ih };
+      const da = proj(u0,v0), db = proj(u1,v0), dc = proj(u1,v1), dd = proj(u0,v1);
+      tri(sa, sb, sc, da, db, dc);
+      tri(sa, sc, sd, da, dc, dd);
+    }
+  }
+}
+
 // Fonts available for the name overlay
 // Grouped so the picker shows decorative Arabic calligraphy fonts first —
 // these are what people reach for when writing "عيد مبارك"، "مبروك", etc.
@@ -300,7 +390,9 @@ export default function GreetingCardsPage({ language }) {
   const [removingDecoBg, setRemovingDecoBg] = useState(false);
   const [decoBgProgress, setDecoBgProgress] = useState("");
   const draggingDecorationRef = useRef(null);
+  const draggingCornerRef = useRef(null); // { decoId, idx } while dragging a screen-fit corner
   const decorationInputRef = useRef(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
 
   // Stock illustrations — hand-drawn SVGs from the bundled library.
   // Each entry is an INSTANCE of a STOCK_ILLUSTRATIONS entry, with placement
@@ -545,6 +637,33 @@ export default function GreetingCardsPage({ language }) {
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
   }, [isRtl]);
+
+  // Measure the stage in px so the screen-fit perspective (matrix3d) is exact.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setStageSize((prev) => (prev.w === r.width && prev.h === r.height ? prev : { w: r.width, h: r.height }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [templateUrl, stockObjects.length, headings.length, logo]);
+
+  // Toggle screen-fit on the active decoration (perspective placement onto a screen).
+  const toggleScreenFit = () => {
+    if (!activeDecoration) return;
+    const on = !activeDecoration.screenFit?.enabled;
+    updateDecoration(activeDecoration.id, {
+      screenFit: {
+        enabled: on,
+        corners: activeDecoration.screenFit?.corners
+          || DEFAULT_SCREEN_CORNERS.map((c) => ({ ...c })),
+      },
+    });
+  };
 
   const updateDecoration = (id, patch) => setDecorations((arr) => arr.map((d) => d.id === id ? { ...d, ...patch } : d));
 
@@ -1392,6 +1511,18 @@ export default function GreetingCardsPage({ language }) {
       const y = ((e.clientY - rect.top) / rect.height) * 100;
       const clampedX = Math.max(0, Math.min(100, x));
       const clampedY = Math.max(0, Math.min(100, y));
+      // Screen-fit corner drag wins over everything — move just that one corner.
+      if (draggingCornerRef.current) {
+        const { decoId, idx } = draggingCornerRef.current;
+        const fx = Math.max(-0.1, Math.min(1.1, x / 100));
+        const fy = Math.max(-0.1, Math.min(1.1, y / 100));
+        setDecorations((arr) => arr.map((d) => {
+          if (d.id !== decoId || !d.screenFit) return d;
+          const corners = d.screenFit.corners.map((c, i) => i === idx ? { x: fx, y: fy } : c);
+          return { ...d, screenFit: { ...d.screenFit, corners } };
+        }));
+        return;
+      }
       // Template pan — drag distance (in % of stage) added to the offset at
       // drag start. Tracked separately from overlays so it survives clicks
       // outside the stage box (clamping would feel "sticky").
@@ -1422,6 +1553,7 @@ export default function GreetingCardsPage({ language }) {
       draggingLogoRef.current = false;
       draggingHeadingRef.current = null;
       draggingDecorationRef.current = null;
+      draggingCornerRef.current = null;
       draggingTemplateRef.current = null;
       draggingStockRef.current = null;
       draggingSocialRef.current = false;
@@ -1731,6 +1863,17 @@ export default function GreetingCardsPage({ language }) {
           im.onerror = rej;
           im.src = decoSrc;
         });
+        // Screen-fit: warp the image onto the 4-corner quad (perspective). This
+        // path ignores x/width/crop/recolor — the quad fully defines placement.
+        if (deco.screenFit?.enabled && Array.isArray(deco.screenFit.corners)) {
+          ctx.save();
+          ctx.globalAlpha = deco.opacity ?? 1;
+          const dstPx = deco.screenFit.corners.map((c) => ({ x: c.x * W, y: c.y * H }));
+          drawImagePerspective(ctx, decoImg, dstPx);
+          ctx.restore();
+          continue;
+        }
+
         const aspect = deco.naturalW / deco.naturalH;
         const dw = (deco.width / 100) * W;
         const dh = dw / aspect;
@@ -4261,6 +4404,42 @@ export default function GreetingCardsPage({ language }) {
                     </button>
                   </div>
 
+                  {/* 📱 Screen fit — drop this image onto a phone/laptop screen via 4 corners */}
+                  <div className={`rounded-lg p-2 space-y-2 ${activeDecoration.screenFit?.enabled ? "bg-emerald-500/15 border border-emerald-500/60" : "bg-slate-900/60 border border-emerald-500/30"}`}>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] text-emerald-200 font-bold flex items-center gap-1">
+                        📱 {isRtl ? "تركيب على الشاشة (٤ زوايا)" : "Fit onto screen (4 corners)"}
+                      </label>
+                      <button
+                        onClick={toggleScreenFit}
+                        className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${activeDecoration.screenFit?.enabled ? "bg-emerald-500 text-slate-900" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                      >
+                        {activeDecoration.screenFit?.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "تفعيل" : "Enable")}
+                      </button>
+                    </div>
+                    {activeDecoration.screenFit?.enabled ? (
+                      <>
+                        <p className="text-[10px] text-emerald-200/90 leading-relaxed">
+                          {isRtl
+                            ? "اسحب النقاط الخضراء الأربع على المعاينة وحطّها على زوايا شاشة الجوال — الصورة تنحني وتتطابق مع الشاشة بالضبط ولا تطلع برّا."
+                            : "Drag the 4 green dots onto the phone-screen corners. The image bends to fit the screen exactly and never overflows."}
+                        </p>
+                        <button
+                          onClick={() => updateDecoration(activeDecoration.id, { screenFit: { ...activeDecoration.screenFit, corners: DEFAULT_SCREEN_CORNERS.map((c) => ({ ...c })) } })}
+                          className="w-full py-1 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-200 transition"
+                        >
+                          {isRtl ? "🔄 إعادة ضبط الزوايا" : "🔄 Reset corners"}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        {isRtl
+                          ? "فعّلها لتضع هذه الصورة داخل شاشة جوال/لابتوب في القالب بزاوية مظبوطة."
+                          : "Enable to place this image inside a phone/laptop screen at the right angle."}
+                      </p>
+                    )}
+                  </div>
+
                   {/* 🔍 Paint by click — pick a color, click on a word/letter to flood-fill it */}
                   <div className={`rounded-lg p-2 space-y-2 ${paintingDecorationId === activeDecoration.id ? "bg-pink-500/15 border border-pink-500/60" : "bg-slate-900/60 border border-pink-500/30"}`}>
                     <div className="flex items-center justify-between">
@@ -5144,6 +5323,64 @@ export default function GreetingCardsPage({ language }) {
                     const ct = d.cropTop || 0, cr = d.cropRight || 0, cb = d.cropBottom || 0, cl = d.cropLeft || 0;
                     const hasCrop = (ct + cr + cb + cl) > 0;
                     const clipPath = hasCrop ? `inset(${ct}% ${cr}% ${cb}% ${cl}%)` : undefined;
+
+                    // ── Screen-fit (perspective onto a phone screen) ──
+                    if (d.screenFit?.enabled && Array.isArray(d.screenFit.corners)) {
+                      const corners = d.screenFit.corners;
+                      const src = d.paintMap || d.url;
+                      const canWarp = stageSize.w > 0 && d.naturalW > 0 && d.naturalH > 0;
+                      const dstPx = corners.map((c) => ({ x: c.x * stageSize.w, y: c.y * stageSize.h }));
+                      return (
+                        <div key={d.id} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: isActive ? 30 : 5 }}>
+                          {canWarp && (
+                            <img
+                              src={src}
+                              alt=""
+                              draggable={false}
+                              style={{
+                                position: "absolute", left: 0, top: 0,
+                                width: `${d.naturalW}px`, height: `${d.naturalH}px`,
+                                transformOrigin: "0 0",
+                                transform: cssMatrix3d(d.naturalW, d.naturalH, dstPx),
+                                opacity: d.opacity ?? 1,
+                                pointerEvents: "none", userSelect: "none",
+                              }}
+                            />
+                          )}
+                          {/* Outline + corner handles (only when this deco is active) */}
+                          {isActive && (
+                            <>
+                              <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
+                                <polygon
+                                  points={corners.map((c) => `${c.x * 100}%,${c.y * 100}%`).join(" ")}
+                                  fill="none" stroke="rgba(16,185,129,0.9)" strokeWidth="1.5" strokeDasharray="5 4"
+                                />
+                              </svg>
+                              {corners.map((c, idx) => (
+                                <div
+                                  key={idx}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault(); e.stopPropagation();
+                                    setActiveDecorationId(d.id);
+                                    draggingCornerRef.current = { decoId: d.id, idx };
+                                  }}
+                                  title={["↖","↗","↘","↙"][idx]}
+                                  style={{
+                                    position: "absolute",
+                                    left: `${c.x * 100}%`, top: `${c.y * 100}%`,
+                                    width: 16, height: 16, marginLeft: -8, marginTop: -8,
+                                    borderRadius: "50%", background: "#10b981",
+                                    border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                                    cursor: "grab", pointerEvents: "auto", zIndex: 31,
+                                  }}
+                                />
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={d.id}
