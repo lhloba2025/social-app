@@ -56,9 +56,16 @@ try {
 }
 const dbPath = path.join(__dirname, 'data.db');
 
-const db = fs.existsSync(dbPath)
-  ? new SQL.Database(fs.readFileSync(dbPath))
-  : new SQL.Database();
+let db;
+try {
+  db = fs.existsSync(dbPath)
+    ? new SQL.Database(fs.readFileSync(dbPath))
+    : new SQL.Database();
+  console.log(`[boot] database loaded (${fs.existsSync(dbPath) ? 'from file' : 'fresh'})`);
+} catch (err) {
+  console.error('[boot] could not open existing data.db, starting fresh:', err?.message || err);
+  db = new SQL.Database();
+}
 
 function save() {
   fs.writeFileSync(dbPath, Buffer.from(db.export()));
