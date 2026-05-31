@@ -63,41 +63,45 @@ export default function DecorationFinder({ onAdd, language }) {
   }, [isRtl, onAdd]);
 
   return (
-    <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 space-y-2 text-xs mb-3">
-      <p className="text-[11px] text-emerald-200 font-bold flex items-center gap-1">
-        ⚡ {isRtl ? "صور وزخارف PNG — إضافة ذكية" : "Decorations & PNGs — smart add"}
-      </p>
-      <p className="text-[10px] text-emerald-200/90 leading-relaxed">
-        {isRtl
-          ? "انسخ صورة من Google (كليك يمين → نسخ الصورة) والصقها هنا بـ Ctrl+V، أو الصق رابطها في الخانة، أو ابحث عن صور PNG شفافة بالأزرار."
-          : "Copy an image (right-click → Copy image) and press Ctrl+V, or paste its link below, or search transparent PNGs."}
-      </p>
+    <div className="bg-slate-800/60 border border-emerald-500/30 rounded-xl p-3 space-y-2.5 text-xs mb-3">
+      <div className="flex items-center gap-1.5">
+        <span className="text-emerald-400 text-sm">⚡</span>
+        <span className="text-[12px] text-emerald-200 font-bold">{isRtl ? "إضافة صورة سريعة" : "Quick add image"}</span>
+      </div>
+
+      {/* Primary action: paste / type a link */}
       <div className="flex gap-1.5">
         <input
           type="text"
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddUrl(); } }}
-          placeholder={isRtl ? "الصق رابط الصورة هنا…" : "Paste image URL…"}
+          placeholder={isRtl ? "الصق رابط الصورة…" : "Paste image URL…"}
           dir="ltr"
-          className="flex-1 bg-slate-800 border border-emerald-500/40 rounded px-2 py-1.5 text-[11px] text-white placeholder-slate-500 outline-none focus:border-emerald-400"
+          className="flex-1 min-w-0 bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-2 text-[11px] text-white placeholder-slate-500 outline-none focus:border-emerald-400"
         />
         <button
           onClick={handleAddUrl}
           disabled={addingUrl || !urlInput.trim()}
-          className="px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-[11px] font-bold transition disabled:opacity-50 whitespace-nowrap"
+          className="px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-[11px] font-bold transition disabled:opacity-40 whitespace-nowrap"
         >
           {addingUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : (isRtl ? "إضافة" : "Add")}
         </button>
       </div>
+
+      {/* Secondary hint — one quiet line */}
+      <p className="text-[10px] text-slate-400 leading-snug">
+        {isRtl ? "أو انسخ صورة والصقها بـ Ctrl + V" : "Or copy an image and press Ctrl + V"}
+      </p>
+
       <button
         onClick={() => setShowFinder((v) => !v)}
-        className="w-full py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-emerald-300 font-semibold transition"
+        className={`w-full py-1.5 rounded-lg text-[11px] font-semibold transition border ${showFinder ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-200" : "bg-slate-900 border-slate-600 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-200"}`}
       >
-        🔍 {showFinder ? (isRtl ? "إخفاء البحث" : "Hide search") : (isRtl ? "ابحث عن صور PNG (٨٠+ موضوع)" : "Find PNGs (80+ topics)")}
+        🔍 {showFinder ? (isRtl ? "إخفاء البحث" : "Hide search") : (isRtl ? "ابحث عن صور PNG شفافة" : "Search transparent PNGs")}
       </button>
       {showFinder && (
-        <div className="space-y-2.5 max-h-72 overflow-y-auto pe-1">
+        <div className="space-y-2.5 max-h-72 overflow-y-auto pe-1 pt-0.5">
           {REAL_IMAGE_CATEGORIES.map((cat) => (
             <div key={cat.en} className="space-y-1.5">
               <h4 className="text-[10px] font-bold text-emerald-300/90 sticky top-0 bg-slate-900 py-0.5">
