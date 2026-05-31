@@ -40,8 +40,17 @@ const app = express();
 app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
+// ---- Persistent data dir ----
+// Railway's container filesystem is EPHEMERAL — it resets on every redeploy/
+// restart, wiping the SQLite db (designs, media, connected accounts, scheduled
+// posts) and uploads. Point DATA_DIR at a mounted Railway Volume (e.g. /data)
+// so everything survives. Falls back to the app folder for local dev.
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+try { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); } catch { /* ignore */ }
+console.log(`[boot] data dir: ${DATA_DIR}${process.env.DATA_DIR ? ' (persistent volume)' : ' (ephemeral — set DATA_DIR to a volume)'}`);
+
 // ---- Static file serving for uploads ----
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
@@ -54,7 +63,7 @@ try {
   console.error('[boot] FATAL: sql.js failed to initialize:', err?.stack || err);
   throw err;
 }
-const dbPath = path.join(__dirname, 'data.db');
+const dbPath = path.join(DATA_DIR, 'data.db');
 
 let db;
 try {
