@@ -12,57 +12,55 @@ function makeDefaultLayer(svgType = "swoosh") {
   return { id: genLayerId(), svgType, ...d, offsetX: 0, offsetY: 0, layerOpacity: 1, blur: 0 };
 }
 
-// ── Realistic textures (SVG-generated, no image assets) ──────────────────────
-// Each returns a CSS `background` value (data-URL SVG or gradient) so it plugs
-// straight into the existing preset mechanism and exports cleanly.
-function texUrl(svg) {
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") center / cover no-repeat`;
+// ── Soft luxe tones — elegant smooth gradients (no noise) ────────────────────
+// "Soft marble" = a gentle cloudy blend made from layered radial gradients, so
+// it reads as soft veined stone without the harsh SVG-noise look.
+function softMarble(light, mid, deep) {
+  return [
+    `radial-gradient(120% 90% at 18% 20%, ${light} 0%, transparent 55%)`,
+    `radial-gradient(110% 80% at 82% 28%, ${deep} 0%, transparent 52%)`,
+    `radial-gradient(120% 90% at 55% 88%, ${light} 0%, transparent 55%)`,
+    `linear-gradient(135deg, ${mid} 0%, ${deep} 100%)`,
+  ].join(", ");
 }
-// Veined marble. darkVeins=false → dark veins on light stone; true → light veins on dark stone.
-function marbleTex(base, darkVeins = false) {
-  const veinMatrix = darkVeins
-    ? "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.12"   // black veins
-    : "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.6 1.12";  // white veins
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='700' height='700'>` +
-    `<rect width='100%' height='100%' fill='${base}'/>` +
-    `<filter id='m'>` +
-    `<feTurbulence type='fractalNoise' baseFrequency='0.012 0.055' numOctaves='5' seed='7'/>` +
-    `<feColorMatrix type='matrix' values='${veinMatrix}'/>` +
-    `</filter>` +
-    `<rect width='100%' height='100%' filter='url(#m)'/>` +
-    `</svg>`;
-  return texUrl(svg);
-}
-// Subtle paper / fabric grain over a base colour.
-function grainTex(base, opacity = 0.06) {
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'>` +
-    `<rect width='100%' height='100%' fill='${base}'/>` +
-    `<filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter>` +
-    `<rect width='100%' height='100%' filter='url(#g)' opacity='${opacity}'/>` +
-    `</svg>`;
-  return texUrl(svg);
-}
+const g = (a, b) => `linear-gradient(135deg, ${a} 0%, ${b} 100%)`;
 
 const TEXTURE_PRESETS = [
-  { name: "Cream",        value: "linear-gradient(135deg,#f7f3ec 0%,#efe7da 100%)" },
-  { name: "Ivory Paper",  value: grainTex("#f6f1e7", 0.05) },
-  { name: "Sand Beige",   value: "linear-gradient(135deg,#efe3d3 0%,#d9c4a8 100%)" },
-  { name: "Blush",        value: "linear-gradient(135deg,#fdeef0 0%,#f6dfe4 100%)" },
-  { name: "White Marble", value: marbleTex("#f4f1ec", true) },
-  { name: "Grey Marble",  value: marbleTex("#dcdfe3", true) },
-  { name: "Dark Marble",  value: marbleTex("#13171f", false) },
-  { name: "Navy Marble",  value: marbleTex("#0d1530", false) },
-  { name: "Gold Foil",    value: "linear-gradient(135deg,#bf953f 0%,#fcf6ba 22%,#b38728 45%,#fbf5b7 68%,#aa771c 100%)" },
-  { name: "Rose Gold",    value: "linear-gradient(135deg,#e8c2c0 0%,#f7e1d7 35%,#dca4a0 60%,#b76e79 100%)" },
-  { name: "Soft Stripes", value: "repeating-linear-gradient(45deg,#f3efe9 0 14px,#ece5da 14px 28px)" },
-  { name: "Linen",        value: grainTex("#efe9df", 0.08) },
+  // Creams & ivory
+  { name: "Cream",          value: g("#f9f5ee", "#efe7da") },
+  { name: "Warm Cream",     value: g("#f6efe2", "#e7d9c4") },
+  { name: "Ivory",          value: g("#fbf8f2", "#f1ebdf") },
+  { name: "Off White",      value: g("#fbfaf7", "#eceae3") },
+  // Beige family
+  { name: "Light Beige",    value: g("#f3ecdf", "#e3d4bd") },
+  { name: "Sand Beige",     value: g("#efe3d3", "#d9c4a8") },
+  { name: "Nude",           value: g("#f1e2d3", "#dcc3aa") },
+  { name: "Taupe",          value: g("#e6dccd", "#bdae9a") },
+  { name: "Toffee",         value: g("#e9d8c2", "#c8a982") },
+  // Soft "wavy" marble (smooth, not noisy)
+  { name: "Beige Marble",   value: softMarble("#faf5ec", "#efe5d4", "#dccab0") },
+  { name: "Cream Marble",   value: softMarble("#fdfbf6", "#f3ece0", "#e4d8c6") },
+  { name: "Grey Marble",    value: softMarble("#f4f5f6", "#e3e6e9", "#c7ccd2") },
+  { name: "Rose Marble",    value: softMarble("#fdf1f0", "#f6dfe0", "#e3bcc0") },
+  // Rose / blush
+  { name: "Blush",          value: g("#fdeef0", "#f6dfe4") },
+  { name: "Soft Rose",      value: g("#f7dfe0", "#e3b7bd") },
+  { name: "Peach",          value: g("#fce7da", "#f4c9af") },
+  { name: "Powder Pink",    value: g("#fbe9ee", "#f1cdd8") },
+  { name: "Rose Gold",      value: "linear-gradient(135deg,#e8c2c0 0%,#f7e1d7 38%,#dca4a0 64%,#b76e79 100%)" },
+  // Greys & cool neutrals
+  { name: "Light Grey",     value: g("#f4f5f7", "#dfe2e7") },
+  { name: "Warm Grey",      value: g("#ecebe7", "#cfccc4") },
+  { name: "Sage",           value: g("#e9eee5", "#c4cfbc") },
+  { name: "Soft Lavender",  value: g("#f1edf8", "#dcd2ee") },
+  // Gold / champagne
+  { name: "Champagne",      value: g("#f7eccf", "#e2c88f") },
+  { name: "Gold Foil",      value: "linear-gradient(135deg,#bf953f 0%,#fcf6ba 22%,#b38728 45%,#fbf5b7 68%,#aa771c 100%)" },
 ];
 
 const PRESET_CATEGORIES = [
   {
-    label: { ar: "🪨 خامات واقعية (رخام/كريمي/ذهب)", en: "🪨 Realistic Textures" },
+    label: { ar: "🤎 درجات ناعمة فاخرة (كريمي/بيج/روز/مموج)", en: "🤎 Soft Luxe Tones" },
     presets: TEXTURE_PRESETS,
   },
   {
