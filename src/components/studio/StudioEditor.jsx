@@ -214,6 +214,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       showOld: true,
       footer: "",
       fontFamily: "Tajawal",
+      fontScale: 1,
       x: 50, y: 55, width: 72, rotation: 0,
     };
   });

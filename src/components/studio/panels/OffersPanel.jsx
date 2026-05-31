@@ -135,9 +135,16 @@ export default function OffersPanel({ offers, onChange, language }) {
           <StudioColorPicker label={isRtl ? "🖌️ لون النص" : "🖌️ Text"} value={o.textColor || "#5b2333"} onChange={(v) => onChange({ textColor: v })} />
           <StudioColorPicker label={isRtl ? "🟦 خلفية الصف" : "🟦 Row background"} value={o.rowBg || "#ffffff"} onChange={(v) => onChange({ rowBg: v })} />
 
+          {/* Font size */}
+          <div>
+            <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "🔠 حجم الخط" : "🔠 Font size"}: {Math.round((o.fontScale || 1) * 100)}%</label>
+            <input type="range" min="0.5" max="2.2" step="0.05" value={o.fontScale || 1}
+              onChange={(e) => onChange({ fontScale: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
+          </div>
+
           {/* Width */}
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "العرض" : "Width"}: {Math.round(o.width || 72)}%</label>
+            <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "↔️ عرض البطاقة" : "↔️ Width"}: {Math.round(o.width || 72)}%</label>
             <input type="range" min="30" max="95" step="1" value={o.width || 72}
               onChange={(e) => onChange({ width: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
           </div>
