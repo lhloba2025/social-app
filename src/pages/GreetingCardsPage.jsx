@@ -297,6 +297,8 @@ export default function GreetingCardsPage({ language }) {
   const [uploadingDecoration, setUploadingDecoration] = useState(false);
   const [decoUrlInput, setDecoUrlInput] = useState("");
   const [addingDecoUrl, setAddingDecoUrl] = useState(false);
+  const [removingDecoBg, setRemovingDecoBg] = useState(false);
+  const [decoBgProgress, setDecoBgProgress] = useState("");
   const draggingDecorationRef = useRef(null);
   const decorationInputRef = useRef(null);
 
@@ -545,6 +547,44 @@ export default function GreetingCardsPage({ language }) {
   }, [isRtl]);
 
   const updateDecoration = (id, patch) => setDecorations((arr) => arr.map((d) => d.id === id ? { ...d, ...patch } : d));
+
+  // AI background removal for a decoration — strips the checkerboard / any
+  // background and leaves a clean cut-out. Runs in-browser via @imgly.
+  const handleRemoveDecoBg = async () => {
+    if (!activeDecoration || removingDecoBg) return;
+    setRemovingDecoBg(true);
+    setError("");
+    setDecoBgProgress(isRtl ? "تحميل نموذج الذكاء…" : "Loading AI model…");
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const resultBlob = await removeBackground(activeDecoration.url, {
+        output: { format: "image/png", quality: 1 },
+        progress: (key, current, total) => {
+          if (total > 0) {
+            const pct = Math.round((current / total) * 100);
+            setDecoBgProgress((isRtl ? "معالجة " : "Processing ") + pct + "%");
+          }
+        },
+      });
+      const safeBlob = await shrinkBlobToLimit(resultBlob);
+      const newUrl = URL.createObjectURL(safeBlob);
+      const dims = await new Promise((res) => {
+        const im = new Image();
+        im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight });
+        im.onerror = () => res(null);
+        im.src = newUrl;
+      });
+      updateDecoration(activeDecoration.id, {
+        url: newUrl,
+        ...(dims ? { naturalW: dims.w, naturalH: dims.h } : {}),
+      });
+    } catch (e) {
+      setError((isRtl ? "فشل إزالة الخلفية: " : "Background removal failed: ") + (e?.message || e));
+    } finally {
+      setRemovingDecoBg(false);
+      setDecoBgProgress("");
+    }
+  };
 
   // Convert "#rrggbb" to [r, g, b]
   const hexToRgb = (hex) => {
@@ -4199,6 +4239,16 @@ export default function GreetingCardsPage({ language }) {
                     >
                       <Copy className="w-3 h-3" />
                       {isRtl ? "تكرار لقصّها" : "Duplicate"}
+                    </button>
+                    <button
+                      onClick={handleRemoveDecoBg}
+                      disabled={removingDecoBg}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded bg-fuchsia-700 hover:bg-fuchsia-600 text-[10px] text-white font-semibold transition disabled:opacity-60"
+                      title={isRtl ? "يشيل المربعات / أي خلفية ويترك العنصر نظيف" : "Strip checkerboard / any background"}
+                    >
+                      {removingDecoBg
+                        ? <><Loader2 className="w-3 h-3 animate-spin" />{decoBgProgress || (isRtl ? "جارٍ…" : "…")}</>
+                        : <>✂️ {isRtl ? "إزالة الخلفية" : "Remove BG"}</>}
                     </button>
                   </div>
 
