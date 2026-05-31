@@ -100,7 +100,8 @@ async function publishPost(db, post) {
       } else if (platform === "tiktok") {
         result = await publishToTikTok(
           { openId: account.tiktok_open_id, accessToken: account.access_token },
-          postData
+          postData,
+          { mediaType: post.media_type || "image" }
         );
       } else if (platform === "snapchat") {
         // سناب شات لا يدعم النشر التلقائي

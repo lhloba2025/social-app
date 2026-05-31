@@ -484,12 +484,14 @@ app.get('/auth/meta/callback', async (req, res) => {
 
 // ---- OAuth: TikTok ----
 app.get('/auth/tiktok', (req, res) => {
-  const url = tiktokAuthUrl('tiktok_oauth');
+  const url = tiktokAuthUrl(`tiktok_oauth.${encodeURIComponent(req.tenantId)}`);
   res.redirect(url);
 });
 
 app.get('/auth/tiktok/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
+  const tenantId = (typeof state === 'string' && state.includes('.'))
+    ? decodeURIComponent(state.split('.').slice(1).join('.')) : 'default';
 
   if (error || !code) {
     return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=tiktok`);
@@ -501,11 +503,11 @@ app.get('/auth/tiktok/callback', async (req, res) => {
 
     const expiresAt = new Date(Date.now() + (tokenData.expires_in || 86400) * 1000).toISOString();
 
-    run(`DELETE FROM social_accounts WHERE platform = ?`, ['tiktok']);
+    run(`DELETE FROM social_accounts WHERE platform = ? AND tenant_id = ?`, ['tiktok', tenantId]);
     run(
-      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, tiktok_open_id, token_expires_at, verifiedAt)
-       VALUES (?, 'tiktok', ?, 'TikTok Account', 1, ?, ?, ?, datetime('now'))`,
-      [randomUUID(), open_id || 'tiktok_user', access_token, open_id || '', expiresAt]
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, tiktok_open_id, token_expires_at, verifiedAt, tenant_id)
+       VALUES (?, 'tiktok', ?, 'TikTok Account', 1, ?, ?, ?, datetime('now'), ?)`,
+      [randomUUID(), open_id || 'tiktok_user', access_token, open_id || '', expiresAt, tenantId]
     );
 
     console.log('[OAuth] TikTok connected');

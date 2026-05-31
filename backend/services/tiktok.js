@@ -74,46 +74,68 @@ export async function refreshToken(refreshToken) {
  * @param {Object} account - { openId, accessToken }
  * @param {Object} post    - { caption, mediaUrl }
  */
-export async function publishToTikTok(account, post) {
+export async function publishToTikTok(account, post, opts = {}) {
   const { openId, accessToken } = account;
   const { caption, mediaUrl }   = post;
 
   if (!mediaUrl) throw new Error("تيك توك يحتاج رابط فيديو أو صورة");
   if (!openId)   throw new Error("لم يتم ربط حساب تيك توك");
 
-  // الخطوة 1: تهيئة النشر
-  const initRes = await axios.post(
-    `${TIKTOK_API}/post/publish/video/init/`,
-    {
-      post_info: {
-        title:             (caption || "").slice(0, 2200),
-        privacy_level:     "PUBLIC_TO_EVERYONE",
-        disable_duet:      false,
-        disable_comment:   false,
-        disable_stitch:    false,
-        video_cover_timestamp_ms: 1000,
+  // Unaudited TikTok apps may ONLY publish as SELF_ONLY (private). After your
+  // app passes TikTok's audit, set TIKTOK_PRIVACY=PUBLIC_TO_EVERYONE.
+  const privacy = process.env.TIKTOK_PRIVACY || "SELF_ONLY";
+  const isVideo = opts.mediaType === "video" || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(mediaUrl);
+
+  let initRes;
+  if (isVideo) {
+    initRes = await axios.post(
+      `${TIKTOK_API}/post/publish/video/init/`,
+      {
+        post_info: {
+          title:           (caption || "").slice(0, 2200),
+          privacy_level:   privacy,
+          disable_duet:    false,
+          disable_comment: false,
+          disable_stitch:  false,
+          video_cover_timestamp_ms: 1000,
+        },
+        source_info: { source: "PULL_FROM_URL", video_url: mediaUrl },
       },
-      source_info: {
-        source:    "PULL_FROM_URL",
-        video_url: mediaUrl,
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json; charset=UTF-8" } }
+    );
+  } else {
+    // Photo Mode — our designs are images, so this is the normal path.
+    initRes = await axios.post(
+      `${TIKTOK_API}/post/publish/content/init/`,
+      {
+        post_info: {
+          title:           (caption || "").slice(0, 2200),
+          privacy_level:   privacy,
+          disable_comment: false,
+        },
+        source_info: {
+          source:            "PULL_FROM_URL",
+          photo_cover_index: 0,
+          photo_images:      [mediaUrl],
+        },
+        post_mode:  "DIRECT_POST",
+        media_type: "PHOTO",
       },
-    },
-    {
-      headers: {
-        Authorization:  `Bearer ${accessToken}`,
-        "Content-Type": "application/json; charset=UTF-8",
-      },
-    }
-  );
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json; charset=UTF-8" } }
+    );
+  }
 
   const publishId = initRes.data?.data?.publish_id;
-  if (!publishId) throw new Error("فشل تهيئة النشر على تيك توك");
+  if (!publishId) {
+    const errMsg = initRes.data?.error?.message || "فشل تهيئة النشر على تيك توك";
+    throw new Error(errMsg);
+  }
 
-  // الخطوة 2: انتظار المعالجة والتحقق من الحالة
+  // انتظار المعالجة والتحقق من الحالة
   await sleep(5000);
   const status = await checkPublishStatus(accessToken, publishId);
 
-  return { success: true, publishId, status };
+  return { success: true, publishId, status, privacy };
 }
 
 /**
