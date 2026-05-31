@@ -95,8 +95,14 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const togglePub = (id) =>
     setPubPlatforms((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
-  // Post type for the whole batch: feed post or story (الحالة).
-  const [bulkPostType, setBulkPostType] = useState("feed");
+  // Post type(s) for the whole batch — can be BOTH feed and story at once.
+  const [postTypes, setPostTypes] = useState(["feed"]);
+  const togglePostType = (id) =>
+    setPostTypes((arr) =>
+      arr.includes(id)
+        ? (arr.length > 1 ? arr.filter((x) => x !== id) : arr) // keep at least one
+        : [...arr, id]
+    );
 
   // ── Mode + form state ───────────────────────────────────────────────
   // weekly: pick days + per-day times + start date
@@ -217,17 +223,18 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     // they can fetch from the public internet (Cloudinary URLs work,
     // localhost blob URLs DON'T). So we use `cover.url` for both
     // `url` (publish target) and `thumbnail` (UI preview).
-    const payload = posts.map((p, i) => {
+    // One entry per (source post × selected post type). If the user picked
+    // both feed + story, each post yields TWO scheduled entries.
+    const payload = posts.flatMap((p, i) => {
       const slot = slots[i];
       const cover = p.items?.[0];
       const captionParts = [];
       if (p.caption_title) captionParts.push(p.caption_title);
       if (p.caption_text)  captionParts.push(p.caption_text);
       const caption = captionParts.join("\n\n");
-      return {
+      const base = {
         status: "scheduled",
         platforms: pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []),
-        postType: bulkPostType,
         caption,
         scheduleDate: slot.date,
         scheduleTime: slot.time,
@@ -239,12 +246,11 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
           url: cover.url,          // ← what the backend hands to platform APIs
           thumbnail: cover.url,    // ← UI preview
         } : null,
-        // Carry the originating post id so we can avoid double-scheduling
-        // the same post and so the calendar UI can link back.
         designId: p.post_id,        // backend column is `design_id`
         sourcePostId: p.post_id,
         sourcePostItemCount: p.items?.length || 1,
       };
+      return postTypes.map((pt) => ({ ...base, postType: pt }));
     });
 
     // Goes through publishingService: tries backend first, falls back
@@ -389,30 +395,35 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </p>
             </div>
 
-            {/* Post type: feed vs story */}
+            {/* Post type: feed and/or story (multi-select) */}
             <div>
               <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
-                {isRtl ? "نوع المنشور:" : "Post type:"}
+                {isRtl ? "نوع المنشور (تقدر تختار الاثنين):" : "Post type (pick both if you like):"}
               </label>
               <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded-lg p-1">
                 {[
                   { id: "feed",  ar: "📷 بوست", en: "📷 Feed" },
                   { id: "story", ar: "⭕ ستوري (الحالة)", en: "⭕ Story" },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setBulkPostType(t.id)}
-                    className={`py-2 rounded text-[12px] font-bold transition ${
-                      bulkPostType === t.id ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
-                    }`}
-                  >
-                    {isRtl ? t.ar : t.en}
-                  </button>
-                ))}
+                ].map((t) => {
+                  const active = postTypes.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => togglePostType(t.id)}
+                      className={`py-2 rounded text-[12px] font-bold transition inline-flex items-center justify-center gap-1 ${
+                        active ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
+                      }`}
+                    >
+                      {isRtl ? t.ar : t.en}{active && " ✓"}
+                    </button>
+                  );
+                })}
               </div>
-              {bulkPostType === "story" && (
+              {postTypes.includes("story") && (
                 <p className="text-[10px] text-amber-300/90 mt-1 leading-relaxed">
-                  {isRtl ? "الستوري يدعم انستقرام وفيسبوك فقط (تيك توك/سناب لا يدعمان النشر التلقائي للحالة)." : "Stories support Instagram & Facebook only."}
+                  {isRtl
+                    ? "لو اخترت الاثنين، يُنشر بوست وستوري معاً. الستوري لانستقرام وفيسبوك فقط (تيك توك/سناب لا يدعمانه)."
+                    : "If both are picked, it posts a feed post AND a story. Stories are Instagram & Facebook only."}
                 </p>
               )}
             </div>
