@@ -10,6 +10,7 @@ import { Upload, Download, Loader2, Type, Image as ImageIcon, ChevronLeft, Chevr
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { normalizeImageFile, isHeic, shrinkBlobToLimit } from "@/utils/imageConvert";
+import { fetchImageByUrl } from "@/api/localClient";
 
 // ── IndexedDB cards library — much bigger quota than localStorage ──
 // localStorage caps at ~5MB which fills up after one or two designs that
@@ -294,6 +295,8 @@ export default function GreetingCardsPage({ language }) {
   const [decorations, setDecorations] = useState([]);
   const [activeDecorationId, setActiveDecorationId] = useState(null);
   const [uploadingDecoration, setUploadingDecoration] = useState(false);
+  const [decoUrlInput, setDecoUrlInput] = useState("");
+  const [addingDecoUrl, setAddingDecoUrl] = useState(false);
   const draggingDecorationRef = useRef(null);
   const decorationInputRef = useRef(null);
 
@@ -423,6 +426,57 @@ export default function GreetingCardsPage({ language }) {
   // Cache the decoration's source ImageData so we don't reload on every click
   const paintSourceRef = useRef({ id: null, imageData: null });
 
+  // Build a decoration object from ANY image source (blob / data URL / fetched
+  // remote-as-data) and add it to the canvas. Shared by upload, paste, and URL.
+  const addDecorationFromSrc = async (src) => {
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = src;
+    });
+    const newDeco = {
+      id: Math.random().toString(36).slice(2, 9),
+      url: src,
+      naturalW: img.naturalWidth,
+      naturalH: img.naturalHeight,
+      x: 50, y: 30,
+      width: 60,
+      color: "",
+      // Gradient fill — when useGradient, color + gradientColor2 paint along gradientAngle
+      useGradient: false,
+      gradientColor2: "#fde047",
+      gradientAngle: 90,
+      // Multi-colour zones — stepped gradient with hard transitions, mapped
+      // through the decoration's alpha mask. The cleanest way to colour
+      // each word of a multi-word calligraphy PNG with no manual cropping.
+      useMultiColor: false,
+      multiColorAngle: 90,
+      colorZones: [
+        { color: "#dc2626", position: 0 },
+        { color: "#d4af37", position: 33 },
+        { color: "#16a34a", position: 66 },
+      ],
+      opacity: 1,
+      rotation: 0,
+      // Crop — show only this rectangle of the image (% values, 0..99)
+      cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0,
+    };
+    setDecorations((d) => [...d, newDeco]);
+    setActiveDecorationId(newDeco.id);
+    return newDeco;
+  };
+
+  // Fetch a remote image URL through the backend (bypasses CORS / hotlink) and
+  // add it as a decoration.
+  const addDecorationFromUrl = async (rawUrl) => {
+    const url = (rawUrl || "").trim();
+    if (!/^https?:\/\//i.test(url)) throw new Error(isRtl ? "رابط غير صالح" : "Invalid URL");
+    const dataUrl = await fetchImageByUrl(url);
+    await addDecorationFromSrc(dataUrl);
+  };
+
   const handleDecorationUpload = async (e) => {
     let file = e.target.files[0];
     if (!file) return;
@@ -430,42 +484,7 @@ export default function GreetingCardsPage({ language }) {
     setError("");
     try {
       if (isHeic(file)) file = await normalizeImageFile(file);
-      const url = URL.createObjectURL(file);
-      const img = await new Promise((res, rej) => {
-        const im = new Image();
-        im.onload = () => res(im);
-        im.onerror = rej;
-        im.src = url;
-      });
-      const newDeco = {
-        id: Math.random().toString(36).slice(2, 9),
-        url,
-        naturalW: img.naturalWidth,
-        naturalH: img.naturalHeight,
-        x: 50, y: 30,
-        width: 60,
-        color: "",
-        // Gradient fill — when useGradient, color + gradientColor2 paint along gradientAngle
-        useGradient: false,
-        gradientColor2: "#fde047",
-        gradientAngle: 90,
-        // Multi-colour zones — stepped gradient with hard transitions, mapped
-        // through the decoration's alpha mask. The cleanest way to colour
-        // each word of a multi-word calligraphy PNG with no manual cropping.
-        useMultiColor: false,
-        multiColorAngle: 90,
-        colorZones: [
-          { color: "#dc2626", position: 0 },
-          { color: "#d4af37", position: 33 },
-          { color: "#16a34a", position: 66 },
-        ],
-        opacity: 1,
-        rotation: 0,
-        // Crop — show only this rectangle of the image (% values, 0..99)
-        cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0,
-      };
-      setDecorations((d) => [...d, newDeco]);
-      setActiveDecorationId(newDeco.id);
+      await addDecorationFromSrc(URL.createObjectURL(file));
     } catch (err) {
       setError((isRtl ? "تعذّر رفع الزخرفة: " : "Decoration upload failed: ") + (err?.message || err));
     } finally {
@@ -473,6 +492,57 @@ export default function GreetingCardsPage({ language }) {
       e.target.value = "";
     }
   };
+
+  // ── Smart add: paste an image (Ctrl+V) or an image URL, straight to canvas ──
+  const handleAddDecoUrl = async () => {
+    if (!decoUrlInput.trim()) return;
+    setAddingDecoUrl(true);
+    setError("");
+    try {
+      await addDecorationFromUrl(decoUrlInput);
+      setDecoUrlInput("");
+    } catch (err) {
+      setError((isRtl ? "تعذّر جلب الصورة من الرابط: " : "Couldn't fetch image from URL: ") + (err?.message || err));
+    } finally {
+      setAddingDecoUrl(false);
+    }
+  };
+
+  useEffect(() => {
+    const onPaste = async (e) => {
+      const t = e.target;
+      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      const items = e.clipboardData?.items || [];
+      // 1) Pasted image bytes (right-click → Copy image, then Ctrl+V)
+      for (const it of items) {
+        if (it.type && it.type.startsWith("image/")) {
+          const file = it.getAsFile();
+          if (file) {
+            e.preventDefault();
+            setUploadingDecoration(true);
+            setError("");
+            try { await addDecorationFromSrc(URL.createObjectURL(file)); }
+            catch (err) { setError((isRtl ? "تعذّر لصق الصورة: " : "Paste failed: ") + (err?.message || err)); }
+            finally { setUploadingDecoration(false); }
+            return;
+          }
+        }
+      }
+      // 2) Pasted image URL (right-click → Copy image address). Skip while typing.
+      if (typing) return;
+      const text = e.clipboardData?.getData("text")?.trim();
+      if (text && /^https?:\/\//i.test(text)) {
+        e.preventDefault();
+        setAddingDecoUrl(true);
+        setError("");
+        try { await addDecorationFromUrl(text); }
+        catch (err) { setError((isRtl ? "تعذّر جلب الصورة من الرابط: " : "Couldn't fetch image from URL: ") + (err?.message || err)); }
+        finally { setAddingDecoUrl(false); }
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [isRtl]);
 
   const updateDecoration = (id, patch) => setDecorations((arr) => arr.map((d) => d.id === id ? { ...d, ...patch } : d));
 
@@ -4057,6 +4127,36 @@ export default function GreetingCardsPage({ language }) {
 
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-[10px] text-amber-200 leading-relaxed">
                 💡 {isRtl ? "خطوط الكاليجرافي الفنيّة (مثل «عيد أضحى مبارك» الفاخرة) ليست خطوطاً برمجية بل لوحات يدويّة. ابحث في Google عن «عيد مبارك png شفاف» أو «خط ديواني png»، نزّل الصورة بخلفية شفافة، ثم ارفعها هنا — يمكنك تلوينها وتدويرها وتغيير حجمها بحرية." : "Premium calligraphy (like the ornate Eid Mubarak you saw) isn't a programmatic font — it's hand-drawn art. Search 'Eid Mubarak png transparent' or 'Arabic calligraphy png', download a transparent PNG, then upload here. You can recolor, rotate, and resize it freely."}
+              </div>
+
+              {/* ⚡ Smart add — paste image (Ctrl+V) or an image URL, straight to canvas */}
+              <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 space-y-2">
+                <p className="text-[11px] text-emerald-200 font-bold flex items-center gap-1">
+                  ⚡ {isRtl ? "إضافة ذكية — بدون تحميل ملفات" : "Smart add — no downloads"}
+                </p>
+                <p className="text-[10px] text-emerald-200/90 leading-relaxed">
+                  {isRtl
+                    ? "في Google: كليك يمين على الصورة → «نسخ الصورة» ثم الصقها هنا بـ Ctrl+V وتنضاف فوراً. أو «نسخ عنوان الصورة» والصق الرابط في الخانة تحت."
+                    : "In Google: right-click the image → \"Copy image\", then press Ctrl+V here to drop it on the canvas. Or \"Copy image address\" and paste the link below."}
+                </p>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={decoUrlInput}
+                    onChange={(e) => setDecoUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddDecoUrl(); } }}
+                    placeholder={isRtl ? "الصق رابط الصورة هنا…" : "Paste image URL here…"}
+                    dir="ltr"
+                    className="flex-1 bg-slate-800 border border-emerald-500/40 rounded px-2 py-1.5 text-[11px] text-white placeholder-slate-500 outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    onClick={handleAddDecoUrl}
+                    disabled={addingDecoUrl || !decoUrlInput.trim()}
+                    className="px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-[11px] font-bold transition disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {addingDecoUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : (isRtl ? "إضافة" : "Add")}
+                  </button>
+                </div>
               </div>
 
               {/* Decorations list */}

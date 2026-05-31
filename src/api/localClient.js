@@ -51,6 +51,13 @@ export async function uploadFile({ file }) {
   return { file_url: data.secure_url, url: data.secure_url };
 }
 
+// Fetch a remote image by URL through the backend (avoids CORS / hotlink
+// blocking) and get back an inline data URL ready to drop on the canvas.
+export async function fetchImageByUrl(url) {
+  const { dataUrl } = await req('POST', '/fetch-image', { url });
+  return dataUrl;
+}
+
 export const localApi = {
   entities: {
     Design: entity('designs'),

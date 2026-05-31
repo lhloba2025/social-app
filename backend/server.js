@@ -511,6 +511,32 @@ app.post('/api/upload-base64', (req, res) => {
   }
 });
 
+// ---- Fetch a remote image by URL (server-side, bypasses CORS / hotlink) ----
+// Returns a base64 data URL so the frontend can drop it straight onto the canvas
+// and it survives export (same-origin / inline data).
+app.post('/api/fetch-image', async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'رابط غير صالح' });
+    }
+    const resp = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 20000,
+      maxContentLength: 25 * 1024 * 1024,
+      headers: { 'User-Agent': 'Mozilla/5.0', Referer: url },
+    });
+    const ct = (resp.headers['content-type'] || 'image/png').split(';')[0].trim();
+    if (!ct.startsWith('image/')) {
+      return res.status(415).json({ error: 'الرابط لا يشير إلى صورة' });
+    }
+    const b64 = Buffer.from(resp.data).toString('base64');
+    res.json({ dataUrl: `data:${ct};base64,${b64}` });
+  } catch (err) {
+    res.status(502).json({ error: err?.message || 'تعذّر جلب الصورة' });
+  }
+});
+
 // ---- Health check ----
 app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
