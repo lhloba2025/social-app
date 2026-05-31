@@ -17,6 +17,8 @@ import { fetchImageByUrl } from "@/api/localClient";
 // include a phone-photo template. IndexedDB usually gives us 50MB+.
 const IDB_NAME = "greeting_cards_db";
 const IDB_STORE = "cards";
+// Fixed key for the auto-saved working draft (kept out of the saved-cards library).
+const DRAFT_ID = "__greeting_draft_v1__";
 
 function openCardsDB() {
   return new Promise((resolve, reject) => {
@@ -1109,7 +1111,7 @@ export default function GreetingCardsPage({ language }) {
     let cancelled = false;
     (async () => {
       await migrateLegacyCards();
-      const all = await idbGetAllCards();
+      const all = (await idbGetAllCards()).filter((c) => c.id !== DRAFT_ID && !c.draft);
       if (!cancelled) {
         // Sort newest first by savedAt
         all.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
@@ -1241,6 +1243,73 @@ export default function GreetingCardsPage({ language }) {
     try { await idbDeleteCard(id); } catch { /* ignore */ }
     setSavedCards((arr) => arr.filter((c) => c.id !== id));
   };
+
+  // ── Auto-save the working draft so leaving the page doesn't lose the card ──
+  const restoredRef = useRef(false);
+  const draftTimerRef = useRef(null);
+
+  const applyDraft = (s) => {
+    if (!s) return;
+    if (s.templateUrl) { setTemplateUrl(s.templateUrl); setTemplateW(s.templateW || 0); setTemplateH(s.templateH || 0); }
+    if (typeof s.templateZoom === "number") setTemplateZoom(s.templateZoom);
+    if (typeof s.templateOffsetX === "number") setTemplateOffsetX(s.templateOffsetX);
+    if (typeof s.templateOffsetY === "number") setTemplateOffsetY(s.templateOffsetY);
+    if (s.outputSize) setOutputSize(s.outputSize);
+    if (s.fitMode) setFitMode(s.fitMode);
+    if (s.bgColor) setBgColor(s.bgColor);
+    if (s.bgMode) setBgMode(s.bgMode);
+    if (s.bgSolid) setBgSolid(s.bgSolid);
+    if (s.bgGrad1) setBgGrad1(s.bgGrad1);
+    if (s.bgGrad2) setBgGrad2(s.bgGrad2);
+    if (typeof s.bgGradAngle === "number") setBgGradAngle(s.bgGradAngle);
+    if (s.bgTouched) setBgTouched(true);
+    setLogo(s.logo || null);
+    setDecorations(s.decorations || []);
+    setHeadings(s.headings || []);
+    if (s.style) setStyle((prev) => ({ ...prev, ...s.style }));
+    setStockObjects(s.stockObjects || []);
+    if (s.socialBox) setSocialBox(s.socialBox);
+  };
+
+  // Restore the saved draft once on mount.
+  useEffect(() => {
+    (async () => {
+      try {
+        const all = await idbGetAllCards();
+        const draft = all.find((c) => c.id === DRAFT_ID);
+        if (draft?.state) applyDraft(draft.state);
+      } catch { /* ignore */ }
+      finally { restoredRef.current = true; }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced auto-save of the working draft (blob URLs → data URLs so it
+  // survives a reload). Skipped until the initial restore has run.
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    const hasContent = templateUrl || decorations.length || headings.length || logo || stockObjects.length || bgTouched;
+    if (!hasContent) return;
+    clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(async () => {
+      try {
+        const [tpl, logoUrl, decoData] = await Promise.all([
+          templateUrl ? urlToDataUrl(templateUrl) : Promise.resolve(null),
+          logo?.url ? urlToDataUrl(logo.url) : Promise.resolve(null),
+          Promise.all(decorations.map(async (d) => ({ ...d, url: await urlToDataUrl(d.url) }))),
+        ]);
+        const state = {
+          templateUrl: tpl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY,
+          outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched,
+          logo: logo ? { ...logo, url: logoUrl } : null,
+          decorations: decoData, headings, style, stockObjects, socialBox,
+        };
+        await idbSaveCard({ id: DRAFT_ID, draft: true, savedAt: Date.now(), state });
+      } catch { /* ignore */ }
+    }, 2500);
+    return () => clearTimeout(draftTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateUrl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY, outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched, logo, decorations, headings, style, stockObjects, socialBox]);
 
   const templateInputRef = useRef(null);
   const namesInputRef = useRef(null);
