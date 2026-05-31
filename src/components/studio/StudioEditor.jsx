@@ -1633,7 +1633,6 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               />
             </div>
             <div style={{ display: activeTab === "deco" ? "block" : "none" }}>
-              <DecorationFinder onAdd={addImage} language={language} />
               <ShapesPanel
                 shapes={shapes}
                 selectedId={selectedType === "shape" ? selectedId : null}
@@ -1671,6 +1670,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               />
             </div>
             <div style={{ display: activeTab === "images" ? "block" : "none" }}>
+              <DecorationFinder onAdd={addImage} language={language} />
               <ImagesPanel
                 images={images.filter(i => !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol && !i.isText)}
                 selectedId={selectedType === "image" && images.find(i => i.id === selectedId && !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol && !i.isText) ? selectedId : null}
