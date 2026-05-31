@@ -22,6 +22,17 @@ import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, 
 
 dotenv.config();
 
+// ── Crash diagnostics & resilience ────────────────────────────────────────────
+// Keep the process alive through non-fatal errors and print the full reason to
+// stdout so it is visible in Railway's Deploy Logs.
+console.log(`[boot] starting server — node ${process.version}, cwd ${process.cwd()}, PORT=${process.env.PORT || '(unset)'}`);
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err?.stack || err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason?.stack || reason);
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND  = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -29,13 +40,20 @@ const app = express();
 app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
-// ── Static file serving for uploads ──────────────────────────────────────────
+// ---- Static file serving for uploads ----
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
-// ── sql.js setup ──────────────────────────────────────────────────────────────
-const SQL = await initSqlJs();
+// ---- sql.js setup ----
+let SQL;
+try {
+  SQL = await initSqlJs();
+  console.log('[boot] sql.js initialized');
+} catch (err) {
+  console.error('[boot] FATAL: sql.js failed to initialize:', err?.stack || err);
+  throw err;
+}
 const dbPath = path.join(__dirname, 'data.db');
 
 const db = fs.existsSync(dbPath)
@@ -46,7 +64,7 @@ function save() {
   fs.writeFileSync(dbPath, Buffer.from(db.export()));
 }
 
-// ── Schema ────────────────────────────────────────────────────────────────────
+// ---- Schema ----
 db.run(`
   CREATE TABLE IF NOT EXISTS designs (
     id TEXT PRIMARY KEY,
@@ -70,11 +88,6 @@ db.run(`
     type TEXT,
     platform TEXT,
     size INTEGER,
-    -- Caption metadata — added so a bulk-uploaded image carries the title
-    -- and body the user wants to post with it on social media. `post_id`
-    -- groups multiple images that belong to one carousel post; `position`
-    -- preserves their order within that carousel. A standalone image just
-    -- gets its own post_id and position = 0.
     caption_title TEXT,
     caption_text  TEXT,
     post_id       TEXT,
@@ -123,7 +136,6 @@ db.run(`
   );
 `);
 
-// إضافة الأعمدة الجديدة لو لم تكن موجودة (لقواعد البيانات القديمة)
 const alterCols = [
   `ALTER TABLE social_accounts ADD COLUMN access_token TEXT`,
   `ALTER TABLE social_accounts ADD COLUMN page_id TEXT`,
@@ -131,21 +143,22 @@ const alterCols = [
   `ALTER TABLE social_accounts ADD COLUMN tiktok_open_id TEXT`,
   `ALTER TABLE social_accounts ADD COLUMN token_expires_at TEXT`,
   `ALTER TABLE designs ADD COLUMN pages TEXT`,
-  // Caption metadata for media library (added in bulk-upload feature).
-  // Wrapped in try/catch below so existing DBs without these columns get
-  // them migrated transparently on next server start.
   `ALTER TABLE media ADD COLUMN caption_title TEXT`,
   `ALTER TABLE media ADD COLUMN caption_text  TEXT`,
   `ALTER TABLE media ADD COLUMN post_id       TEXT`,
   `ALTER TABLE media ADD COLUMN position      INTEGER DEFAULT 0`,
 ];
 alterCols.forEach((sql) => {
-  try { db.run(sql); } catch { /* العمود موجود مسبقاً */ }
+  try { db.run(sql); } catch { /* column already exists */ }
 });
 
 save();
 
-// ── DB helpers ────────────────────────────────────────────────────────────────
+// ---- DB helpers ----
+function tryParse(str, fallback) {
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 function queryAll(sql, params = []) {
   const stmt = db.prepare(sql);
   if (params.length) stmt.bind(params);
@@ -183,7 +196,7 @@ function toSqlVal(v) {
   return typeof v === 'boolean' ? (v ? 1 : 0) : v;
 }
 
-// ── Generic CRUD factory ──────────────────────────────────────────────────────
+// ---- Generic CRUD factory ----
 function crudRouter(table, transform) {
   const router = express.Router();
 
@@ -250,7 +263,7 @@ function crudRouter(table, transform) {
   return router;
 }
 
-// ── CRUD Routes ────────────────────────────────────────────────────────────────
+// ---- CRUD Routes ----
 app.use('/designs', crudRouter('designs'));
 app.use('/media', crudRouter('media'));
 app.use('/logos', crudRouter('logos', row => ({ ...row, isSvg: boolField(row.isSvg) })));
@@ -259,10 +272,9 @@ app.use('/social-accounts', crudRouter('social_accounts', row => ({
   isConnected: boolField(row.isConnected),
 })));
 
-// ── Scheduled Posts Routes ────────────────────────────────────────────────────
+// ---- Scheduled Posts Routes ----
 const postsRouter = express.Router();
 
-// جلب كل المنشورات
 postsRouter.get('/', (req, res) => {
   const { status, sort = '-created_at' } = req.query;
   let rows = status
@@ -277,7 +289,6 @@ postsRouter.get('/', (req, res) => {
   res.json(rows);
 });
 
-// حفظ منشور جديد
 postsRouter.post('/', (req, res) => {
   const id   = req.body.id || randomUUID();
   const post = {
@@ -294,7 +305,6 @@ postsRouter.post('/', (req, res) => {
     publish_results:'{}',
   };
 
-  // حذف المنشور القديم بنفس الـ id لو كان موجوداً (تحديث)
   run(`DELETE FROM scheduled_posts WHERE id = ?`, [id]);
   run(
     `INSERT INTO scheduled_posts (${Object.keys(post).join(',')}) VALUES (${Object.keys(post).map(() => '?').join(',')})`,
@@ -304,10 +314,9 @@ postsRouter.post('/', (req, res) => {
   res.status(201).json({ ...post, platforms: req.body.platforms || [] });
 });
 
-// تحديث حالة منشور
 postsRouter.put('/:id', (req, res) => {
   const existing = queryOne(`SELECT * FROM scheduled_posts WHERE id = ?`, [req.params.id]);
-  if (!existing) return res.status(404).json({ error: 'المنشور غير موجود' });
+  if (!existing) return res.status(404).json({ error: 'Post not found' });
 
   const updates = {};
   if (req.body.status)        updates.status = req.body.status;
@@ -323,7 +332,6 @@ postsRouter.put('/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// حذف منشور
 postsRouter.delete('/:id', (req, res) => {
   run(`DELETE FROM scheduled_posts WHERE id = ?`, [req.params.id]);
   res.json({ success: true });
@@ -331,9 +339,7 @@ postsRouter.delete('/:id', (req, res) => {
 
 app.use('/api/posts', postsRouter);
 
-// ── OAuth: Meta (انستقرام + فيسبوك) ──────────────────────────────────────────
-
-// الخطوة 1: توجيه المستخدم إلى فيسبوك للمصادقة
+// ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {
   const scopes = [
     'pages_read_engagement',
@@ -353,7 +359,6 @@ app.get('/auth/meta', (req, res) => {
   res.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params}`);
 });
 
-// الخطوة 2: معالجة الـ Callback من فيسبوك
 app.get('/auth/meta/callback', async (req, res) => {
   const { code, error } = req.query;
 
@@ -362,19 +367,16 @@ app.get('/auth/meta/callback', async (req, res) => {
   }
 
   try {
-    // تبادل الكود بـ token
     const tokenData = await metaExchangeCode(
       code,
       process.env.META_REDIRECT_URI
     );
 
-    // تحويله إلى long-lived token (60 يوم)
     const longToken = await getLongLivedToken(tokenData.access_token);
     const accessToken = longToken.access_token || tokenData.access_token;
 
-    // جلب الصفحات المرتبطة بالحساب
     const pages = await getUserPages(accessToken);
-    const page  = pages[0]; // نأخذ الصفحة الأولى
+    const page  = pages[0];
 
     let igUserId = null;
     let pageAccessToken = accessToken;
@@ -388,10 +390,8 @@ app.get('/auth/meta/callback', async (req, res) => {
       igUserId        = await getIgUserId(pageId, pageAccessToken);
     }
 
-    // تاريخ انتهاء الـ token (60 يوم)
     const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
 
-    // حذف الحساب القديم وإضافة الجديد
     run(`DELETE FROM social_accounts WHERE platform = ?`, ['meta']);
     run(
       `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, ig_user_id, token_expires_at, verifiedAt)
@@ -399,7 +399,7 @@ app.get('/auth/meta/callback', async (req, res) => {
       [randomUUID(), accountName, accountName, pageAccessToken, pageId || '', igUserId || '', expiresAt]
     );
 
-    console.log(`[OAuth] ✅ تم ربط Meta: ${accountName}`);
+    console.log(`[OAuth] Meta connected: ${accountName}`);
     res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=meta`);
   } catch (err) {
     console.error('[OAuth Meta]', err.message);
@@ -407,15 +407,12 @@ app.get('/auth/meta/callback', async (req, res) => {
   }
 });
 
-// ── OAuth: تيك توك ────────────────────────────────────────────────────────────
-
-// الخطوة 1: توجيه المستخدم إلى تيك توك
+// ---- OAuth: TikTok ----
 app.get('/auth/tiktok', (req, res) => {
   const url = tiktokAuthUrl('tiktok_oauth');
   res.redirect(url);
 });
 
-// الخطوة 2: معالجة الـ Callback من تيك توك
 app.get('/auth/tiktok/callback', async (req, res) => {
   const { code, error } = req.query;
 
@@ -436,7 +433,7 @@ app.get('/auth/tiktok/callback', async (req, res) => {
       [randomUUID(), open_id || 'tiktok_user', access_token, open_id || '', expiresAt]
     );
 
-    console.log('[OAuth] ✅ تم ربط تيك توك');
+    console.log('[OAuth] TikTok connected');
     res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=tiktok`);
   } catch (err) {
     console.error('[OAuth TikTok]', err.message);
@@ -444,8 +441,7 @@ app.get('/auth/tiktok/callback', async (req, res) => {
   }
 });
 
-// ── OAuth: سناب شات ───────────────────────────────────────────────────────────
-
+// ---- OAuth: Snapchat ----
 app.get('/auth/snapchat', (req, res) => {
   const url = snapAuthUrl('snapchat_oauth');
   res.redirect(url);
@@ -469,7 +465,7 @@ app.get('/auth/snapchat/callback', async (req, res) => {
       [randomUUID(), userInfo.username, userInfo.accountName, access_token, expiresAt]
     );
 
-    console.log('[OAuth] ✅ تم ربط سناب شات');
+    console.log('[OAuth] Snapchat connected');
     res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=snapchat`);
   } catch (err) {
     console.error('[OAuth Snapchat]', err.message);
@@ -477,7 +473,7 @@ app.get('/auth/snapchat/callback', async (req, res) => {
   }
 });
 
-// ── File upload endpoint ──────────────────────────────────────────────────────
+// ---- File upload endpoint ----
 const storage = multer.diskStorage({
   destination: uploadsDir,
   filename: (req, file, cb) => {
@@ -493,11 +489,10 @@ app.post('/upload', upload.single('file'), (req, res) => {
   res.json({ file_url: url, url });
 });
 
-// رفع صورة base64
 app.post('/api/upload-base64', (req, res) => {
   try {
     const { base64, filename } = req.body;
-    if (!base64) return res.status(400).json({ error: 'لا توجد صورة' });
+    if (!base64) return res.status(400).json({ error: 'No image' });
     const data = base64.replace(/^data:image\/\w+;base64,/, '');
     const ext  = base64.match(/data:image\/(\w+);/)?.[1] || 'png';
     const name = filename || `img_${Date.now()}.${ext}`;
@@ -509,13 +504,10 @@ app.post('/api/upload-base64', (req, res) => {
   }
 });
 
-// ── Health check ──────────────────────────────────────────────────────────────
+// ---- Health check ----
 app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-// ── Serve the built frontend (production / single Railway service) ────────────
-// `npm run build` outputs the SPA to <project-root>/dist. Serve those static
-// assets, and fall back to index.html for any non-API route so client-side
-// routing (react-router) works on refresh / deep links.
+// ---- Serve the built frontend (production / single Railway service) ----
 const distDir = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
@@ -523,20 +515,26 @@ if (fs.existsSync(distDir)) {
     res.sendFile(path.join(distDir, 'index.html'));
   });
 } else {
-  console.warn('⚠️  dist/ not found — run "npm run build" before starting in production.');
+  console.warn('dist/ not found - run "npm run build" before starting in production.');
 }
 
-// ── Scheduler init ────────────────────────────────────────────────────────────
-initScheduler(() => db, save);
+// ---- Scheduler init ----
+try {
+  initScheduler(() => db, save);
+  cron.schedule('* * * * *', () => {
+    runScheduler().catch(e => console.error('[Scheduler Error]', e?.stack || e));
+  });
+} catch (err) {
+  console.error('[boot] scheduler setup failed (continuing without it):', err?.stack || err);
+}
 
-// تشغيل الجدولة كل دقيقة
-cron.schedule('* * * * *', () => {
-  runScheduler().catch(e => console.error('[Scheduler Error]', e.message));
-});
-
-// ── Start ─────────────────────────────────────────────────────────────────────
+// ---- Start ----
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`✅ الخادم يعمل: http://localhost:${PORT}`);
-  console.log(`📅 الجدولة التلقائية: كل دقيقة`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('Scheduler: every minute');
+});
+server.on('error', (err) => {
+  console.error('[boot] FATAL: server failed to bind:', err?.stack || err);
+  process.exit(1);
 });
