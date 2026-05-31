@@ -14,6 +14,8 @@ import GreetingCardsPage from './pages/GreetingCardsPage';
 import PostComposer from './pages/PostComposer';
 import PostsManager from './pages/PostsManager';
 import ContentCalendar from './pages/ContentCalendar';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Terms from './pages/Terms';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -85,7 +87,12 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <Routes>
+            {/* Public pages — no login (TikTok/Meta reviewers open these directly) */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
       </QueryClientProvider>
