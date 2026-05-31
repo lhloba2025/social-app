@@ -498,6 +498,8 @@ export default function GreetingCardsPage({ language }) {
   const [bgGrad1, setBgGrad1] = useState("#f4d3a8");
   const [bgGrad2, setBgGrad2] = useState("#d99464");
   const [bgGradAngle, setBgGradAngle] = useState(180);
+  // True once the user picks any background → the stage shows even with no other content.
+  const [bgTouched, setBgTouched] = useState(false);
 
   // Paint-by-click state
   const [paintingDecorationId, setPaintingDecorationId] = useState(null);
@@ -1661,7 +1663,7 @@ export default function GreetingCardsPage({ language }) {
   // build a card from scratch using just stock illustrations + text.
   const renderCard = useCallback(async (name) => {
     // Nothing to draw at all → bail.
-    if (!templateUrl && stockObjects.length === 0 && headings.length === 0 && !logo) return null;
+    if (!templateUrl && stockObjects.length === 0 && headings.length === 0 && !logo && decorations.length === 0 && !bgTouched) return null;
     // Template is optional now. If it exists, load it; otherwise we'll fall
     // back to the background-fill branch below.
     let img = null;
@@ -2897,13 +2899,13 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Mode toggle */}
                 <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded p-1">
-                  <button onClick={() => setBgMode("solid")}
+                  <button onClick={() => { setBgTouched(true); setBgMode("solid"); }}
                     className={`py-1.5 rounded text-[11px] font-semibold transition ${
                       bgMode === "solid" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
                     }`}>
                     {isRtl ? "لون واحد" : "Solid"}
                   </button>
-                  <button onClick={() => setBgMode("gradient")}
+                  <button onClick={() => { setBgTouched(true); setBgMode("gradient"); }}
                     className={`py-1.5 rounded text-[11px] font-semibold transition ${
                       bgMode === "gradient" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
                     }`}>
@@ -2917,11 +2919,11 @@ export default function GreetingCardsPage({ language }) {
                     <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
                     <div className="flex items-center gap-2">
                       <input type="color" value={bgSolid}
-                        onChange={(e) => setBgSolid(e.target.value)}
+                        onChange={(e) => { setBgTouched(true); setBgSolid(e.target.value); }}
                         className="w-9 h-9 rounded cursor-pointer bg-slate-800" />
                       <div className="flex flex-wrap gap-1 flex-1">
                         {QUICK_COLORS.map((c) => (
-                          <button key={c} onClick={() => setBgSolid(c)}
+                          <button key={c} onClick={() => { setBgTouched(true); setBgSolid(c); }}
                             className="w-5 h-5 rounded-full hover:scale-110 transition"
                             style={{ background: c, outline: bgSolid === c ? "2px solid #22d3ee" : "1px solid #475569" }} />
                         ))}
@@ -2937,13 +2939,13 @@ export default function GreetingCardsPage({ language }) {
                       <div>
                         <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
                         <input type="color" value={bgGrad1}
-                          onChange={(e) => setBgGrad1(e.target.value)}
+                          onChange={(e) => { setBgTouched(true); setBgGrad1(e.target.value); }}
                           className="w-full h-9 rounded cursor-pointer bg-slate-800" />
                       </div>
                       <div>
                         <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
                         <input type="color" value={bgGrad2}
-                          onChange={(e) => setBgGrad2(e.target.value)}
+                          onChange={(e) => { setBgTouched(true); setBgGrad2(e.target.value); }}
                           className="w-full h-9 rounded cursor-pointer bg-slate-800" />
                       </div>
                     </div>
@@ -2963,6 +2965,7 @@ export default function GreetingCardsPage({ language }) {
                     {BG_GRADIENT_PRESETS.map((p) => (
                       <button key={p.name}
                         onClick={() => {
+                          setBgTouched(true);
                           setBgMode("gradient");
                           setBgGrad1(p.c1); setBgGrad2(p.c2); setBgGradAngle(p.angle);
                         }}
@@ -2982,6 +2985,7 @@ export default function GreetingCardsPage({ language }) {
                     {SOFT_TONE_PRESETS.map((p) => (
                       <button key={p.name}
                         onClick={() => {
+                          setBgTouched(true);
                           setBgMode("gradient");
                           setBgGrad1(p.c1); setBgGrad2(p.c2); setBgGradAngle(p.angle);
                         }}
@@ -5265,7 +5269,7 @@ export default function GreetingCardsPage({ language }) {
               {/* Stage is shown the moment the card has ANY content — template,
                   stock object, heading, or logo. Empty state is reserved for
                   the truly-blank card. */}
-              {!templateUrl && stockObjects.length === 0 && headings.length === 0 && !logo ? (
+              {!templateUrl && stockObjects.length === 0 && headings.length === 0 && !logo && decorations.length === 0 && !bgTouched ? (
                 <div className="text-center text-slate-500 max-w-sm">
                   <Upload className="w-12 h-12 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">
