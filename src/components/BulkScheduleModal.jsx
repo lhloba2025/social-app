@@ -95,6 +95,9 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const togglePub = (id) =>
     setPubPlatforms((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
+  // Post type for the whole batch: feed post or story (الحالة).
+  const [bulkPostType, setBulkPostType] = useState("feed");
+
   // ── Mode + form state ───────────────────────────────────────────────
   // weekly: pick days + per-day times + start date
   // daily:  one slot every N days at a single time
@@ -224,6 +227,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       return {
         status: "scheduled",
         platforms: pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []),
+        postType: bulkPostType,
         caption,
         scheduleDate: slot.date,
         scheduleTime: slot.time,
@@ -383,6 +387,34 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               <p className="text-[10px] text-slate-500 mt-1">
                 {isRtl ? "اختر منصة أو أكثر — نفس المحتوى يُنشر على كل اللي تختاره." : "Pick one or more — the same content posts to all selected."}
               </p>
+            </div>
+
+            {/* Post type: feed vs story */}
+            <div>
+              <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
+                {isRtl ? "نوع المنشور:" : "Post type:"}
+              </label>
+              <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded-lg p-1">
+                {[
+                  { id: "feed",  ar: "📷 بوست", en: "📷 Feed" },
+                  { id: "story", ar: "⭕ ستوري (الحالة)", en: "⭕ Story" },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setBulkPostType(t.id)}
+                    className={`py-2 rounded text-[12px] font-bold transition ${
+                      bulkPostType === t.id ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    {isRtl ? t.ar : t.en}
+                  </button>
+                ))}
+              </div>
+              {bulkPostType === "story" && (
+                <p className="text-[10px] text-amber-300/90 mt-1 leading-relaxed">
+                  {isRtl ? "الستوري يدعم انستقرام وفيسبوك فقط (تيك توك/سناب لا يدعمان النشر التلقائي للحالة)." : "Stories support Instagram & Facebook only."}
+                </p>
+              )}
             </div>
 
             {/* Mode tabs */}
