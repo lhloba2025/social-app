@@ -33,7 +33,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { X, Calendar, Clock, Repeat, ChevronLeft, ChevronRight, CheckCircle2, Trash2, Cloud, CloudOff } from "lucide-react";
 import { buildRecurringSlots, buildSequentialSlots, todayISO } from "@/utils/localScheduleStore";
 import { createScheduledPosts, isBackendAvailable } from "@/utils/publishingService";
-import { platformLabel, platformEmoji } from "./BulkMediaUploadModal";
+import { platformLabel, platformEmoji, PLATFORMS } from "./BulkMediaUploadModal";
 
 // Weekday metadata — index matches Date.getDay() (Sun=0).
 // `shortAr` is the conventional single-letter abbreviation used in
@@ -83,6 +83,17 @@ function formatDateLabel(isoDate, isRtl) {
 
 export default function BulkScheduleModal({ isOpen, posts = [], language, onClose, onSuccess }) {
   const isRtl = language === "ar";
+
+  // Which platforms to publish ALL these posts to. Defaults to whatever the
+  // uploaded media were tagged with, but the user can tick more (cross-post).
+  const [pubPlatforms, setPubPlatforms] = useState([]);
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const tagged = Array.from(new Set(posts.map((p) => p.platform).filter(Boolean)));
+    setPubPlatforms(tagged.length ? tagged : ["instagram"]);
+  }, [isOpen, posts]);
+  const togglePub = (id) =>
+    setPubPlatforms((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
   // ── Mode + form state ───────────────────────────────────────────────
   // weekly: pick days + per-day times + start date
@@ -212,7 +223,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       const caption = captionParts.join("\n\n");
       return {
         status: "scheduled",
-        platforms: p.platform ? [p.platform] : [],
+        platforms: pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []),
         caption,
         scheduleDate: slot.date,
         scheduleTime: slot.time,
@@ -346,6 +357,34 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
         <div className="flex-1 overflow-y-auto md:overflow-hidden grid md:grid-cols-[1fr_1fr] gap-0">
           {/* ── Left: pattern picker + form ──────────────────────────── */}
           <div className="p-5 space-y-4 md:overflow-y-auto border-b md:border-b-0 md:border-e border-slate-800">
+            {/* Publish-to platforms (multi-select cross-post) */}
+            <div>
+              <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
+                {isRtl ? "ينشر على:" : "Publish to:"}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {PLATFORMS.map((p) => {
+                  const active = pubPlatforms.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => togglePub(p.id)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${
+                        active ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                      }`}
+                    >
+                      <span>{p.emoji}</span>
+                      <span>{isRtl ? p.labelAr : p.label}</span>
+                      {active && <span>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {isRtl ? "اختر منصة أو أكثر — نفس المحتوى يُنشر على كل اللي تختاره." : "Pick one or more — the same content posts to all selected."}
+              </p>
+            </div>
+
             {/* Mode tabs */}
             <div className="grid grid-cols-3 gap-1 bg-slate-800/60 rounded-lg p-1">
               {[
