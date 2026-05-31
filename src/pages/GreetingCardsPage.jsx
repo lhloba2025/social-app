@@ -76,7 +76,7 @@ async function migrateLegacyCards() {
   } catch { /* ignore */ }
 }
 import { SIZES } from "@/components/studio/sizes";
-import { STOCK_ILLUSTRATIONS, VINTAGE_PALETTE, BG_GRADIENT_PRESETS, REAL_IMAGE_SUBJECTS, googleImagesUrl } from "@/components/studio/data/stockIllustrations.jsx";
+import { STOCK_ILLUSTRATIONS, VINTAGE_PALETTE, BG_GRADIENT_PRESETS, REAL_IMAGE_CATEGORIES, googleImagesUrl } from "@/components/studio/data/stockIllustrations.jsx";
 import { TEXT_ORNAMENTS, TEXT_ORNAMENT_LIST } from "@/components/studio/data/textOrnaments.jsx";
 import { CALLIGRAPHIC_MARKS } from "@/components/studio/data/calligraphicMarks.jsx";
 import { ARABIC_LETTER_SHAPES } from "@/components/studio/data/arabicLetterShapes.jsx";
@@ -4118,21 +4118,30 @@ export default function GreetingCardsPage({ language }) {
                 💡 {isRtl ? "اضغط على أي موضوع تبيه → يفتح بحث Google بصور PNG ذات خلفية شفافه فقط. احفظ الصوره (Right-click → Save Image) ثم ارفعها من زرّ «رفع زخرفه» تحت. هكذا تحصل على صور حقيقيه فعلاً (مو رسومات)." : "Click any subject → Google opens, pre-filtered to transparent-PNG results. Right-click → Save the image you like, then upload it via the 'Upload' button below. This gets you real photos (not illustrations)."}
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5">
-                {REAL_IMAGE_SUBJECTS.map((s) => (
-                  <a
-                    key={s.query}
-                    href={googleImagesUrl(s.query)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-0.5 p-2 rounded-lg bg-slate-800 hover:bg-emerald-500 hover:text-slate-900 border border-slate-700 hover:border-emerald-300 transition group"
-                    title={isRtl ? s.ar : s.en}
-                  >
-                    <span className="text-xl leading-none">{s.emoji}</span>
-                    <span className="text-[9.5px] font-semibold truncate w-full text-center">
-                      {isRtl ? s.ar : s.en}
-                    </span>
-                  </a>
+              <div className="space-y-2.5 max-h-[420px] overflow-y-auto pe-1">
+                {REAL_IMAGE_CATEGORIES.map((cat) => (
+                  <div key={cat.en} className="space-y-1.5">
+                    <h4 className="text-[11px] font-bold text-emerald-300/90 sticky top-0 bg-slate-900 py-0.5">
+                      {isRtl ? cat.ar : cat.en}
+                    </h4>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {cat.items.map((s) => (
+                        <a
+                          key={s.query}
+                          href={googleImagesUrl(s.query)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center gap-0.5 p-2 rounded-lg bg-slate-800 hover:bg-emerald-500 hover:text-slate-900 border border-slate-700 hover:border-emerald-300 transition group"
+                          title={isRtl ? s.ar : s.en}
+                        >
+                          <span className="text-xl leading-none">{s.emoji}</span>
+                          <span className="text-[9.5px] font-semibold truncate w-full text-center">
+                            {isRtl ? s.ar : s.en}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 

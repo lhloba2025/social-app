@@ -440,24 +440,128 @@ export const VINTAGE_PALETTE = [
 // Queries lean Arabic-context-aware ("najdi old", "fanous", "abaya") so
 // the first page of results matches Saudi heritage aesthetics rather than
 // generic Western stock images.
-export const REAL_IMAGE_SUBJECTS = [
-  { ar: "خروف",       en: "Sheep",          emoji: "🐑", query: "sheep png transparent realistic" },
-  { ar: "نخلة",        en: "Palm tree",      emoji: "🌴", query: "palm tree png transparent realistic" },
-  { ar: "بيت نجدي",    en: "Najdi house",    emoji: "🏠", query: "najdi old saudi house png transparent" },
-  { ar: "باقة ورد",    en: "Bouquet",        emoji: "💐", query: "flower bouquet png transparent" },
-  { ar: "سيارة قديمة", en: "Vintage car",    emoji: "🚗", query: "vintage classic car png transparent" },
-  { ar: "فانوس",       en: "Fanous",         emoji: "🏮", query: "arabic ramadan fanous lantern png transparent" },
-  { ar: "مسجد",        en: "Mosque",         emoji: "🕌", query: "mosque png transparent realistic" },
-  { ar: "جمل",         en: "Camel",          emoji: "🐫", query: "camel png transparent realistic" },
-  { ar: "هلال",        en: "Crescent",       emoji: "🌙", query: "crescent moon png transparent" },
-  { ar: "ورد",          en: "Rose",           emoji: "🌹", query: "red rose png transparent realistic" },
-  { ar: "شجرة زيتون",  en: "Olive tree",     emoji: "🌳", query: "olive tree png transparent" },
-  { ar: "هدية",         en: "Gift box",       emoji: "🎁", query: "gift box png transparent realistic" },
-  { ar: "تمر",          en: "Dates",          emoji: "🌰", query: "dates fruit png transparent realistic" },
-  { ar: "قهوة عربية",   en: "Arabic coffee",  emoji: "☕", query: "arabic coffee dallah png transparent" },
-  { ar: "باب خشبي",     en: "Wooden door",    emoji: "🚪", query: "old wooden door png transparent" },
-  { ar: "إكليل",        en: "Wreath",         emoji: "🌿", query: "leaf wreath png transparent" },
+// Grouped by category so a long list stays scannable. Each item opens a Google
+// Images search pre-filtered to transparent PNGs. Queries are tuned (English +
+// "png transparent") to surface realistic cut-outs rather than flat clip-art.
+export const REAL_IMAGE_CATEGORIES = [
+  {
+    ar: "💇 صالون وتجميل", en: "Salon & Beauty",
+    items: [
+      { ar: "استشوار",       en: "Hair dryer",     emoji: "💨", query: "hair dryer salon png transparent" },
+      { ar: "كرسي صالون",    en: "Salon chair",    emoji: "💺", query: "salon barber chair png transparent" },
+      { ar: "مقص شعر",       en: "Scissors",       emoji: "✂️", query: "hair scissors salon png transparent" },
+      { ar: "مكواة شعر",     en: "Hair straightener", emoji: "🔥", query: "hair straightener flat iron png transparent" },
+      { ar: "مرآة صالون",    en: "Salon mirror",   emoji: "🪞", query: "salon mirror png transparent" },
+      { ar: "مكياج",         en: "Makeup",         emoji: "💄", query: "makeup cosmetics set png transparent" },
+      { ar: "أحمر شفاه",     en: "Lipstick",       emoji: "💋", query: "lipstick png transparent realistic" },
+      { ar: "مانيكير",       en: "Manicure",       emoji: "💅", query: "manicure nail polish hand png transparent" },
+      { ar: "باديكير",       en: "Pedicure",       emoji: "🦶", query: "pedicure spa foot png transparent" },
+      { ar: "طلاء أظافر",    en: "Nail polish",    emoji: "💅", query: "nail polish bottle png transparent" },
+      { ar: "عطر",           en: "Perfume",        emoji: "🌸", query: "perfume bottle luxury png transparent" },
+      { ar: "كريم تجميل",    en: "Cosmetic cream", emoji: "🧴", query: "cosmetic cream jar png transparent" },
+      { ar: "مشط",           en: "Comb / brush",   emoji: "🪮", query: "hair comb brush png transparent" },
+      { ar: "منشفة",         en: "Towel",          emoji: "🧖", query: "rolled spa towel png transparent" },
+    ],
+  },
+  {
+    ar: "💻 أجهزة ومكتب", en: "Devices & Office",
+    items: [
+      { ar: "لابتوب",        en: "Laptop",         emoji: "💻", query: "laptop macbook png transparent" },
+      { ar: "جوال آيفون",    en: "iPhone",         emoji: "📱", query: "iphone smartphone png transparent" },
+      { ar: "مكتب",          en: "Desk",           emoji: "🗄️", query: "office desk png transparent" },
+      { ar: "كرسي مكتب",     en: "Office chair",   emoji: "🪑", query: "office chair png transparent" },
+      { ar: "طاولة",         en: "Table",          emoji: "🛋️", query: "table furniture png transparent" },
+      { ar: "كنبة",          en: "Sofa",           emoji: "🛋️", query: "sofa couch png transparent" },
+      { ar: "مصباح مكتب",    en: "Desk lamp",      emoji: "💡", query: "desk lamp png transparent" },
+      { ar: "نبتة داخلية",   en: "Potted plant",   emoji: "🪴", query: "indoor potted plant png transparent" },
+      { ar: "دفتر وقلم",     en: "Notebook & pen", emoji: "📓", query: "notebook and pen png transparent" },
+      { ar: "ساعة",          en: "Clock",          emoji: "⏰", query: "wall clock png transparent" },
+    ],
+  },
+  {
+    ar: "☕ طعام ومشروبات", en: "Food & Drink",
+    items: [
+      { ar: "فنجال قهوة",    en: "Coffee cup",     emoji: "☕", query: "coffee cup latte png transparent" },
+      { ar: "قهوة عربية",    en: "Arabic coffee",  emoji: "🫖", query: "arabic coffee dallah png transparent" },
+      { ar: "كوب شاي",       en: "Tea cup",        emoji: "🍵", query: "tea cup png transparent" },
+      { ar: "كيك",           en: "Cake",           emoji: "🍰", query: "cake dessert png transparent realistic" },
+      { ar: "تمر",           en: "Dates",          emoji: "🌰", query: "dates fruit png transparent realistic" },
+      { ar: "شوكولاتة",      en: "Chocolate",      emoji: "🍫", query: "chocolate box png transparent" },
+      { ar: "عصير",          en: "Juice",          emoji: "🥤", query: "fresh juice glass png transparent" },
+      { ar: "ضيافة",         en: "Sweets tray",    emoji: "🍬", query: "arabic sweets tray png transparent" },
+    ],
+  },
+  {
+    ar: "🕌 دينية وتراثية", en: "Religious & Heritage",
+    items: [
+      { ar: "الكعبة",        en: "Kaaba",          emoji: "🕋", query: "kaaba mecca png transparent" },
+      { ar: "المسجد النبوي", en: "Prophet Mosque", emoji: "🕌", query: "prophet mosque madinah png transparent" },
+      { ar: "مسجد",          en: "Mosque",         emoji: "🕌", query: "mosque png transparent realistic" },
+      { ar: "مصحف",          en: "Quran",          emoji: "📖", query: "quran mushaf book png transparent" },
+      { ar: "سجادة صلاة",    en: "Prayer rug",     emoji: "🧎", query: "prayer rug sajjada png transparent" },
+      { ar: "مبخرة",         en: "Incense burner", emoji: "🔥", query: "arabic incense burner mabkhara png transparent" },
+      { ar: "فانوس",         en: "Fanous",         emoji: "🏮", query: "arabic ramadan fanous lantern png transparent" },
+      { ar: "هلال",          en: "Crescent",       emoji: "🌙", query: "crescent moon png transparent" },
+      { ar: "بيت نجدي",      en: "Najdi house",    emoji: "🏠", query: "najdi old saudi house png transparent" },
+      { ar: "باب خشبي",      en: "Wooden door",    emoji: "🚪", query: "old wooden najdi door png transparent" },
+    ],
+  },
+  {
+    ar: "🐾 حيوانات", en: "Animals",
+    items: [
+      { ar: "قطة",           en: "Cat",            emoji: "🐱", query: "cat png transparent realistic" },
+      { ar: "كلب",           en: "Dog",            emoji: "🐶", query: "dog png transparent realistic" },
+      { ar: "خروف",          en: "Sheep",          emoji: "🐑", query: "sheep png transparent realistic" },
+      { ar: "جمل",           en: "Camel",          emoji: "🐫", query: "camel png transparent realistic" },
+      { ar: "صقر",           en: "Falcon",         emoji: "🦅", query: "falcon png transparent realistic" },
+      { ar: "حصان",          en: "Horse",          emoji: "🐎", query: "arabian horse png transparent" },
+      { ar: "طيور",          en: "Birds",          emoji: "🐦", query: "birds png transparent realistic" },
+      { ar: "فراشة",         en: "Butterfly",      emoji: "🦋", query: "butterfly png transparent realistic" },
+    ],
+  },
+  {
+    ar: "🇸🇦 مدن ومعالم سعودية", en: "Saudi Cities & Landmarks",
+    items: [
+      { ar: "الرياض",        en: "Riyadh",         emoji: "🏙️", query: "riyadh kingdom tower skyline png transparent" },
+      { ar: "الخرج",         en: "Al Kharj",       emoji: "🏜️", query: "al kharj saudi landmark png transparent" },
+      { ar: "نجران",         en: "Najran",         emoji: "🏰", query: "najran emirah palace png transparent" },
+      { ar: "جدة",           en: "Jeddah",         emoji: "⛲", query: "jeddah corniche fountain png transparent" },
+      { ar: "مكة",           en: "Makkah",         emoji: "🕋", query: "makkah clock tower png transparent" },
+      { ar: "المدينة",       en: "Madinah",        emoji: "🕌", query: "madinah prophet mosque png transparent" },
+      { ar: "أبها",          en: "Abha",           emoji: "🏔️", query: "abha asir mountains png transparent" },
+      { ar: "الدرعية",       en: "Diriyah",        emoji: "🏛️", query: "diriyah at turaif png transparent" },
+      { ar: "العلا",         en: "AlUla",          emoji: "🪨", query: "alula hegra rock png transparent" },
+      { ar: "الدمام",        en: "Dammam",         emoji: "🌊", query: "dammam corniche png transparent" },
+      { ar: "برج المملكة",   en: "Kingdom Tower",  emoji: "🏢", query: "kingdom tower riyadh png transparent" },
+      { ar: "علم السعودية",  en: "Saudi flag",     emoji: "🏴", query: "saudi arabia flag png transparent" },
+    ],
+  },
+  {
+    ar: "🌿 طبيعة وزخارف", en: "Nature & Decor",
+    items: [
+      { ar: "ورد",           en: "Rose",           emoji: "🌹", query: "red rose png transparent realistic" },
+      { ar: "باقة ورد",      en: "Bouquet",        emoji: "💐", query: "flower bouquet png transparent" },
+      { ar: "نخلة",          en: "Palm tree",      emoji: "🌴", query: "palm tree png transparent realistic" },
+      { ar: "شجرة زيتون",    en: "Olive tree",     emoji: "🌳", query: "olive tree png transparent" },
+      { ar: "إكليل",         en: "Wreath",         emoji: "🌿", query: "leaf wreath png transparent" },
+      { ar: "أوراق ذهبية",   en: "Gold leaves",    emoji: "🍂", query: "gold leaves png transparent" },
+      { ar: "بالونات",       en: "Balloons",       emoji: "🎈", query: "balloons png transparent realistic" },
+      { ar: "غيوم",          en: "Clouds",         emoji: "☁️", query: "clouds png transparent" },
+    ],
+  },
+  {
+    ar: "🚗 مركبات وهدايا", en: "Vehicles & Gifts",
+    items: [
+      { ar: "سيارة قديمة",   en: "Vintage car",    emoji: "🚗", query: "vintage classic car png transparent" },
+      { ar: "سيارة فخمة",    en: "Luxury car",     emoji: "🏎️", query: "luxury car png transparent realistic" },
+      { ar: "طائرة",         en: "Airplane",       emoji: "✈️", query: "airplane png transparent realistic" },
+      { ar: "هدية",          en: "Gift box",       emoji: "🎁", query: "gift box png transparent realistic" },
+    ],
+  },
 ];
+
+// Flat list (kept for backward compatibility / search).
+export const REAL_IMAGE_SUBJECTS = REAL_IMAGE_CATEGORIES.flatMap((c) => c.items);
 
 // Helper — builds the Google Images URL with the transparent-only filter.
 export const googleImagesUrl = (query) =>
