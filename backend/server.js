@@ -383,7 +383,9 @@ app.get('/auth/meta/callback', async (req, res) => {
     const accessToken = longToken.access_token || tokenData.access_token;
 
     const pages = await getUserPages(accessToken);
-    const page  = pages[0];
+    // Prefer the page that's linked to an Instagram business account (that's the
+    // one we publish to) — avoids picking the wrong page when several exist.
+    const page  = pages.find(p => p.instagram_business_account) || pages[0];
 
     let igUserId = null;
     let pageAccessToken = accessToken;
