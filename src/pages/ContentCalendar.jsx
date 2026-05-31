@@ -295,7 +295,8 @@ export default function ContentCalendar({ language }) {
     if (!window.confirm(ar
       ? "النشر الآن سيغير الجدول إلى الدقيقة الحالية ويرسل المنشور خلال 60 ثانية. متابعة؟"
       : "Publish now will set the schedule to this minute. The backend will send within 60 seconds. Continue?")) return;
-    const result = await publishNow(postId);
+    const post = posts.find((p) => p.id === postId);
+    const result = await publishNow(post || { id: postId });
     if (!result.ok) {
       alert(result.message || (ar ? "تعذّر إرسال أمر النشر." : "Couldn't trigger publish."));
       return;

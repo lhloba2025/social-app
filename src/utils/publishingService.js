@@ -161,29 +161,43 @@ export async function listAllPosts() {
 // so this is "publish on the next cron tick"). Without a backend, this
 // only updates the local mirror (no actual publish — the user gets a
 // warning in the UI).
-export async function publishNow(postId) {
+// Accepts the FULL post object (not just an id). We POST it to the backend
+// (POST is an upsert: delete-by-id then insert) with the schedule set to the
+// current minute — so a post that only existed in localStorage still gets
+// created on the backend and the cron sends it. Sending just a PUT failed with
+// 404 for local-only posts.
+export async function publishNow(post) {
   const nowDate = new Date();
-  const yyyy = nowDate.getFullYear();
-  const mm = String(nowDate.getMonth() + 1).padStart(2, "0");
-  const dd = String(nowDate.getDate()).padStart(2, "0");
-  const hh = String(nowDate.getHours()).padStart(2, "0");
-  const mi = String(nowDate.getMinutes()).padStart(2, "0");
-  const scheduleDate = `${yyyy}-${mm}-${dd}`;
-  const scheduleTime = `${hh}:${mi}`;
+  const scheduleDate = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, "0")}-${String(nowDate.getDate()).padStart(2, "0")}`;
+  const scheduleTime = `${String(nowDate.getHours()).padStart(2, "0")}:${String(nowDate.getMinutes()).padStart(2, "0")}`;
+
+  if (!post || typeof post !== "object") {
+    return { ok: false, error: "bad_input", message: "منشور غير صالح" };
+  }
 
   const backendUp = await probeBackend();
   if (!backendUp) {
-    return {
-      ok: false,
-      error: "backend_unreachable",
-      message: "الخادم غير متصل — تعذّر إرسال أمر النشر الفوري.",
-    };
+    return { ok: false, error: "backend_unreachable", message: "الخادم غير متصل — تعذّر إرسال أمر النشر الفوري." };
   }
+
+  if (!post.media?.url && !post.media?.thumbnail) {
+    return { ok: false, error: "no_media", message: "هذا المنشور بدون صورة محفوظة على الخادم — أنشئ منشوراً جديداً وارفع صورته ثم انشره." };
+  }
+
   try {
-    const res = await fetch(`${API}/${postId}`, {
-      method: "PUT",
+    const res = await fetch(API, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduleDate, scheduleTime, status: "scheduled" }),
+      body: JSON.stringify({
+        id: post.id,
+        status: "scheduled",
+        platforms: post.platforms || [],
+        caption: post.caption || "",
+        scheduleDate,
+        scheduleTime,
+        scheduledAt: `${scheduleDate}T${scheduleTime}`,
+        media: post.media || null,
+      }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { ok: true };
