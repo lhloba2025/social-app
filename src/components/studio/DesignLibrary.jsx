@@ -400,8 +400,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   };
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-5xl mx-auto">
+    <div dir={isRtl ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-900 text-white p-6">
+      <div className="max-w-5xl mx-auto pb-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
