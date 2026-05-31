@@ -271,13 +271,20 @@ function crudRouter(table, transform) {
 }
 
 // ---- CRUD Routes ----
-app.use('/designs', crudRouter('designs'));
-app.use('/media', crudRouter('media'));
-app.use('/logos', crudRouter('logos', row => ({ ...row, isSvg: boolField(row.isSvg) })));
-app.use('/social-accounts', crudRouter('social_accounts', row => ({
+// Mounted under BOTH `/X` and `/api/X`: the dev proxy may or may not strip the
+// `/api` prefix, and in production the frontend calls `/api/...` on the same
+// origin, so we register both to be safe.
+const socialAccountsRouter = () => crudRouter('social_accounts', row => ({
   ...row,
   isConnected: boolField(row.isConnected),
-})));
+}));
+const logosRouter = () => crudRouter('logos', row => ({ ...row, isSvg: boolField(row.isSvg) }));
+for (const prefix of ['', '/api']) {
+  app.use(`${prefix}/designs`, crudRouter('designs'));
+  app.use(`${prefix}/media`, crudRouter('media'));
+  app.use(`${prefix}/logos`, logosRouter());
+  app.use(`${prefix}/social-accounts`, socialAccountsRouter());
+}
 
 // ---- Scheduled Posts Routes ----
 const postsRouter = express.Router();
