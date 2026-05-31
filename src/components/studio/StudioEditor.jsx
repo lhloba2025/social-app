@@ -8,6 +8,7 @@ import { localApi, uploadFile } from "@/api/localClient";
 import StudioCanvas from "./StudioCanvas";
 import TextPanel from "./panels/TextPanel";
 import ShapesPanel from "./panels/ShapesPanel";
+import DecorationFinder from "./panels/DecorationFinder";
 import ImagesPanel from "./panels/ImagesPanel";
 import LogoLibraryPanel from "./panels/LogoLibraryPanel";
 import BackgroundPanel from "./panels/BackgroundPanel";
@@ -1632,6 +1633,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               />
             </div>
             <div style={{ display: activeTab === "deco" ? "block" : "none" }}>
+              <DecorationFinder onAdd={addImage} language={language} />
               <ShapesPanel
                 shapes={shapes}
                 selectedId={selectedType === "shape" ? selectedId : null}
