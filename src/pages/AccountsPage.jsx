@@ -10,46 +10,18 @@ import ConnectGuideModal from "@/components/accounts/ConnectGuideModal";
 
 const RAILWAY = "https://social-app-production-7cfd.up.railway.app";
 
+// Start OAuth via the BACKEND routes — they build the provider URL using the
+// server-side credentials (set in Railway Variables), so no build-time VITE_*
+// vars are needed and the flow always uses the correct App ID.
 function buildOAuthUrl(platform) {
-  const META_APP_ID   = import.meta.env.VITE_META_APP_ID;
-  const TIKTOK_KEY    = import.meta.env.VITE_TIKTOK_CLIENT_KEY;
-  const SNAP_ID       = import.meta.env.VITE_SNAP_CLIENT_ID;
-
   switch (platform) {
     case "facebook":
-    case "instagram": {
-      if (!META_APP_ID) return null;
-      const p = new URLSearchParams({
-        client_id:     META_APP_ID,
-        redirect_uri:  `${RAILWAY}/auth/meta/callback`,
-        scope:         "pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
-        response_type: "code",
-        state:         "meta_oauth",
-      });
-      return `https://www.facebook.com/v19.0/dialog/oauth?${p}`;
-    }
-    case "tiktok": {
-      if (!TIKTOK_KEY) return null;
-      const p = new URLSearchParams({
-        client_key:    TIKTOK_KEY,
-        scope:         "user.info.basic,video.publish,video.upload",
-        response_type: "code",
-        redirect_uri:  `${RAILWAY}/auth/tiktok/callback`,
-        state:         "tiktok_oauth",
-      });
-      return `https://www.tiktok.com/v2/auth/authorize/?${p}`;
-    }
-    case "snapchat": {
-      if (!SNAP_ID) return null;
-      const p = new URLSearchParams({
-        client_id:     SNAP_ID,
-        redirect_uri:  `${RAILWAY}/auth/snapchat/callback`,
-        response_type: "code",
-        scope:         "https://auth.snapchat.com/oauth2/api/user.display_name https://auth.snapchat.com/oauth2/api/user.bitmoji.avatar",
-        state:         "snapchat_oauth",
-      });
-      return `https://accounts.snapchat.com/accounts/oauth2/auth?${p}`;
-    }
+    case "instagram":
+      return `${RAILWAY}/auth/meta`;
+    case "tiktok":
+      return `${RAILWAY}/auth/tiktok`;
+    case "snapchat":
+      return `${RAILWAY}/auth/snapchat`;
     default:
       return null;
   }
