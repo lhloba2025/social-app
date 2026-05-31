@@ -157,6 +157,7 @@ export default function PostComposer({ language }) {
   const [scheduleDate, setScheduleDate] = useState(todayISO());
   const [scheduleTime, setScheduleTime] = useState(nowTime());
   const [postNow, setPostNow] = useState(false);
+  const [postType, setPostType] = useState("feed"); // "feed" | "story"
   const [showHashtags, setShowHashtags] = useState(true);
   const [customHashtag, setCustomHashtag] = useState("");
   const [showPicker, setShowPicker] = useState(false);
@@ -284,6 +285,7 @@ export default function PostComposer({ language }) {
       id: editId || `post_${Date.now()}`,
       status: isDraft ? "draft" : "scheduled",
       platforms,
+      postType,
       caption: fullCaption,
       scheduleDate: effDate,
       scheduleTime: effTime,
@@ -453,6 +455,19 @@ export default function PostComposer({ language }) {
                   </div>
                 )}
               </div>
+            )}
+          </Section>
+
+          {/* Post type: feed vs story */}
+          <Section title={ar ? "نوع المنشور" : "Post type"} icon={<ImagePlus className="w-4 h-4" />}>
+            <div className="flex gap-2">
+              <ToggleChip active={postType === "feed"}  onClick={() => setPostType("feed")}  label={ar ? "📷 بوست (المنشورات)" : "📷 Feed post"} />
+              <ToggleChip active={postType === "story"} onClick={() => setPostType("story")} label={ar ? "⭕ ستوري (الحالة)" : "⭕ Story"} />
+            </div>
+            {postType === "story" && (
+              <p className="text-[11px] text-amber-300/90 mt-2 leading-relaxed">
+                {ar ? "ملاحظة: الستوري ينشر الصورة فقط بدون كابشن (انستقرام/فيسبوك لا يضيفان نصاً على الستوري عبر الـ API)." : "Note: stories publish the image only — caption isn't added to stories via the API."}
+              </p>
             )}
           </Section>
 

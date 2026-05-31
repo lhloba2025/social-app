@@ -81,18 +81,21 @@ async function publishPost(db, post) {
         caption:  post.caption || "",
         mediaUrl: post.media_url || post.media_thumbnail || null,
       };
+      const isStory = post.post_type === "story";
 
       let result;
 
       if (platform === "instagram") {
         result = await publishToInstagram(
           { igUserId: account.ig_user_id, accessToken: account.access_token },
-          postData
+          postData,
+          { story: isStory }
         );
       } else if (platform === "facebook") {
         result = await publishToFacebook(
           { pageId: account.page_id, pageAccessToken: account.access_token },
-          postData
+          postData,
+          { story: isStory }
         );
       } else if (platform === "tiktok") {
         result = await publishToTikTok(

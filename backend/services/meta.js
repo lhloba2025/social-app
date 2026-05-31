@@ -20,24 +20,22 @@ const GRAPH = "https://graph.facebook.com/v19.0";
  * @param {Object} account - { igUserId, accessToken }
  * @param {Object} post    - { caption, mediaUrl }
  */
-export async function publishToInstagram(account, post) {
+export async function publishToInstagram(account, post, opts = {}) {
   const { igUserId, accessToken } = account;
   const { caption, mediaUrl } = post;
 
   if (!mediaUrl) throw new Error("انستقرام يحتاج رابط صورة أو فيديو");
   if (!igUserId) throw new Error("لم يتم ربط حساب انستقرام");
 
-  // الخطوة 1: إنشاء حاوية الميديا
+  // الخطوة 1: إنشاء حاوية الميديا. الستوري لا يأخذ caption ويحتاج media_type=STORIES.
+  const containerParams = { image_url: mediaUrl, access_token: accessToken };
+  if (opts.story) containerParams.media_type = "STORIES";
+  else containerParams.caption = caption || "";
+
   const containerRes = await axios.post(
     `${GRAPH}/${igUserId}/media`,
     null,
-    {
-      params: {
-        image_url: mediaUrl,
-        caption: caption || "",
-        access_token: accessToken,
-      },
-    }
+    { params: containerParams }
   );
 
   const creationId = containerRes.data.id;
@@ -68,11 +66,25 @@ export async function publishToInstagram(account, post) {
  * @param {Object} account - { pageId, pageAccessToken }
  * @param {Object} post    - { caption, mediaUrl }
  */
-export async function publishToFacebook(account, post) {
+export async function publishToFacebook(account, post, opts = {}) {
   const { pageId, pageAccessToken } = account;
   const { caption, mediaUrl } = post;
 
   if (!pageId) throw new Error("لم يتم ربط صفحة فيسبوك");
+
+  // ستوري فيسبوك: ارفع الصورة كغير منشورة ثم انشرها كقصة.
+  if (opts.story) {
+    if (!mediaUrl) throw new Error("ستوري فيسبوك يحتاج صورة");
+    const up = await axios.post(`${GRAPH}/${pageId}/photos`, null, {
+      params: { url: mediaUrl, published: false, access_token: pageAccessToken },
+    });
+    const photoId = up.data.id;
+    if (!photoId) throw new Error("فشل تجهيز صورة ستوري فيسبوك");
+    const st = await axios.post(`${GRAPH}/${pageId}/photo_stories`, null, {
+      params: { photo_id: photoId, access_token: pageAccessToken },
+    });
+    return { success: true, postId: st.data.post_id || st.data.id || photoId };
+  }
 
   let result;
 

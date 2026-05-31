@@ -163,6 +163,7 @@ const alterCols = [
   `ALTER TABLE media ADD COLUMN caption_text  TEXT`,
   `ALTER TABLE media ADD COLUMN post_id       TEXT`,
   `ALTER TABLE media ADD COLUMN position      INTEGER DEFAULT 0`,
+  `ALTER TABLE scheduled_posts ADD COLUMN post_type TEXT DEFAULT 'feed'`,
 ];
 alterCols.forEach((sql) => {
   try { db.run(sql); } catch { /* column already exists */ }
@@ -324,6 +325,7 @@ postsRouter.post('/', (req, res) => {
     media_url:      req.body.media?.url || req.body.media_url || '',
     media_thumbnail:req.body.media?.thumbnail || req.body.media_thumbnail || '',
     media_type:     req.body.media?.type || req.body.media_type || 'image',
+    post_type:      req.body.postType || req.body.post_type || 'feed',
     design_id:      req.body.designId || req.body.design_id || '',
     publish_results:'{}',
   };
@@ -372,6 +374,7 @@ app.get('/auth/meta', (req, res) => {
     'instagram_content_publish',
     'pages_show_list',
     'pages_read_engagement',
+    'pages_manage_posts',   // نشر على صفحة فيسبوك (يتطلب use case "Manage everything on your Page")
     'business_management',
   ].join(',');
 
