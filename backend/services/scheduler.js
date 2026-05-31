@@ -68,7 +68,7 @@ async function publishPost(db, post) {
 
       const postData = {
         caption:  post.caption || "",
-        mediaUrl: post.media_url || null,
+        mediaUrl: post.media_url || post.media_thumbnail || null,
       };
 
       let result;

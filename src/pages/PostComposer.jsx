@@ -5,7 +5,7 @@ import {
   ImagePlus, CheckCircle2, ArrowRight,
   X, Plus, Loader2, BookImage, LayoutGrid
 } from "lucide-react";
-import { localApi } from "@/api/localClient";
+import { localApi, uploadFile } from "@/api/localClient";
 
 // ─── Platform config ────────────────────────────────────────────────────────
 const PLATFORMS = [
@@ -248,12 +248,24 @@ export default function PostComposer({ language }) {
     setCustomHashtag("");
   };
 
-  const handleUpload = e => {
+  const handleUpload = async e => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setSelectedMedia({ type: file.type.startsWith("video") ? "video" : "image", name: file.name, thumbnail: url, file });
     e.target.value = "";
+    const localUrl = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith("video");
+    // Show the local preview immediately…
+    setSelectedMedia({ type: isVideo ? "video" : "image", name: file.name, thumbnail: localUrl, file, uploading: true });
+    // …then upload to Cloudinary so we get a PUBLIC url. Instagram/Facebook
+    // fetch the image server-side, so a blob: URL won't work — only a public
+    // https URL can actually be published.
+    try {
+      const { file_url } = await uploadFile({ file });
+      setSelectedMedia({ type: isVideo ? "video" : "image", name: file.name, thumbnail: file_url, url: file_url, file });
+    } catch (err) {
+      alert((ar ? "تعذّر رفع الصورة: " : "Upload failed: ") + (err?.message || err));
+      setSelectedMedia(null);
+    }
   };
 
   const fullCaption = caption + (hashtags.length ? "\n\n" + hashtags.join(" ") : "");
@@ -263,24 +275,31 @@ export default function PostComposer({ language }) {
       alert(T.selectAtLeastOne); return;
     }
     setSaving(true);
+    // "Publish now" → schedule it for the current minute so the every-minute
+    // cron picks it up immediately (the scheduler only acts on "scheduled"
+    // rows whose date/time have arrived).
+    const effDate = postNow ? todayISO() : scheduleDate;
+    const effTime = postNow ? nowTime()  : scheduleTime;
     const post = {
       id: editId || `post_${Date.now()}`,
-      status: isDraft ? "draft" : (postNow ? "queued" : "scheduled"),
+      status: isDraft ? "draft" : "scheduled",
       platforms,
       caption: fullCaption,
-      scheduleDate: postNow ? null : scheduleDate,
-      scheduleTime: postNow ? null : scheduleTime,
-      scheduledAt: postNow ? null : `${scheduleDate}T${scheduleTime}`,
-      media: selectedMedia ? { type: selectedMedia.type, id: selectedMedia.id, name: selectedMedia.name, thumbnail: selectedMedia.thumbnail } : null,
+      scheduleDate: effDate,
+      scheduleTime: effTime,
+      scheduledAt: `${effDate}T${effTime}`,
+      // Pass the PUBLIC image url (Cloudinary) so the platforms can fetch it.
+      media: selectedMedia ? { type: selectedMedia.type, id: selectedMedia.id, name: selectedMedia.name, thumbnail: selectedMedia.thumbnail, url: selectedMedia.url || selectedMedia.thumbnail } : null,
       createdAt: new Date().toISOString(),
     };
 
     // حفظ محلي (localStorage)
     savePost(post);
 
-    // حفظ في الخادم للنشر التلقائي
+    // حفظ في الخادم للنشر التلقائي — مسار نسبي (نفس الأصل) ليعمل على Railway
+    // وليس فقط localhost.
     try {
-      await fetch("http://localhost:3001/api/posts", {
+      await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(post),
