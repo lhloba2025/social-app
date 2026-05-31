@@ -610,6 +610,17 @@ app.post('/api/fetch-image', async (req, res) => {
 // ---- Health check ----
 app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
+// ---- TikTok URL-prefix verification ----
+// TikTok checks for this exact file at the domain root to confirm ownership.
+// Also overridable via env if TikTok rotates the token.
+app.get('/tiktok82i5AkjFeMrzi1Al4f4pAomO3OKLvYDB.txt', (_, res) => {
+  res.type('text/plain').send('tiktok-developers-site-verification=82i5AkjFeMrzi1Al4f4pAomO3OKLvYDB');
+});
+if (process.env.TIKTOK_VERIFY_FILE && process.env.TIKTOK_VERIFY_CONTENT) {
+  app.get(`/${process.env.TIKTOK_VERIFY_FILE}`, (_, res) =>
+    res.type('text/plain').send(process.env.TIKTOK_VERIFY_CONTENT));
+}
+
 // ---- Serve the built frontend (production / single Railway service) ----
 const distDir = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(distDir)) {
