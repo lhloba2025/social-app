@@ -82,7 +82,15 @@ export default function AccountsPage({ language }) {
   };
 
   const accountsByPlatform = {};
-  accounts.forEach((a) => { accountsByPlatform[a.platform] = a; });
+  accounts.forEach((a) => {
+    accountsByPlatform[a.platform] = a;
+    // A single "meta" connection (Facebook Login) drives BOTH the Instagram
+    // and Facebook cards — the backend stores one row with the page + IG id.
+    if (a.platform === "meta") {
+      accountsByPlatform.instagram = a;
+      accountsByPlatform.facebook = a;
+    }
+  });
 
   const connectedCount = PLATFORMS.filter((p) => accountsByPlatform[p]).length;
 
