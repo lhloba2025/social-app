@@ -76,7 +76,7 @@ async function migrateLegacyCards() {
   } catch { /* ignore */ }
 }
 import { SIZES } from "@/components/studio/sizes";
-import { STOCK_ILLUSTRATIONS, VINTAGE_PALETTE, BG_GRADIENT_PRESETS, REAL_IMAGE_CATEGORIES, googleImagesUrl } from "@/components/studio/data/stockIllustrations.jsx";
+import { STOCK_ILLUSTRATIONS, VINTAGE_PALETTE, BG_GRADIENT_PRESETS, SOFT_TONE_PRESETS, REAL_IMAGE_CATEGORIES, googleImagesUrl } from "@/components/studio/data/stockIllustrations.jsx";
 import { TEXT_ORNAMENTS, TEXT_ORNAMENT_LIST } from "@/components/studio/data/textOrnaments.jsx";
 import { CALLIGRAPHIC_MARKS } from "@/components/studio/data/calligraphicMarks.jsx";
 import { ARABIC_LETTER_SHAPES } from "@/components/studio/data/arabicLetterShapes.jsx";
@@ -2971,6 +2971,24 @@ export default function GreetingCardsPage({ language }) {
                           style={{ background: `linear-gradient(${p.angle}deg, ${p.c1}, ${p.c2})` }} />
                         <span className="truncate">{isRtl ? p.ar : p.name}</span>
                       </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Soft luxe tones — creams / beiges / rose / nude */}
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "🤎 درجات ناعمة فاخرة" : "🤎 Soft Luxe Tones"}</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {SOFT_TONE_PRESETS.map((p) => (
+                      <button key={p.name}
+                        onClick={() => {
+                          setBgMode("gradient");
+                          setBgGrad1(p.c1); setBgGrad2(p.c2); setBgGradAngle(p.angle);
+                        }}
+                        title={isRtl ? p.ar : p.name}
+                        className="h-9 rounded-lg border-2 border-slate-700 hover:border-amber-400 transition hover:scale-110 shadow"
+                        style={{ background: `linear-gradient(${p.angle}deg, ${p.c1}, ${p.c2})` }}
+                      />
                     ))}
                   </div>
                 </div>

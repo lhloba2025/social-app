@@ -579,3 +579,28 @@ export const BG_GRADIENT_PRESETS = [
   { name: "Sunset",        ar: "غروب",         c1: "#fbbf24", c2: "#dc2626", angle: 180 },
   { name: "Heritage",      ar: "تراثي",        c1: "#c8a87a", c2: "#6b4423", angle: 180 },
 ];
+
+// Soft luxe tones — elegant 2-stop gradients (creams / beiges / nude / rose /
+// blush / grey / champagne). Shared so cards & studio offer the same palette.
+export const SOFT_TONE_PRESETS = [
+  { name: "Cream",        ar: "كريمي",        c1: "#f9f5ee", c2: "#efe7da", angle: 135 },
+  { name: "Warm Cream",   ar: "كريمي دافئ",   c1: "#f6efe2", c2: "#e7d9c4", angle: 135 },
+  { name: "Ivory",        ar: "عاجي",          c1: "#fbf8f2", c2: "#f1ebdf", angle: 135 },
+  { name: "Off White",    ar: "أوف وايت",      c1: "#fbfaf7", c2: "#eceae3", angle: 135 },
+  { name: "Light Beige",  ar: "بيج فاتح",      c1: "#f3ecdf", c2: "#e3d4bd", angle: 135 },
+  { name: "Sand Beige",   ar: "بيج رملي",      c1: "#efe3d3", c2: "#d9c4a8", angle: 135 },
+  { name: "Wavy Beige",   ar: "بيج مموج",      c1: "#faf5ec", c2: "#dccab0", angle: 145 },
+  { name: "Nude",         ar: "نود",           c1: "#f1e2d3", c2: "#dcc3aa", angle: 135 },
+  { name: "Taupe",        ar: "طوني",          c1: "#e6dccd", c2: "#bdae9a", angle: 135 },
+  { name: "Toffee",       ar: "توفي",          c1: "#e9d8c2", c2: "#c8a982", angle: 135 },
+  { name: "Blush",        ar: "بلاش وردي",     c1: "#fdeef0", c2: "#f6dfe4", angle: 135 },
+  { name: "Soft Rose",    ar: "روز ناعم",      c1: "#f7dfe0", c2: "#e3b7bd", angle: 135 },
+  { name: "Peach",        ar: "خوخي",          c1: "#fce7da", c2: "#f4c9af", angle: 135 },
+  { name: "Powder Pink",  ar: "بودرة وردية",   c1: "#fbe9ee", c2: "#f1cdd8", angle: 135 },
+  { name: "Rose Gold",    ar: "روز جولد",      c1: "#f7e1d7", c2: "#b76e79", angle: 135 },
+  { name: "Light Grey",   ar: "رمادي فاتح",    c1: "#f4f5f7", c2: "#dfe2e7", angle: 135 },
+  { name: "Warm Grey",    ar: "رمادي دافئ",    c1: "#ecebe7", c2: "#cfccc4", angle: 135 },
+  { name: "Sage",         ar: "سيج",           c1: "#e9eee5", c2: "#c4cfbc", angle: 135 },
+  { name: "Lavender",     ar: "لافندر ناعم",   c1: "#f1edf8", c2: "#dcd2ee", angle: 135 },
+  { name: "Champagne",    ar: "شامبين",        c1: "#f7eccf", c2: "#e2c88f", angle: 135 },
+];
