@@ -19,6 +19,11 @@ const PLATFORMS = {
   linkedin:  { labelAr: "لينكدإن",  labelEn: "LinkedIn",  color: "#0A66C2" },
 };
 
+// Which statuses appear in the Posts Manager / Calendar. Scheduled = upcoming,
+// queued = sending now, published = done — all kept. Drafts and failed attempts
+// are hidden (the source design always stays in the library).
+const VISIBLE_STATUSES = ["scheduled", "queued", "published"];
+
 const STATUS_CONFIG = {
   draft:      { ar: "مسودة",       en: "Draft",     icon: FileText,     cls: "text-slate-400 bg-slate-800 border-slate-700" },
   scheduled:  { ar: "مجدول",      en: "Scheduled", icon: Timer,        cls: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30" },
@@ -222,9 +227,9 @@ export default function PostsManager({ language }) {
   const load = React.useCallback(async () => {
     try {
       const merged = await listAllPosts();
-      setPosts(merged);
+      setPosts((merged || []).filter((p) => VISIBLE_STATUSES.includes(p.status)));
     } catch {
-      setPosts(loadPosts()); // fall back to local mirror if the merge fails
+      setPosts(loadPosts().filter((p) => VISIBLE_STATUSES.includes(p.status))); // local fallback
     }
   }, []);
   useEffect(() => {
@@ -256,11 +261,8 @@ export default function PostsManager({ language }) {
 
   const FILTERS = [
     { key: "all", label: T.all },
-    { key: "draft", label: T.draft },
     { key: "scheduled", label: T.scheduled },
-    { key: "queued", label: T.queued },
     { key: "published", label: T.published },
-    { key: "failed", label: T.failed },
   ];
 
   // Counts
@@ -289,12 +291,10 @@ export default function PostsManager({ language }) {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 gap-3 mt-4">
           {[
             { key: "scheduled", color: "indigo" },
             { key: "published", color: "green" },
-            { key: "draft",     color: "slate" },
-            { key: "failed",    color: "red" },
           ].map(({ key, color }) => {
             const s = STATUS_CONFIG[key];
             const Icon = s.icon;

@@ -346,8 +346,13 @@ export default function ContentCalendar({ language }) {
   const MONTH_NAMES = ar ? MONTH_NAMES_AR : MONTH_NAMES_EN;
   const DAY_NAMES   = ar ? DAY_NAMES_AR   : DAY_NAMES_EN;
 
+  // Only surface scheduled / queued / published posts on the calendar — drafts
+  // and failed attempts are hidden (their design stays in the library).
+  const VISIBLE_STATUSES = ["scheduled", "queued", "published"];
+  const visiblePosts = posts.filter(p => VISIBLE_STATUSES.includes(p.status));
+
   const postMap = {};
-  posts.forEach(p => {
+  visiblePosts.forEach(p => {
     if (p.scheduleDate) {
       if (!postMap[p.scheduleDate]) postMap[p.scheduleDate] = [];
       postMap[p.scheduleDate].push(p);
@@ -513,7 +518,7 @@ export default function ContentCalendar({ language }) {
             <div className="grid grid-cols-2 gap-1.5">
               <div className="bg-slate-800/60 rounded-lg p-2">
                 <p className="text-[9px] text-slate-400">{ar ? "منشورات" : "Posts"}</p>
-                <p className="text-lg font-bold text-white">{posts.filter(p => p.scheduleDate?.startsWith(`${year}-${String(month+1).padStart(2,"0")}`)).length}</p>
+                <p className="text-lg font-bold text-white">{visiblePosts.filter(p => p.scheduleDate?.startsWith(`${year}-${String(month+1).padStart(2,"0")}`)).length}</p>
               </div>
               <div className="bg-indigo-900/30 rounded-lg p-2">
                 <p className="text-[9px] text-indigo-300">{ar ? "اليوم" : "Today"}</p>
