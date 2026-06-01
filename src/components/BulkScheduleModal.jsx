@@ -124,12 +124,22 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const [everyN, setEveryN] = useState(1);
   const [dailyTime, setDailyTime] = useState("19:00");
 
-  // Same-day mode — put SEVERAL posts on ONE day, spread out by a fixed
-  // gap. This is the "I want 4 posts today" path that the recurring/daily
-  // modes (one-per-day) couldn't express.
+  // Same-day mode — put SEVERAL posts on ONE day. The user just picks a
+  // time for each post directly (one time picker per post); no gap math.
+  // This is the "I want 4 posts today" path the one-per-day modes couldn't
+  // express.
   const [sameDayDate, setSameDayDate] = useState(todayISO());
-  const [sameDayStart, setSameDayStart] = useState("10:00");
-  const [sameDayGap, setSameDayGap] = useState(120); // minutes between posts
+  const [sameDayTimes, setSameDayTimes] = useState([]); // one "HH:MM" per post
+  // Seed a sensible spread (10:00, then +3h each, capped) whenever the modal
+  // opens or the post list changes — fully editable afterwards.
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setSameDayTimes(posts.map((_, i) => {
+      const mins = 10 * 60 + i * 180;
+      const h = Math.min(22, Math.floor(mins / 60));
+      return `${String(h).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+    }));
+  }, [isOpen, posts]);
 
   // Manual mode — initialise lazily from the posts list
   const [manualSlots, setManualSlots] = useState([]);
@@ -192,25 +202,15 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       });
     }
     if (mode === "sameday") {
-      // All posts on ONE date, at start + i*gap minutes.
-      const [hh, mm] = (sameDayStart || "10:00").split(":").map(Number);
-      let mins = (hh || 0) * 60 + (mm || 0);
-      const gap = Math.max(1, parseInt(sameDayGap) || 1);
-      const out = [];
-      for (let i = 0; i < posts.length; i++) {
-        const h = Math.floor(mins / 60) % 24;
-        const m = mins % 60;
-        out.push({
-          date: sameDayDate,
-          time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-        });
-        mins += gap;
-      }
-      return out;
+      // All posts on ONE date; each post keeps its own picked time.
+      return posts.map((_, i) => ({
+        date: sameDayDate,
+        time: sameDayTimes[i] || "10:00",
+      }));
     }
     // manual
     return manualSlots.slice(0, posts.length);
-  }, [mode, posts, weekdays, timesByDay, startISO, everyN, dailyTime, manualSlots, sameDayDate, sameDayStart, sameDayGap]);
+  }, [mode, posts, weekdays, timesByDay, startISO, everyN, dailyTime, manualSlots, sameDayDate, sameDayTimes]);
 
   // ── Backend availability ─────────────────────────────────────────────
   // We probe once when the modal opens. If down, the user sees a banner
@@ -516,39 +516,45 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                      {isRtl ? "وقت أول منشور" : "First post time"}
-                    </label>
-                    <input
-                      type="time"
-                      value={sameDayStart}
-                      onChange={(e) => setSameDayStart(e.target.value)}
-                      dir="ltr"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                    />
+                <div>
+                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                    {isRtl
+                      ? `عدد مرات النشر اليوم: ${posts.length} — حدّد وقت كل مرة`
+                      : `Posts today: ${posts.length} — set a time for each`}
+                  </label>
+                  <div className="space-y-1.5 bg-slate-800/40 rounded-lg p-2 max-h-64 overflow-y-auto">
+                    {orderedPosts.map((p, i) => {
+                      const cover = p.items?.[0];
+                      return (
+                        <div key={p.post_id} className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-400 font-bold w-4 text-center flex-shrink-0">{i + 1}</span>
+                          {cover && (
+                            <img src={cover.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                          )}
+                          <span className="text-[11px] text-slate-200 flex-1 truncate">
+                            {p.caption_title || cover?.name || `#${i + 1}`}
+                          </span>
+                          <input
+                            type="time"
+                            value={sameDayTimes[i] || "10:00"}
+                            dir="ltr"
+                            onChange={(e) =>
+                              setSameDayTimes((prev) => {
+                                const next = prev.slice();
+                                next[i] = e.target.value;
+                                return next;
+                              })
+                            }
+                            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] text-white outline-none focus:border-indigo-500 flex-shrink-0"
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                      {isRtl ? "الفاصل (دقائق)" : "Gap (minutes)"}
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      max="720"
-                      step="5"
-                      value={sameDayGap}
-                      onChange={(e) => setSameDayGap(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                    />
-                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {isRtl ? "💡 كل المنشورات في نفس اليوم — كل واحد بوقته." : "💡 All on the same day — each at its own time."}
+                  </p>
                 </div>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  {isRtl
-                    ? `💡 كل الـ ${posts.length} منشور في نفس اليوم، يبدأ ${sameDayStart} وبينهم ${sameDayGap} دقيقة. غيّر الفاصل لتباعد أوسع أو أضيق.`
-                    : `💡 All ${posts.length} posts on the same day, starting ${sameDayStart}, ${sameDayGap} min apart. Adjust the gap to spread them.`}
-                </p>
               </div>
             )}
 
