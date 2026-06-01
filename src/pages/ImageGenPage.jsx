@@ -45,6 +45,9 @@ const DEFAULT_KIT = {
 // Brand-agnostic: no hard-coded name/colours.
 function buildPrompt({ scene, hook, highlight, aspect, kit }) {
   const { mainColor, highlightColor, font, changeLogoColor, logoColor } = kit;
+  // Highlight can be several words/phrases, separated by Arabic or Latin commas.
+  const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
+  const hlList = hl.map((h) => `"${h}"`).join(", ");
   return `${scene.trim()}
 
 LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width. Treat the PNG as a sticker placed as-is — do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
@@ -52,10 +55,10 @@ LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it 
 ARABIC TEXT ACCURACY (critical): render ALL Arabic with PERFECT, correctly-spelled, properly-connected right-to-left letters — real, readable Arabic, never garbled or disconnected glyphs, and every word complete. Use a "${font}"-style Arabic font, Bold, clean, sharp and legible.
 
 ${hook && hook.trim()
-  ? `HOOK TEXT overlay BELOW the logo, right-aligned, large and Bold: render the COMPLETE phrase "${hook.trim()}" (no word omitted), on one or two balanced lines. Render the text in ${mainColor}.${highlight && highlight.trim() ? ` Color ONLY the word "${highlight.trim()}" in ${highlightColor}; keep every other word in ${mainColor}.` : ""}`
+  ? `HOOK TEXT overlay BELOW the logo, right-aligned, large and Bold: render the COMPLETE phrase "${hook.trim()}" (no word omitted), on one or two balanced lines. Render the text in ${mainColor}.${hl.length ? ` Color ONLY these word(s)/phrase(s) in ${highlightColor}: ${hlList}; keep every other word in ${mainColor}.` : ""}`
   : "No text overlay besides the logo."}
 
-COLOR & STYLE: primary text color ${mainColor}${highlight && highlight.trim() ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
+COLOR & STYLE: primary text color ${mainColor}${hl.length ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
 
 Negative: distorted logo, redrawn logo, separated logo parts, multiple logos, missing words in the hook, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
@@ -193,10 +196,11 @@ export default function ImageGenPage({ language }) {
           </div>
 
           <div>
-            <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "الكلمة المميزة — اختياري" : "Highlight word — optional"}</label>
+            <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "الكلمات المميزة — افصلها بفاصلة (اختياري)" : "Highlight words — comma-separated (optional)"}</label>
             <input value={highlight} onChange={(e) => setHighlight(e.target.value)}
-              placeholder={ar ? "مثال: صالونك" : "e.g. salon"}
+              placeholder={ar ? "مثال: صالونك، الأفضل، اليوم" : "e.g. salon, best, today"}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+            <p className="text-[10px] text-slate-500 mt-1">{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Add several words — all get the highlight color."}</p>
           </div>
 
           <div>
