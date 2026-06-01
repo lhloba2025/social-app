@@ -6,6 +6,7 @@ import {
   AlertCircle, Timer, FileText, Send,
   ImagePlus, RefreshCw
 } from "lucide-react";
+import { listAllPosts, deleteScheduledPost } from "@/utils/publishingService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PLATFORMS = {
@@ -193,14 +194,30 @@ export default function PostsManager({ language }) {
     draft_lbl:     ar ? "مسودة"                         : "draft",
   };
 
-  const load = () => setPosts(loadPosts());
-  useEffect(() => { load(); }, []);
+  // Read the MERGED view (backend + local). The backend is the source of
+  // truth for status: its cron publishes due posts and flips them to
+  // "published"/"failed". Reading localStorage alone (the old behaviour)
+  // left everything stuck on "scheduled" forever. We also poll every 20s
+  // so a post the backend just published updates without a manual refresh.
+  const load = React.useCallback(async () => {
+    try {
+      const merged = await listAllPosts();
+      setPosts(merged);
+    } catch {
+      setPosts(loadPosts()); // fall back to local mirror if the merge fails
+    }
+  }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 20000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const filtered = filter === "all" ? posts : posts.filter(p => p.status === filter);
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm(T.deleteConfirm)) return;
-    deleteSavedPost(id);
+    await deleteScheduledPost(id);
     load();
   };
 
