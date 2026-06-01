@@ -24,7 +24,7 @@ function buildPrompt({ scene, hook, highlight, aspect }) {
 
 LOGO PLACEMENT (mandatory): Use the ATTACHED Hovera logo PNG as reference and place it at the TOP-CENTER, ~10-12% of image width. PRESERVE LOGO STRUCTURE: vertical stacked — the lowercase "h" symbol (three small dots above + flowing droplet curve) on TOP, the Arabic word "هوفيرا" directly BELOW it. Do NOT separate or place parts side-by-side. Treat the PNG as a sticker placed as-is, do not redraw it. Keep the logo's natural Navy→Royal→Pink gradient.
 
-TYPOGRAPHY: render Arabic in a modern geometric Arabic sans-serif (Tajawal / Cairo style), even monoline strokes, rounded open terminals, Bold, sharp and legible.
+ARABIC TEXT ACCURACY (critical): render ALL Arabic text with PERFECT, correctly-spelled, properly-connected right-to-left letters. Real, readable Arabic — never fake/garbled/disconnected glyphs. Keep every word complete. Use a modern geometric Arabic sans-serif (Tajawal / Cairo style), even monoline strokes, rounded open terminals, Bold, sharp and legible.
 
 ${hook && hook.trim() ? `HOOK TEXT overlay BELOW the logo, right-aligned, large, Tajawal/Cairo Bold: render the COMPLETE phrase "${hook.trim()}" (no word omitted), on one or two balanced lines.${highlight && highlight.trim() ? ` Color the word "${highlight.trim()}" in #EF43DC (pink); render every other word in #09007C (navy).` : " Use #09007C (navy) for the text."}` : "No text overlay besides the logo."}
 

@@ -619,11 +619,13 @@ app.post('/api/generate-image', async (req, res) => {
     if (!apiKey) {
       return res.status(503).json({ error: 'مولّد الصور غير مفعّل بعد — لم يتم ضبط مفتاح Google (GEMINI_API_KEY).' });
     }
-    const { prompt, referenceImage, aspectRatio } = req.body || {};
+    const { prompt, referenceImage, aspectRatio, model: modelOverride } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return res.status(400).json({ error: 'النص (البرومبت) مطلوب' });
     }
-    const model = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+    const model = (typeof modelOverride === 'string' && modelOverride.trim())
+      || process.env.GEMINI_IMAGE_MODEL
+      || 'gemini-3-pro-image-preview';
 
     const parts = [{ text: prompt }];
     // Optional reference image (e.g. the Hovera logo). Accept either a data
