@@ -18,6 +18,7 @@ import {
   getIgUserId,
 } from './services/meta.js';
 import { buildAuthUrl as tiktokAuthUrl, exchangeCodeForToken as tiktokExchangeCode } from './services/tiktok.js';
+import { buildAuthUrl as linkedinAuthUrl, exchangeCodeForToken as linkedinExchangeCode, getMemberUrn as linkedinGetUrn, isConfigured as linkedinConfigured } from './services/linkedin.js';
 import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
 
 dotenv.config();
@@ -519,6 +520,43 @@ app.get('/auth/tiktok/callback', async (req, res) => {
 });
 
 // ---- OAuth: Snapchat ----
+// ---- OAuth: LinkedIn ----
+app.get('/auth/linkedin', (req, res) => {
+  if (!linkedinConfigured()) {
+    return res.status(503).send('LinkedIn غير مهيّأ بعد — لم تُضبط مفاتيح LINKEDIN_CLIENT_ID/SECRET/REDIRECT_URI.');
+  }
+  res.redirect(linkedinAuthUrl(`linkedin_oauth.${encodeURIComponent(req.tenantId)}`));
+});
+
+app.get('/auth/linkedin/callback', async (req, res) => {
+  const { code, error, state } = req.query;
+  const tenantId = (typeof state === 'string' && state.includes('.'))
+    ? decodeURIComponent(state.split('.').slice(1).join('.')) : 'default';
+
+  if (error || !code) {
+    return res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=linkedin`);
+  }
+  try {
+    const tokenData = await linkedinExchangeCode(code);
+    const accessToken = tokenData.access_token;
+    const urn = await linkedinGetUrn(accessToken);
+    const expiresAt = new Date(Date.now() + (tokenData.expires_in || 5184000) * 1000).toISOString();
+
+    run(`DELETE FROM social_accounts WHERE platform = ? AND tenant_id = ?`, ['linkedin', tenantId]);
+    run(
+      `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, token_expires_at, verifiedAt, tenant_id)
+       VALUES (?, 'linkedin', ?, 'LinkedIn', 1, ?, ?, ?, datetime('now'), ?)`,
+      [randomUUID(), urn, accessToken, urn, expiresAt, tenantId]
+    );
+
+    console.log('[OAuth] LinkedIn connected');
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=success&platform=linkedin`);
+  } catch (err) {
+    console.error('[OAuth LinkedIn]', err?.response?.data || err.message);
+    res.redirect(`${FRONTEND}/AccountsPage?oauth=error&platform=linkedin`);
+  }
+});
+
 app.get('/auth/snapchat', (req, res) => {
   const url = snapAuthUrl('snapchat_oauth');
   res.redirect(url);

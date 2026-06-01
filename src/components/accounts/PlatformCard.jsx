@@ -6,6 +6,7 @@ const PLATFORM_INFO = {
   instagram: { nameAr: "انستقرام", nameEn: "Instagram", color: "#E4405F", bg: "#E4405F15", icon: "/icons/instagram.svg" },
   tiktok:    { nameAr: "تيك توك",  nameEn: "TikTok",    color: "#ffffff", bg: "#ffffff10", icon: "/icons/tiktok.svg"    },
   snapchat:  { nameAr: "سناب شات", nameEn: "Snapchat",  color: "#FFFC00", bg: "#FFFC0015", icon: "/icons/snapchat.svg"  },
+  linkedin:  { nameAr: "لينكدإن",  nameEn: "LinkedIn",  color: "#0A66C2", bg: "#0A66C215", icon: "/icons/linkedin.svg"  },
 };
 
 const PLATFORM_EMOJI = {
@@ -13,6 +14,7 @@ const PLATFORM_EMOJI = {
   instagram: "📸",
   tiktok: "♪",
   snapchat: "👻",
+  linkedin: "in",
 };
 
 export default function PlatformCard({ platform, account, onConnect, onDisconnect, isLoading, ar = true }) {

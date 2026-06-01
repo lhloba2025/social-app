@@ -26,12 +26,14 @@ function buildOAuthUrl(platform) {
       return `${RAILWAY}/auth/tiktok${q}`;
     case "snapchat":
       return `${RAILWAY}/auth/snapchat${q}`;
+    case "linkedin":
+      return `${RAILWAY}/auth/linkedin${q}`;
     default:
       return null;
   }
 }
 
-const PLATFORMS = ["facebook", "instagram", "tiktok", "snapchat"];
+const PLATFORMS = ["facebook", "instagram", "tiktok", "linkedin", "snapchat"];
 
 export default function AccountsPage({ language }) {
   const ar = (language || localStorage.getItem("appLanguage") || "ar") === "ar";

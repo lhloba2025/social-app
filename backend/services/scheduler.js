@@ -7,6 +7,7 @@
 
 import { publishToInstagram, publishToFacebook } from "./meta.js";
 import { publishToTikTok } from "./tiktok.js";
+import { publishToLinkedIn } from "./linkedin.js";
 
 // هذه الدوال تُمرر من server.js عند التهيئة
 let getDB   = null;
@@ -102,6 +103,13 @@ async function publishPost(db, post) {
           { openId: account.tiktok_open_id, accessToken: account.access_token },
           postData,
           { mediaType: post.media_type || "image" }
+        );
+      } else if (platform === "linkedin") {
+        // The LinkedIn author URN is stored in `page_id`.
+        result = await publishToLinkedIn(
+          { accessToken: account.access_token, authorUrn: account.page_id },
+          postData,
+          {}
         );
       } else if (platform === "snapchat") {
         // سناب شات لا يدعم النشر التلقائي

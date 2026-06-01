@@ -203,7 +203,7 @@ export default function ImageGenPage({ language }) {
   );
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="min-h-screen bg-slate-950 text-white">
+    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-900 px-6 py-4">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-fuchsia-400" />
