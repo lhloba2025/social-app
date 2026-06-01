@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle } from "lucide-react";
+import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, CalendarClock } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
 import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo } from "@/utils/imagePrompt";
+import { createScheduledPosts } from "@/utils/publishingService";
+import { todayISO, toISODate } from "@/utils/localScheduleStore";
 import { PLATFORMS } from "@/components/BulkMediaUploadModal";
 import BrandKitControls from "@/components/BrandKitControls";
+
+const DEFAULT_TIMES = ["19:00", "13:00", "16:00", "21:00", "10:00", "12:00", "15:00", "18:00", "20:00", "22:00"];
 
 // Bulk ("عام") tab: download an Excel template (4 columns), fill one row per
 // post, re-upload, pick one OR MORE sizes, auto-generate every row in every
@@ -66,6 +70,17 @@ export default function BulkImageGen({ ar }) {
   const [transferring, setTransferring] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [error, setError] = useState("");
+
+  // Scheduling controls for "Schedule all".
+  const [schedStart, setSchedStart] = useState(todayISO());
+  const [perDay, setPerDay] = useState(1);
+  const [times, setTimes] = useState(["19:00"]);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduledCount, setScheduledCount] = useState(0);
+  useEffect(() => {
+    const pd = Math.max(1, Math.min(10, parseInt(perDay) || 1));
+    setTimes((prev) => Array.from({ length: pd }, (_, j) => prev[j] || DEFAULT_TIMES[j] || "19:00"));
+  }, [perDay]);
 
   const togglePlatform = (id) => setPlatforms((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
   const toggleAspect = (id) => setAspects((a) => (a.includes(id) ? (a.length > 1 ? a.filter((x) => x !== id) : a) : [...a, id]));
@@ -132,6 +147,53 @@ export default function BulkImageGen({ ar }) {
     setGenerating(false);
   };
 
+  // Upload a job's image to Cloudinary once; cache the URL on the result.
+  const ensureUploaded = async (j) => {
+    if (results[j]?.url) return results[j].url;
+    const blob = await dataUrlToBlob(results[j].dataUrl);
+    const shrunk = await shrinkBlobToLimit(blob, { maxBytes: 9_500_000 });
+    const file = new File([shrunk], `ai_${Date.now()}_${j}.png`, { type: shrunk.type || "image/png" });
+    const { url } = await uploadFile({ file });
+    setResults((prev) => { const n = [...prev]; if (n[j]) n[j] = { ...n[j], url }; return n; });
+    return url;
+  };
+
+  // Schedule every generated image at once — each on its platform(s) and its
+  // type (9:16 → story, else feed), staggered across days.
+  const scheduleAll = async () => {
+    const targets = platforms.length ? platforms : ["instagram"];
+    const done = jobs.map((job, j) => ({ job, j })).filter((x) => results[x.j]?.status === "done");
+    if (!done.length) return;
+    setScheduling(true); setError(""); setScheduledCount(0);
+    try {
+      const pd = Math.max(1, Math.min(10, parseInt(perDay) || 1));
+      const [y, m, d] = schedStart.split("-").map(Number);
+      const payloads = [];
+      for (let k = 0; k < done.length; k++) {
+        const { job, j } = done[k];
+        const url = await ensureUploaded(j);
+        const dt = new Date(y, (m || 1) - 1, (d || 1) + Math.floor(k / pd));
+        const date = toISODate(dt);
+        const time = times[k % pd] || "19:00";
+        const isStory = job.aspect === "9:16";
+        const uid = `bulk_${Date.now()}_${j}_${Math.random().toString(36).slice(2, 5)}`;
+        payloads.push({
+          status: "scheduled",
+          platforms: targets,
+          postType: isStory ? "story" : "feed",
+          caption: job.row.caption || job.row.hook || "",
+          scheduleDate: date, scheduleTime: time, scheduledAt: `${date}T${time}`,
+          media: { type: "image", url, thumbnail: url, name: (job.row.hook || "AI").slice(0, 40) },
+          sourcePostId: uid, designId: uid,
+        });
+      }
+      const res = await createScheduledPosts(payloads);
+      setScheduledCount(res.persisted.length);
+    } catch (err) {
+      setError((ar ? "تعذّرت الجدولة: " : "Scheduling failed: ") + (err?.message || err));
+    } finally { setScheduling(false); }
+  };
+
   const transferAll = async () => {
     const targets = platforms.length ? platforms : ["instagram"];
     setTransferring(true); setError("");
@@ -140,10 +202,7 @@ export default function BulkImageGen({ ar }) {
       for (let j = 0; j < jobs.length; j++) {
         if (results[j]?.status !== "done") continue;
         const { row, aspect } = jobs[j];
-        const blob = await dataUrlToBlob(results[j].dataUrl);
-        const shrunk = await shrinkBlobToLimit(blob, { maxBytes: 9_500_000 });
-        const file = new File([shrunk], `ai_${Date.now()}_${j}.png`, { type: shrunk.type || "image/png" });
-        const { url } = await uploadFile({ file });
+        const url = await ensureUploaded(j);
         const name = `${(row.hook || row.scene || "AI").slice(0, 34)} (${aspect})`;
         for (const platform of targets) {
           addLocalMedia({
@@ -262,11 +321,52 @@ export default function BulkImageGen({ ar }) {
           )}
 
           {doneCount > 0 && !generating && (
-            <button onClick={transferAll} disabled={transferring || savedCount > 0}
-              className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${savedCount > 0 ? "bg-emerald-600 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"} disabled:opacity-60`}>
-              {transferring ? <Loader2 className="w-5 h-5 animate-spin" /> : savedCount > 0 ? <Check className="w-5 h-5" /> : <ImagePlus className="w-5 h-5" />}
-              {savedCount > 0 ? (ar ? `تم ترحيل ${savedCount} للمكتبة` : `Transferred ${savedCount}`) : (ar ? `رحّل ${doneCount} صورة للمكتبة` : `Transfer ${doneCount} to library`)}
-            </button>
+            <div className="space-y-4">
+              {/* Schedule-all panel — each image on its platform + its type (9:16 = story). */}
+              <div className="bg-slate-900/40 border border-indigo-500/30 rounded-xl p-4 space-y-3">
+                <p className="text-[13px] font-bold text-white flex items-center gap-1.5">
+                  <CalendarClock className="w-4 h-4 text-indigo-300" />
+                  {ar ? "جدولة الكل — كل صورة على منصتها ونوعها (9:16 = ستوري)" : "Schedule all — each on its platform & type"}
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "تاريخ البداية" : "Start date"}</label>
+                    <input type="date" value={schedStart} min={todayISO()} onChange={(e) => setSchedStart(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "كم منشور في اليوم؟" : "Posts per day?"}</label>
+                    <input type="number" min="1" max="10" value={perDay} onChange={(e) => setPerDay(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "أوقات النشر في اليوم" : "Times per day"}</label>
+                  <div className="space-y-1.5 bg-slate-800/40 rounded-lg p-2">
+                    {times.map((t, k) => (
+                      <div key={k} className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-200 font-semibold w-16 flex-shrink-0">{ar ? `منشور ${k + 1}` : `Post ${k + 1}`}</span>
+                        <input type="time" value={t} dir="ltr"
+                          onChange={(e) => setTimes((prev) => { const n = prev.slice(); n[k] = e.target.value; return n; })}
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] text-white outline-none focus:border-indigo-500" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={scheduleAll} disabled={scheduling || scheduledCount > 0}
+                  className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${scheduledCount > 0 ? "bg-emerald-600 text-white" : "bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white"} disabled:opacity-60`}>
+                  {scheduling ? <Loader2 className="w-5 h-5 animate-spin" /> : scheduledCount > 0 ? <Check className="w-5 h-5" /> : <CalendarClock className="w-5 h-5" />}
+                  {scheduledCount > 0 ? (ar ? `تمت جدولة ${scheduledCount} منشور` : `Scheduled ${scheduledCount}`) : (ar ? `جدولة الكل (${doneCount})` : `Schedule all (${doneCount})`)}
+                </button>
+              </div>
+
+              {/* Or just save to the library to schedule later. */}
+              <button onClick={transferAll} disabled={transferring || savedCount > 0}
+                className={`w-full py-2.5 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 ${savedCount > 0 ? "bg-emerald-700 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-100"} disabled:opacity-60`}>
+                {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : savedCount > 0 ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
+                {savedCount > 0 ? (ar ? `تم ترحيل ${savedCount} للمكتبة` : `Transferred ${savedCount}`) : (ar ? `أو رحّلها للمكتبة فقط (${doneCount})` : `Or just save ${doneCount} to library`)}
+              </button>
+            </div>
           )}
         </div>
       )}
