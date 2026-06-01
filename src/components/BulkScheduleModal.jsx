@@ -31,7 +31,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { X, Calendar, Clock, Repeat, ChevronLeft, ChevronRight, CheckCircle2, Trash2, Cloud, CloudOff } from "lucide-react";
-import { buildRecurringSlots, buildSequentialSlots, todayISO } from "@/utils/localScheduleStore";
+import { buildRecurringSlots, todayISO, toISODate } from "@/utils/localScheduleStore";
 import { createScheduledPosts, isBackendAvailable } from "@/utils/publishingService";
 import { platformLabel, platformEmoji, PLATFORMS } from "./BulkMediaUploadModal";
 
@@ -52,6 +52,10 @@ const WEEKDAYS = [
 
 // Sensible default per-day times — evening slots when people scroll.
 const DEFAULT_DAY_TIME = "19:00";
+
+// Default times used when the user bumps "posts per day" in daily mode —
+// spread across the day, all editable afterwards.
+const DEFAULT_DAILY_TIMES = ["19:00", "13:00", "16:00", "21:00", "10:00", "12:00", "15:00", "18:00", "20:00", "22:00"];
 
 // Is the given (date, time) pair already in the past relative to now?
 // Used to flag slots that can't actually be scheduled — the HTML5
@@ -120,26 +124,19 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   }));
   const [startISO, setStartISO] = useState(todayISO());
 
-  // Daily mode
-  const [everyN, setEveryN] = useState(1);
-  const [dailyTime, setDailyTime] = useState("19:00");
-
-  // Same-day mode — put SEVERAL posts on ONE day. The user just picks a
-  // time for each post directly (one time picker per post); no gap math.
-  // This is the "I want 4 posts today" path the one-per-day modes couldn't
-  // express.
-  const [sameDayDate, setSameDayDate] = useState(todayISO());
-  const [sameDayTimes, setSameDayTimes] = useState([]); // one "HH:MM" per post
-  // Seed a sensible spread (10:00, then +3h each, capped) whenever the modal
-  // opens or the post list changes — fully editable afterwards.
+  // Daily mode — post N times PER DAY at fixed times, across consecutive
+  // days, until all selected posts are scheduled. (`perDay` replaced the
+  // old "every N days" — the user wanted "how many posts per day".)
+  const [perDay, setPerDay] = useState(1);
+  const [dailyTimes, setDailyTimes] = useState(["19:00"]); // one time per daily slot
+  // Resize the per-day time list when the count changes, keeping any times
+  // the user already set.
   React.useEffect(() => {
-    if (!isOpen) return;
-    setSameDayTimes(posts.map((_, i) => {
-      const mins = 10 * 60 + i * 180;
-      const h = Math.min(22, Math.floor(mins / 60));
-      return `${String(h).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
-    }));
-  }, [isOpen, posts]);
+    const pd = Math.max(1, Math.min(10, parseInt(perDay) || 1));
+    setDailyTimes((prev) =>
+      Array.from({ length: pd }, (_, j) => prev[j] || DEFAULT_DAILY_TIMES[j] || "19:00")
+    );
+  }, [perDay]);
 
   // Manual mode — initialise lazily from the posts list
   const [manualSlots, setManualSlots] = useState([]);
@@ -194,23 +191,18 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       });
     }
     if (mode === "daily") {
-      return buildSequentialSlots({
-        startISO,
-        everyN: Math.max(1, parseInt(everyN) || 1),
-        time: dailyTime,
-        count: posts.length,
+      // `perDay` posts each day at `dailyTimes`, rolling onto the next day
+      // once the day's slots are filled. perDay = total → all on day one.
+      const pd = Math.max(1, Math.min(10, parseInt(perDay) || 1));
+      const [y, m, d] = startISO.split("-").map(Number);
+      return posts.map((_, i) => {
+        const dt = new Date(y, m - 1, d + Math.floor(i / pd));
+        return { date: toISODate(dt), time: dailyTimes[i % pd] || "19:00" };
       });
-    }
-    if (mode === "sameday") {
-      // All posts on ONE date; each post keeps its own picked time.
-      return posts.map((_, i) => ({
-        date: sameDayDate,
-        time: sameDayTimes[i] || "10:00",
-      }));
     }
     // manual
     return manualSlots.slice(0, posts.length);
-  }, [mode, posts, weekdays, timesByDay, startISO, everyN, dailyTime, manualSlots, sameDayDate, sameDayTimes]);
+  }, [mode, posts, weekdays, timesByDay, startISO, perDay, dailyTimes, manualSlots]);
 
   // ── Backend availability ─────────────────────────────────────────────
   // We probe once when the modal opens. If down, the user sees a banner
@@ -475,11 +467,10 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
             </div>
 
             {/* Mode tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-800/60 rounded-lg p-1">
+            <div className="grid grid-cols-3 gap-1 bg-slate-800/60 rounded-lg p-1">
               {[
-                { id: "sameday", icon: Clock, ar: "نفس اليوم", en: "Same day" },
-                { id: "weekly", icon: Repeat, ar: "أيام الأسبوع", en: "Weekly" },
                 { id: "daily",  icon: Clock,  ar: "يومي",          en: "Daily" },
+                { id: "weekly", icon: Repeat, ar: "أيام الأسبوع", en: "Weekly" },
                 { id: "manual", icon: Calendar, ar: "يدوي",        en: "Manual" },
               ].map((m) => {
                 const Icon = m.icon;
@@ -500,63 +491,6 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                 );
               })}
             </div>
-
-            {/* ── Same-day mode ─────────────────────────────────────── */}
-            {mode === "sameday" && (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                    {isRtl ? "اليوم" : "Day"}
-                  </label>
-                  <input
-                    type="date"
-                    value={sameDayDate}
-                    min={todayISO()}
-                    onChange={(e) => setSameDayDate(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                    {isRtl
-                      ? `عدد مرات النشر اليوم: ${posts.length} — حدّد وقت كل مرة`
-                      : `Posts today: ${posts.length} — set a time for each`}
-                  </label>
-                  <div className="space-y-1.5 bg-slate-800/40 rounded-lg p-2 max-h-64 overflow-y-auto">
-                    {orderedPosts.map((p, i) => {
-                      const cover = p.items?.[0];
-                      return (
-                        <div key={p.post_id} className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 font-bold w-4 text-center flex-shrink-0">{i + 1}</span>
-                          {cover && (
-                            <img src={cover.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                          )}
-                          <span className="text-[11px] text-slate-200 flex-1 truncate">
-                            {p.caption_title || cover?.name || `#${i + 1}`}
-                          </span>
-                          <input
-                            type="time"
-                            value={sameDayTimes[i] || "10:00"}
-                            dir="ltr"
-                            onChange={(e) =>
-                              setSameDayTimes((prev) => {
-                                const next = prev.slice();
-                                next[i] = e.target.value;
-                                return next;
-                              })
-                            }
-                            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] text-white outline-none focus:border-indigo-500 flex-shrink-0"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {isRtl ? "💡 كل المنشورات في نفس اليوم — كل واحد بوقته." : "💡 All on the same day — each at its own time."}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* ── Weekly mode ───────────────────────────────────────── */}
             {mode === "weekly" && (
@@ -659,37 +593,52 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                      {isRtl ? "كل كم يوم" : "Every N days"}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={everyN}
-                      onChange={(e) => setEveryN(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
-                      {isRtl ? "وقت النشر" : "Time"}
-                    </label>
-                    <input
-                      type="time"
-                      value={dailyTime}
-                      onChange={(e) => setDailyTime(e.target.value)}
-                      dir="ltr"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                    />
+                <div>
+                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                    {isRtl ? "كم بوست في اليوم؟" : "How many posts per day?"}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={perDay}
+                    onChange={(e) => setPerDay(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                  />
+                </div>
+                {/* One time picker per daily slot — these times repeat every
+                    day until all selected posts are scheduled. */}
+                <div>
+                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                    {isRtl ? "أوقات النشر في اليوم" : "Posting times each day"}
+                  </label>
+                  <div className="space-y-1.5 bg-slate-800/40 rounded-lg p-2">
+                    {dailyTimes.map((t, j) => (
+                      <div key={j} className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-200 font-semibold w-20 flex-shrink-0">
+                          {isRtl ? `بوست ${j + 1}` : `Post ${j + 1}`}
+                        </span>
+                        <input
+                          type="time"
+                          value={t}
+                          dir="ltr"
+                          onChange={(e) =>
+                            setDailyTimes((prev) => {
+                              const next = prev.slice();
+                              next[j] = e.target.value;
+                              return next;
+                            })
+                          }
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] text-white outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
                   {isRtl
-                    ? `💡 سيتم نشر منشور كل ${everyN} ${everyN == 1 ? "يوم" : "أيام"} في الساعة ${dailyTime}.`
-                    : `💡 One post every ${everyN} day${everyN == 1 ? "" : "s"} at ${dailyTime}.`}
+                    ? `💡 ${perDay} ${perDay == 1 ? "بوست" : "بوست"} كل يوم في الأوقات أعلاه، بدءاً من ${startISO}، حتى تنتهي الـ ${posts.length} منشور.`
+                    : `💡 ${perDay} post(s) per day at the times above, starting ${startISO}, until all ${posts.length} are scheduled.`}
                 </p>
               </div>
             )}
