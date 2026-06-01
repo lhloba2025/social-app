@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Plus, Calendar,
   Clock, CheckCircle2, Timer, FileText, AlertCircle, Send,
-  Cloud, CloudOff, Rocket, RotateCw
+  Cloud, CloudOff, Rocket, RotateCw, Ban
 } from "lucide-react";
 import { platformEmoji, platformLabel } from "@/components/BulkMediaUploadModal";
-import { listAllPosts, isBackendAvailable, publishNow, deleteScheduledPost } from "@/utils/publishingService";
+import { listAllPosts, isBackendAvailable, publishNow, deleteScheduledPost, cancelSchedule } from "@/utils/publishingService";
 
 // Light/Tailwind class per platform for the cell pill — kept separate
 // from the brand hex above because the pill needs a dimmed background,
@@ -115,7 +115,7 @@ function formatDayHeader(isoDate, ar) {
   });
 }
 
-function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublishNow, onDelete }) {
+function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublishNow, onDelete, onCancel }) {
   if (!date) return null;
   const STATUS_CONFIG = {
     draft:     { ar: "مسودة",        en: "Draft",     icon: FileText,     cls: "text-slate-400 bg-slate-800 border-slate-700" },
@@ -172,6 +172,7 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
             // re-triggered (would duplicate); "failed" can be retried
             // by flipping it back to scheduled-now.
             const canPublishNow = backendUp && ["scheduled", "draft", "failed"].includes(post.status);
+            const canCancel = ["scheduled", "queued"].includes(post.status);
             return (
               <div
                 key={post.id}
@@ -258,6 +259,16 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                       {ar ? "إعادة" : "Retry"}
                     </button>
                   )}
+                  {canCancel && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onCancel?.(post); }}
+                      title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
+                      className="flex items-center justify-center gap-1 text-[10px] px-2 py-1 rounded-md bg-amber-700/30 hover:bg-amber-600/50 text-amber-200 font-bold transition"
+                    >
+                      <Ban className="w-3 h-3" />
+                      {ar ? "إلغاء" : "Cancel"}
+                    </button>
+                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete?.(post.id); }}
                     title={ar ? "حذف" : "Delete"}
@@ -321,6 +332,14 @@ export default function ContentCalendar({ language }) {
       ? "حذف هذا المنشور من الجدول؟"
       : "Delete this scheduled post?")) return;
     await deleteScheduledPost(postId);
+    refreshPosts();
+  };
+
+  const handleCancelPost = async (post) => {
+    if (!window.confirm(ar
+      ? "إلغاء جدولة هذا المنشور؟ لن يُنشر تلقائياً، وسيتحول إلى مسودة."
+      : "Cancel this post's schedule? It won't auto-publish and becomes a draft.")) return;
+    await cancelSchedule(post);
     refreshPosts();
   };
 
@@ -514,6 +533,7 @@ export default function ContentCalendar({ language }) {
           onNavigate={navigate}
           onPublishNow={handlePublishNow}
           onDelete={handleDeletePost}
+          onCancel={handleCancelPost}
         />
       </div>
     </div>

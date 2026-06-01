@@ -4,9 +4,9 @@ import {
   Plus, Calendar, Clock, Trash2, Edit3,
   LayoutGrid, List, CheckCircle2,
   AlertCircle, Timer, FileText, Send,
-  ImagePlus, RefreshCw
+  ImagePlus, RefreshCw, Ban
 } from "lucide-react";
-import { listAllPosts, deleteScheduledPost } from "@/utils/publishingService";
+import { listAllPosts, deleteScheduledPost, cancelSchedule } from "@/utils/publishingService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PLATFORMS = {
@@ -50,11 +50,13 @@ function formatTime(t) {
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-function PostCard({ post, onDelete, onEdit, view, ar = true }) {
+function PostCard({ post, onDelete, onEdit, onCancel, view, ar = true }) {
   const [menu, setMenu] = useState(false);
   const status = STATUS_CONFIG[post.status] || STATUS_CONFIG.draft;
   const StatusIcon = status.icon;
   const statusLabel = ar ? status.ar : status.en;
+  // Only a post that's still waiting to go out can be "unscheduled".
+  const canCancel = ["scheduled", "queued"].includes(post.status);
 
   if (view === "list") {
     return (
@@ -93,6 +95,15 @@ function PostCard({ post, onDelete, onEdit, view, ar = true }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+          {canCancel && (
+            <button
+              onClick={() => onCancel(post)}
+              title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 transition"
+            >
+              <Ban className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button onClick={() => onEdit(post)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
             <Edit3 className="w-3.5 h-3.5" />
           </button>
@@ -126,6 +137,15 @@ function PostCard({ post, onDelete, onEdit, view, ar = true }) {
 
         {/* Actions overlay */}
         <div className="absolute top-2 end-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
+          {canCancel && (
+            <button
+              onClick={() => onCancel(post)}
+              title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
+              className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-amber-400 transition backdrop-blur-sm"
+            >
+              <Ban className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button onClick={() => onEdit(post)} className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-white transition backdrop-blur-sm">
             <Edit3 className="w-3.5 h-3.5" />
           </button>
@@ -218,6 +238,14 @@ export default function PostsManager({ language }) {
   const handleDelete = async (id) => {
     if (!window.confirm(T.deleteConfirm)) return;
     await deleteScheduledPost(id);
+    load();
+  };
+
+  const handleCancel = async (post) => {
+    if (!window.confirm(ar
+      ? "إلغاء جدولة هذا المنشور؟ لن يُنشر تلقائياً، وسيتحول إلى مسودة تقدر تعيد جدولتها لاحقاً."
+      : "Cancel this post's schedule? It won't auto-publish and becomes a draft you can reschedule later.")) return;
+    await cancelSchedule(post);
     load();
   };
 
@@ -333,13 +361,13 @@ export default function PostsManager({ language }) {
         ) : view === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filtered.map(post => (
-              <PostCard key={post.id} post={post} view="grid" ar={ar} onDelete={handleDelete} onEdit={handleEdit} />
+              <PostCard key={post.id} post={post} view="grid" ar={ar} onDelete={handleDelete} onEdit={handleEdit} onCancel={handleCancel} />
             ))}
           </div>
         ) : (
           <div className="space-y-2 max-w-3xl">
             {filtered.map(post => (
-              <PostCard key={post.id} post={post} view="list" ar={ar} onDelete={handleDelete} onEdit={handleEdit} />
+              <PostCard key={post.id} post={post} view="list" ar={ar} onDelete={handleDelete} onEdit={handleEdit} onCancel={handleCancel} />
             ))}
           </div>
         )}
