@@ -43,11 +43,22 @@ const DEFAULT_KIT = {
 
 // Build the image prompt from the user's brand kit + this post's content.
 // Brand-agnostic: no hard-coded name/colours.
-function buildPrompt({ scene, hook, highlight, aspect, kit }) {
+function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly }) {
   const { mainColor, highlightColor, font, changeLogoColor, logoColor } = kit;
   // Highlight can be several words/phrases, separated by Arabic or Latin commas.
   const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
   const hlList = hl.map((h) => `"${h}"`).join(", ");
+
+  // Background-only mode: a clean scene with deliberate empty space, NO text or
+  // logo — the user adds those as fully-editable layers in the Design Studio.
+  if (bgOnly) {
+    return `${scene.trim()}
+
+COLOR & STYLE: a clean, premium, uncluttered composition with a light / cream base and a harmonious palette built around ${mainColor} and ${highlightColor}. Leave generous EMPTY NEGATIVE SPACE (especially the top-center and the middle) so a logo and a headline can be placed on top afterward. Photorealistic. Aspect ratio ${aspect}.
+
+Negative: any text, any words, any letters, any logo, any watermark, human faces, clutter, blur, low quality.`;
+  }
+
   return `${scene.trim()}
 
 LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width. Treat the PNG as a sticker placed as-is — do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
@@ -77,6 +88,7 @@ export default function ImageGenPage({ language }) {
   const [hook, setHook] = useState("");
   const [highlight, setHighlight] = useState("");
   const [aspect, setAspect] = useState("4:5");
+  const [bgOnly, setBgOnly] = useState(false); // scene only → add text/logo in Studio
 
   // ── Brand kit (remembered) ─────────────────────────────────────
   const [logo, setLogo] = useState(() => localStorage.getItem(LOGO_KEY) || "");
@@ -108,7 +120,7 @@ export default function ImageGenPage({ language }) {
     if (!scene.trim()) { setError(ar ? "اكتب فكرة المشهد أولاً." : "Describe the scene first."); return; }
     setError(""); setSaved(false); setResult(""); setLoading(true);
     try {
-      const prompt = buildPrompt({ scene, hook, highlight, aspect, kit });
+      const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly });
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,14 +136,20 @@ export default function ImageGenPage({ language }) {
     }
   };
 
+  // Upload the current result to Cloudinary and return its public URL.
+  const uploadCurrent = async () => {
+    const blob = await dataUrlToBlob(result);
+    const shrunk = await shrinkBlobToLimit(blob, { maxBytes: 9_500_000 });
+    const file = new File([shrunk], `ai_${Date.now()}.png`, { type: shrunk.type || "image/png" });
+    const { url } = await uploadFile({ file });
+    return url;
+  };
+
   const handleSave = async () => {
     if (!result) return;
     setSaving(true); setError("");
     try {
-      const blob = await dataUrlToBlob(result);
-      const shrunk = await shrinkBlobToLimit(blob, { maxBytes: 9_500_000 });
-      const file = new File([shrunk], `ai_${Date.now()}.png`, { type: shrunk.type || "image/png" });
-      const { url } = await uploadFile({ file });
+      const url = await uploadCurrent();
       addLocalMedia({
         url,
         name: (hook && hook.trim()) ? hook.trim().slice(0, 40) : (scene.trim().slice(0, 40) || "AI image"),
@@ -146,6 +164,22 @@ export default function ImageGenPage({ language }) {
     } catch (e) {
       setError((ar ? "تعذّر الحفظ: " : "Save failed: ") + (e?.message || e));
     } finally {
+      setSaving(false);
+    }
+  };
+
+  // Open the generated image in the Design Studio as an editable layer, so the
+  // user can add/move/resize/recolor text and logo freely (impossible on the
+  // flat AI image itself). Best paired with the "background only" option.
+  const handleEditInStudio = async () => {
+    if (!result) return;
+    setSaving(true); setError("");
+    try {
+      const url = await uploadCurrent();
+      sessionStorage.setItem("mediaToEdit", JSON.stringify({ type: "image", url, thumbnail: url, name: "AI image" }));
+      navigate("/DesignStudio");
+    } catch (e) {
+      setError((ar ? "تعذّر الفتح في المنشئ: " : "Couldn't open in studio: ") + (e?.message || e));
       setSaving(false);
     }
   };
@@ -214,6 +248,17 @@ export default function ImageGenPage({ language }) {
               ))}
             </div>
           </div>
+
+          {/* Background-only toggle */}
+          <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
+            <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
+            <span className="text-[12px] text-slate-200 leading-relaxed">
+              {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
+              <span className="block text-[10px] text-slate-500">
+                {ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها بحرية في المنشئ." : "Generates a clean scene; add editable text + logo in the Studio."}
+              </span>
+            </span>
+          </label>
 
           {/* ── Brand kit ──────────────────────────────────────── */}
           <div className="border border-slate-800 rounded-xl p-3 space-y-3 bg-slate-900/40">
@@ -293,6 +338,16 @@ export default function ImageGenPage({ language }) {
                   <a href={result} download={`image_${Date.now()}.png`} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><Download className="w-4 h-4" /></a>
                   <button onClick={handleGenerate} disabled={loading} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><RefreshCw className="w-4 h-4" /></button>
                 </div>
+                {/* Edit in Studio — overlay editable text/logo layers (the only
+                    way to move/resize/recolor text after generation). */}
+                <button
+                  onClick={handleEditInStudio}
+                  disabled={saving}
+                  className="w-full mt-2 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm transition flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
+                  {ar ? "✏️ افتح في منشئ التصاميم (لتعديل النص والشعار)" : "✏️ Open in Design Studio"}
+                </button>
                 {saved && (
                   <button onClick={() => navigate("/DesignLibraryPage")} className="w-full mt-2 text-[12px] text-indigo-300 hover:text-indigo-200 underline">
                     {ar ? "اذهب للمكتبة للجدولة ←" : "Go to library to schedule →"}
