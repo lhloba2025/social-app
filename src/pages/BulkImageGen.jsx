@@ -18,12 +18,38 @@ const COL = {
   hook:      ["الهوك", "hook"],
   highlight: ["الكلمات المميزة", "الكلمة المميزة", "highlight", "highlights"],
   caption:   ["الكابشن", "caption", "post"],
+  sizes:     ["المقاس", "المقاسات", "size", "sizes", "aspect"],
 };
 function pick(row, names) {
   for (const k of Object.keys(row)) {
     if (names.includes(String(k).trim())) return String(row[k] ?? "").trim();
   }
   return "";
+}
+
+// Friendly size names → aspect ids (so users type "منشور، ستوري" in the file —
+// avoids Excel turning "4:5" into a time value).
+const NAME_TO_ASPECT = {
+  "منشور": "4:5", "فيد": "4:5", "post": "4:5", "feed": "4:5",
+  "مربع": "1:1", "square": "1:1",
+  "ستوري": "9:16", "ريلز": "9:16", "story": "9:16", "reels": "9:16",
+  "عريض": "16:9", "wide": "16:9",
+  "عمودي": "3:4", "portrait": "3:4",
+  "أفقي": "4:3", "افقي": "4:3", "landscape": "4:3",
+};
+const VALID_ASPECTS = ["4:5", "1:1", "9:16", "16:9", "3:4", "4:3"];
+function parseSizes(raw) {
+  if (!raw) return [];
+  const ids = [];
+  for (const tok of String(raw).split(/[,،/\n]+/).map((s) => s.trim()).filter(Boolean)) {
+    let id = NAME_TO_ASPECT[tok] || NAME_TO_ASPECT[tok.toLowerCase()];
+    if (!id) {
+      const m = tok.replace(/\s/g, "").match(/^(\d{1,2})[:xX×\-](\d{1,2})$/);
+      if (m) id = `${m[1]}:${m[2]}`;
+    }
+    if (id && VALID_ASPECTS.includes(id) && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 async function dataUrlToBlob(dataUrl) { return (await fetch(dataUrl)).blob(); }
 
@@ -45,15 +71,17 @@ export default function BulkImageGen({ ar }) {
   const toggleAspect = (id) => setAspects((a) => (a.includes(id) ? (a.length > 1 ? a.filter((x) => x !== id) : a) : [...a, id]));
 
   const downloadTemplate = () => {
-    const headers = ["وصف المشهد", "الهوك", "الكلمات المميزة", "الكابشن"];
+    const headers = ["وصف المشهد", "الهوك", "الكلمات المميزة", "الكابشن", "المقاس"];
     const example = [
       "هاتف على رخام كريمي يعرض تطبيق حجز مواعيد أنيق، وردة وردية ناعمة بالخلفية، إضاءة دافئة",
       "صالونكِ يستاهل الأفضل",
       "صالونكِ، الأفضل",
       "أفضل تجربة لإدارة صالونك من مكان واحد — جرّبها اليوم 💜 #هوفيرا",
+      "منشور، ستوري",
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-    ws["!cols"] = [{ wch: 45 }, { wch: 28 }, { wch: 22 }, { wch: 45 }];
+    const example2 = ["كوب قهوة بجانب لابتوب يعرض لوحة تحكم، ديكور راقٍ", "نظّم أعمالك بسهولة", "نظّم", "كل أدواتك في مكان واحد", "مربع"];
+    const ws = XLSX.utils.aoa_to_sheet([headers, example, example2]);
+    ws["!cols"] = [{ wch: 45 }, { wch: 28 }, { wch: 22 }, { wch: 45 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "المنشورات");
     XLSX.writeFile(wb, "نموذج_المنشورات.xlsx");
@@ -68,7 +96,7 @@ export default function BulkImageGen({ ar }) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
       const parsed = json
-        .map((r) => ({ scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption) }))
+        .map((r) => ({ scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption), sizes: pick(r, COL.sizes) }))
         .filter((r) => r.scene || r.hook || r.caption);
       if (parsed.length === 0) { setError(ar ? "الملف فاضي أو الأعمدة غير مطابقة للنموذج." : "Empty file or columns don't match."); return; }
       setRows(parsed);
@@ -77,10 +105,16 @@ export default function BulkImageGen({ ar }) {
     } finally { e.target.value = ""; }
   };
 
+  // Sizes for a row: from its own "المقاس" cell, else the shared default below.
+  const rowSizesFor = (row) => {
+    const own = parseSizes(row.sizes);
+    return own.length ? own : aspects;
+  };
+
   const generateAll = async () => {
     if (!rows.length) return;
     const newJobs = [];
-    rows.forEach((row, i) => aspects.forEach((a) => newJobs.push({ row, rowIndex: i, aspect: a })));
+    rows.forEach((row, i) => rowSizesFor(row).forEach((a) => newJobs.push({ row, rowIndex: i, aspect: a })));
     setJobs(newJobs);
     setGenerating(true); setError(""); setSavedCount(0);
     const res = newJobs.map(() => ({ status: "pending" }));
@@ -126,7 +160,7 @@ export default function BulkImageGen({ ar }) {
     } finally { setTransferring(false); }
   };
 
-  const total = rows.length * aspects.length;
+  const total = rows.reduce((sum, row) => sum + rowSizesFor(row).length, 0);
   const doneCount = results.filter((r) => r?.status === "done").length;
 
   return (
@@ -150,7 +184,7 @@ export default function BulkImageGen({ ar }) {
           </div>
           {/* Sizes (multi-select) */}
           <div>
-            <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "المقاسات (اختر أكثر من واحد):" : "Sizes (pick one or more):"}</label>
+            <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "المقاس الافتراضي (للصفوف اللي خانة «المقاس» فيها فاضية):" : "Default size (for rows with an empty size cell):"}</label>
             <div className="grid grid-cols-3 gap-1.5">
               {ASPECTS.map((a) => {
                 const active = aspects.includes(a.id);
@@ -162,7 +196,7 @@ export default function BulkImageGen({ ar }) {
                 );
               })}
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">{ar ? "كل منشور يتولّد بكل مقاس اخترته (للفيد، الستوري… إلخ)." : "Each post is generated in every chosen size."}</p>
+            <p className="text-[10px] text-slate-500 mt-1">{ar ? "كل صف يتولّد بمقاساته من عمود «المقاس»، وإلا فبهذا الافتراضي." : "Each row uses its own size column, else this default."}</p>
           </div>
         </div>
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
@@ -181,8 +215,11 @@ export default function BulkImageGen({ ar }) {
           </label>
         </div>
         <p className="text-[11px] text-slate-500 leading-relaxed">
-          {ar ? "أعمدة النموذج: وصف المشهد · الهوك · الكلمات المميزة · الكابشن. كل صف = منشور."
-              : "Columns: scene · hook · highlight · caption. One row = one post."}
+          {ar ? "أعمدة النموذج: وصف المشهد · الهوك · الكلمات المميزة · الكابشن · المقاس. كل صف = منشور."
+              : "Columns: scene · hook · highlight · caption · size. One row = one post."}
+          <br />
+          {ar ? "في خانة «المقاس» اكتب الأسماء وافصلها بفاصلة: منشور، مربع، ستوري، عريض، عمودي، أفقي. (لو فاضية يستخدم الافتراضي أعلاه.)"
+              : "Size cell accepts comma-separated names: post, square, story, wide, portrait, landscape."}
         </p>
       </div>
 
