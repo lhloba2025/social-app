@@ -607,6 +607,66 @@ app.post('/api/fetch-image', async (req, res) => {
   }
 });
 
+// ---- AI image generation (Google Gemini "Nano Banana") ----
+// Generates a branded image from a text prompt + an optional reference logo
+// image, so the whole "write prompt → get image" loop happens inside the app
+// (no copy-pasting into an external tool). Needs GEMINI_API_KEY in the env.
+// Model is overridable via GEMINI_IMAGE_MODEL (defaults to the stable Nano
+// Banana image model).
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'مولّد الصور غير مفعّل بعد — لم يتم ضبط مفتاح Google (GEMINI_API_KEY).' });
+    }
+    const { prompt, referenceImage, aspectRatio } = req.body || {};
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      return res.status(400).json({ error: 'النص (البرومبت) مطلوب' });
+    }
+    const model = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+
+    const parts = [{ text: prompt }];
+    // Optional reference image (e.g. the Hovera logo). Accept either a data
+    // URL ("data:image/png;base64,…") or bare base64.
+    if (referenceImage && typeof referenceImage === 'string') {
+      const m = referenceImage.match(/^data:([^;]+);base64,(.*)$/);
+      const data = m ? m[2] : referenceImage;
+      const mime = m ? m[1] : 'image/png';
+      if (data) parts.push({ inline_data: { mime_type: mime, data } });
+    }
+
+    const body = {
+      contents: [{ role: 'user', parts }],
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        ...(aspectRatio ? { imageConfig: { aspectRatio } } : {}),
+      },
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const resp = await axios.post(url, body, {
+      timeout: 120000,
+      headers: { 'Content-Type': 'application/json' },
+      maxContentLength: 50 * 1024 * 1024,
+      maxBodyLength: 50 * 1024 * 1024,
+    });
+
+    const candParts = resp.data?.candidates?.[0]?.content?.parts || [];
+    const imgPart = candParts.find((p) => p.inlineData || p.inline_data);
+    const inline = imgPart?.inlineData || imgPart?.inline_data;
+    if (!inline?.data) {
+      const textPart = candParts.find((p) => p.text)?.text;
+      return res.status(502).json({ error: 'لم يُرجع المحرّك صورة. حاول تبسيط الوصف.', detail: textPart || 'no image returned' });
+    }
+    const mime = inline.mimeType || inline.mime_type || 'image/png';
+    res.json({ dataUrl: `data:${mime};base64,${inline.data}` });
+  } catch (err) {
+    const detail = err?.response?.data?.error?.message || err?.message || 'خطأ غير معروف';
+    console.error('[generate-image]', detail);
+    res.status(502).json({ error: 'تعذّر توليد الصورة', detail });
+  }
+});
+
 // ---- Health check ----
 app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
