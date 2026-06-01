@@ -124,6 +124,13 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const [everyN, setEveryN] = useState(1);
   const [dailyTime, setDailyTime] = useState("19:00");
 
+  // Same-day mode — put SEVERAL posts on ONE day, spread out by a fixed
+  // gap. This is the "I want 4 posts today" path that the recurring/daily
+  // modes (one-per-day) couldn't express.
+  const [sameDayDate, setSameDayDate] = useState(todayISO());
+  const [sameDayStart, setSameDayStart] = useState("10:00");
+  const [sameDayGap, setSameDayGap] = useState(120); // minutes between posts
+
   // Manual mode — initialise lazily from the posts list
   const [manualSlots, setManualSlots] = useState([]);
 
@@ -184,9 +191,26 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
         count: posts.length,
       });
     }
+    if (mode === "sameday") {
+      // All posts on ONE date, at start + i*gap minutes.
+      const [hh, mm] = (sameDayStart || "10:00").split(":").map(Number);
+      let mins = (hh || 0) * 60 + (mm || 0);
+      const gap = Math.max(1, parseInt(sameDayGap) || 1);
+      const out = [];
+      for (let i = 0; i < posts.length; i++) {
+        const h = Math.floor(mins / 60) % 24;
+        const m = mins % 60;
+        out.push({
+          date: sameDayDate,
+          time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+        });
+        mins += gap;
+      }
+      return out;
+    }
     // manual
     return manualSlots.slice(0, posts.length);
-  }, [mode, posts, weekdays, timesByDay, startISO, everyN, dailyTime, manualSlots]);
+  }, [mode, posts, weekdays, timesByDay, startISO, everyN, dailyTime, manualSlots, sameDayDate, sameDayStart, sameDayGap]);
 
   // ── Backend availability ─────────────────────────────────────────────
   // We probe once when the modal opens. If down, the user sees a banner
@@ -451,8 +475,9 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
             </div>
 
             {/* Mode tabs */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-800/60 rounded-lg p-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-800/60 rounded-lg p-1">
               {[
+                { id: "sameday", icon: Clock, ar: "نفس اليوم", en: "Same day" },
                 { id: "weekly", icon: Repeat, ar: "أيام الأسبوع", en: "Weekly" },
                 { id: "daily",  icon: Clock,  ar: "يومي",          en: "Daily" },
                 { id: "manual", icon: Calendar, ar: "يدوي",        en: "Manual" },
@@ -475,6 +500,57 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                 );
               })}
             </div>
+
+            {/* ── Same-day mode ─────────────────────────────────────── */}
+            {mode === "sameday" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                    {isRtl ? "اليوم" : "Day"}
+                  </label>
+                  <input
+                    type="date"
+                    value={sameDayDate}
+                    min={todayISO()}
+                    onChange={(e) => setSameDayDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                      {isRtl ? "وقت أول منشور" : "First post time"}
+                    </label>
+                    <input
+                      type="time"
+                      value={sameDayStart}
+                      onChange={(e) => setSameDayStart(e.target.value)}
+                      dir="ltr"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-300 block mb-1.5 font-semibold">
+                      {isRtl ? "الفاصل (دقائق)" : "Gap (minutes)"}
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="720"
+                      step="5"
+                      value={sameDayGap}
+                      onChange={(e) => setSameDayGap(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  {isRtl
+                    ? `💡 كل الـ ${posts.length} منشور في نفس اليوم، يبدأ ${sameDayStart} وبينهم ${sameDayGap} دقيقة. غيّر الفاصل لتباعد أوسع أو أضيق.`
+                    : `💡 All ${posts.length} posts on the same day, starting ${sameDayStart}, ${sameDayGap} min apart. Adjust the gap to spread them.`}
+                </p>
+              </div>
+            )}
 
             {/* ── Weekly mode ───────────────────────────────────────── */}
             {mode === "weekly" && (
