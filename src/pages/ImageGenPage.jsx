@@ -20,18 +20,21 @@ const ASPECTS = [
   { id: "9:16", ar: "ستوري 9:16",            en: "Story 9:16" },
 ];
 
-// Arabic font choices — the value is the font-family name handed to the model.
+// Arabic font choices. AI image models have no real font files, so we hand
+// them a STYLE DESCRIPTION (`s`) instead of a font name — that actually shifts
+// the look (Ruqaa vs Kufic vs sans). For an EXACT font, use the Design Studio.
 const FONTS = [
-  { v: "Tajawal",     ar: "تجوال (حديث)" },
-  { v: "Cairo",       ar: "القاهرة (حديث)" },
-  { v: "Almarai",     ar: "المراعي (بسيط)" },
-  { v: "Reem Kufi",   ar: "ريم كوفي (كوفي عصري)" },
-  { v: "Changa",      ar: "تشانجا (هندسي)" },
-  { v: "Lalezar",     ar: "لاله‌زار (عريض)" },
-  { v: "El Messiri",  ar: "المسيري (أنيق)" },
-  { v: "Aref Ruqaa",  ar: "عارف رقعة (رقعة)" },
-  { v: "Amiri",       ar: "أميري (نسخ كلاسيكي)" },
+  { v: "Tajawal",     ar: "تجوال (حديث)",        s: "a modern geometric Arabic sans-serif with even, rounded monoline strokes" },
+  { v: "Cairo",       ar: "القاهرة (حديث)",      s: "a clean contemporary Arabic sans-serif" },
+  { v: "Almarai",     ar: "المراعي (بسيط)",      s: "a simple, minimal Arabic sans-serif" },
+  { v: "Reem Kufi",   ar: "ريم كوفي (كوفي عصري)", s: "a modern geometric Kufic Arabic style with angular, structured letters" },
+  { v: "Changa",      ar: "تشانجا (هندسي)",      s: "a bold geometric Arabic display style" },
+  { v: "Lalezar",     ar: "لاله‌زار (عريض)",      s: "a thick, bold, rounded Arabic display style" },
+  { v: "El Messiri",  ar: "المسيري (أنيق)",      s: "an elegant, semi-rounded modern Arabic style" },
+  { v: "Aref Ruqaa",  ar: "عارف رقعة (رقعة)",     s: "traditional Arabic Ruqaa calligraphy — flowing, handwritten cursive" },
+  { v: "Amiri",       ar: "أميري (نسخ كلاسيكي)",  s: "classical Arabic Naskh calligraphy — traditional and refined" },
 ];
+const fontStyle = (v) => (FONTS.find((f) => f.v === v)?.s) || "a modern geometric Arabic sans-serif";
 
 const DEFAULT_KIT = {
   mainColor: "#09007C",      // primary text colour
@@ -61,17 +64,17 @@ Negative: any text, any words, any letters, any logo, any watermark, human faces
 
   return `${scene.trim()}
 
-LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width. Treat the PNG as a sticker placed as-is — do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
+LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width. Place the logo DIRECTLY on the scene with a fully transparent background — NO white box, NO circle, NO frame, NO border, NO badge, NO card or container behind it. Do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
 
-ARABIC TEXT ACCURACY (critical): render ALL Arabic with PERFECT, correctly-spelled, properly-connected right-to-left letters — real, readable Arabic, never garbled or disconnected glyphs, and every word complete. Use a "${font}"-style Arabic font, Bold, clean, sharp and legible.
+ARABIC TEXT ACCURACY (critical): render ALL Arabic with PERFECT, correctly-spelled, properly-connected right-to-left letters — real, readable Arabic, never garbled or disconnected glyphs. Write each word EXACTLY ONCE — never duplicate or repeat a word, and never split a single word across two lines. Render the Arabic in ${fontStyle(font)}, Bold, clean, sharp and legible.
 
 ${hook && hook.trim()
-  ? `HOOK TEXT overlay BELOW the logo, right-aligned, large and Bold: render the COMPLETE phrase "${hook.trim()}" (no word omitted), on one or two balanced lines. Render the text in ${mainColor}.${hl.length ? ` Color ONLY these word(s)/phrase(s) in ${highlightColor}: ${hlList}; keep every other word in ${mainColor}.` : ""}`
+  ? `HOOK TEXT overlay BELOW the logo, right-aligned, large and Bold: render the EXACT phrase "${hook.trim()}" — every word present, each word appearing only ONCE, no repeats, no extra words, on one or two balanced lines. Render the text in ${mainColor}.${hl.length ? ` Color ONLY these word(s)/phrase(s) in ${highlightColor}: ${hlList}; keep every other word in ${mainColor}.` : ""}`
   : "No text overlay besides the logo."}
 
 COLOR & STYLE: primary text color ${mainColor}${hl.length ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
 
-Negative: distorted logo, redrawn logo, separated logo parts, multiple logos, missing words in the hook, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
+Negative: white box / frame / circle / border / badge / card behind the logo, logo on a white sticker outline, distorted logo, redrawn logo, separated logo parts, multiple logos, duplicated word, repeated word, a word written twice, missing words, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
 
 async function dataUrlToBlob(dataUrl) {
@@ -293,6 +296,7 @@ export default function ImageGenPage({ language }) {
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-[12px] text-white outline-none focus:border-indigo-500">
                 {FONTS.map((f) => <option key={f.v} value={f.v}>{ar ? f.ar : f.v}</option>)}
               </select>
+              <p className="text-[10px] text-slate-500 mt-1">{ar ? "💡 الذكاء يقرّب الأسلوب فقط. للخط بالضبط: فعّل «خلفية فقط» وأضِف النص في المنشئ." : "💡 AI approximates the style only. For the exact font use Background-only + the Studio."}</p>
             </div>
 
             {/* Logo color */}
