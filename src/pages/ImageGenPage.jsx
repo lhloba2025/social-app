@@ -15,9 +15,12 @@ const LOGO_KEY = "brand_logo_v1";       // remembered reference logo (data URL)
 const KIT_KEY  = "brand_kit_v1";        // remembered colors/font/logoColor
 
 const ASPECTS = [
-  { id: "4:5",  ar: "منشور 4:5 (1080×1350)", en: "Post 4:5" },
-  { id: "1:1",  ar: "مربع 1:1 (1080×1080)",  en: "Square 1:1" },
-  { id: "9:16", ar: "ستوري 9:16",            en: "Story 9:16" },
+  { id: "4:5",  ar: "منشور 4:5",      en: "Post 4:5" },
+  { id: "1:1",  ar: "مربع 1:1",       en: "Square 1:1" },
+  { id: "9:16", ar: "ستوري/ريلز 9:16", en: "Story 9:16" },
+  { id: "16:9", ar: "عريض 16:9",      en: "Wide 16:9" },
+  { id: "3:4",  ar: "عمودي 3:4",      en: "Portrait 3:4" },
+  { id: "4:3",  ar: "أفقي 4:3",       en: "Landscape 4:3" },
 ];
 
 // Arabic font choices. AI image models have no real font files, so we hand
