@@ -337,8 +337,8 @@ export default function ContentCalendar({ language }) {
 
   const handleCancelPost = async (post) => {
     if (!window.confirm(ar
-      ? "إلغاء جدولة هذا المنشور؟ لن يُنشر تلقائياً، وسيتحول إلى مسودة."
-      : "Cancel this post's schedule? It won't auto-publish and becomes a draft.")) return;
+      ? "إلغاء جدولة هذا المنشور؟ بينحذف من القائمة ولن يُنشر — وتصميمه يبقى في المكتبة."
+      : "Cancel this post's schedule? It's removed and won't publish — the design stays in your library.")) return;
     await cancelSchedule(post);
     refreshPosts();
   };

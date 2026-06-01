@@ -216,43 +216,15 @@ export async function publishNow(post) {
 
 // ── Cancel schedule ───────────────────────────────────────────────────────
 //
-// Reverts a scheduled/queued post back to "draft" so the backend cron won't
-// publish it — but keeps the post (unlike delete). Updates the local mirror
-// immediately and upserts the backend row (POST = delete-by-id then insert).
+// Cancels a scheduled/queued post by REMOVING its entry from the schedule
+// (backend + local mirror) so it disappears from the Posts Manager / Calendar
+// and won't auto-publish. The source design/image stays safe in the media
+// library, so nothing is lost — the user can re-schedule it anytime.
+// (Accepts a post object or a bare id.)
 export async function cancelSchedule(post) {
-  if (!post || !post.id) return { ok: false, error: "bad_input" };
-
-  // Local mirror — flip status to draft right away so the UI reflects it.
-  try {
-    const raw = localStorage.getItem("scheduled_posts");
-    const arr = raw ? JSON.parse(raw) : [];
-    const next = arr.map((p) => (p.id === post.id ? { ...p, status: "draft" } : p));
-    localStorage.setItem("scheduled_posts", JSON.stringify(next));
-  } catch { /* localStorage failed, not fatal */ }
-
-  const backendUp = await probeBackend();
-  if (!backendUp) return { ok: true, localOnly: true };
-  try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({
-        id: post.id,
-        status: "draft",
-        platforms: post.platforms || [],
-        postType: post.postType || post.post_type || "feed",
-        caption: post.caption || "",
-        scheduleDate: post.scheduleDate,
-        scheduleTime: post.scheduleTime,
-        scheduledAt: post.scheduledAt,
-        media: post.media || null,
-      }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e?.message };
-  }
+  const id = typeof post === "string" ? post : post?.id;
+  if (!id) return { ok: false, error: "bad_input" };
+  return deleteScheduledPost(id);
 }
 
 // ── Delete post ─────────────────────────────────────────────────────────

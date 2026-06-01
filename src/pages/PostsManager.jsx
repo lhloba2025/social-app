@@ -243,8 +243,8 @@ export default function PostsManager({ language }) {
 
   const handleCancel = async (post) => {
     if (!window.confirm(ar
-      ? "إلغاء جدولة هذا المنشور؟ لن يُنشر تلقائياً، وسيتحول إلى مسودة تقدر تعيد جدولتها لاحقاً."
-      : "Cancel this post's schedule? It won't auto-publish and becomes a draft you can reschedule later.")) return;
+      ? "إلغاء جدولة هذا المنشور؟ بينحذف من قائمة المنشورات ولن يُنشر — وتصميمه يبقى محفوظاً في المكتبة تقدر تعيد جدولته."
+      : "Cancel this post's schedule? It's removed from the list and won't publish — the design stays in your library to reschedule.")) return;
     await cancelSchedule(post);
     load();
   };
