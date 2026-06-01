@@ -258,6 +258,11 @@ function normalizeFromBackend(row, original) {
     } : null),
     createdAt: row.created_at || row.createdAt || new Date().toISOString(),
     publishResults: row.publish_results || row.publishResults || {},
+    // Carry the source-design linkage through so the library can tell which
+    // media posts are already scheduled (and not re-offer them). The backend
+    // doesn't echo these columns, so we lean on the original payload.
+    sourcePostId: original.sourcePostId ?? row.source_post_id ?? row.sourcePostId ?? null,
+    designId: original.designId ?? row.design_id ?? row.designId ?? null,
     isLocal: false, // backend-sourced
   };
 }

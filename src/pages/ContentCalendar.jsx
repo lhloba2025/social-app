@@ -215,6 +215,18 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                           <Clock className="w-2.5 h-2.5" />{post.scheduleTime}
                         </span>
                       )}
+                      {/* Post-type pill — distinguishes a feed post from a
+                          story so two entries for the same image (one feed +
+                          one story) don't look like a meaningless duplicate. */}
+                      <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${
+                        (post.postType || "feed") === "story"
+                          ? "text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-500/30"
+                          : "text-sky-300 bg-sky-500/10 border-sky-500/30"
+                      }`}>
+                        {(post.postType || "feed") === "story"
+                          ? (ar ? "⭕ ستوري" : "⭕ Story")
+                          : (ar ? "📷 بوست" : "📷 Feed")}
+                      </span>
                       <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${s.cls}`}>
                         <SIcon className="w-2.5 h-2.5" />{ar ? s.ar : s.en}
                       </span>

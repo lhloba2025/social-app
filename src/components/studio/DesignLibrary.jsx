@@ -7,6 +7,7 @@ import MediaUploadModal from "../MediaUploadModal";
 import BulkMediaUploadModal, { readCaptionsMap, platformLabel, platformEmoji, PLATFORMS } from "../BulkMediaUploadModal";
 import BulkScheduleModal from "../BulkScheduleModal";
 import { listLocalMedia, removeLocalMedia, isLocalId } from "@/utils/localMediaStore";
+import { listAllPosts } from "@/utils/publishingService";
 
 function parseJson(val, fallback) {
   if (!val) return fallback;
@@ -237,6 +238,26 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // Bulk-scheduler modal — `null` when closed, otherwise an array of
   // the post objects the user wants to schedule.
   const [bulkScheduleQueue, setBulkScheduleQueue] = useState(null);
+  // Set of media post_ids that already have a scheduled / published entry.
+  // We use it to grey-out and lock those cards in select mode so the user
+  // can't schedule the same post twice — that double-scheduling is what
+  // produced the "duplicate" calendar entries the user reported. Refreshed
+  // whenever the media list changes or the scheduler modal closes.
+  const [scheduledIds, setScheduledIds] = useState(() => new Set());
+  React.useEffect(() => {
+    let cancelled = false;
+    listAllPosts().then((rows) => {
+      if (cancelled) return;
+      const ids = new Set();
+      for (const r of rows || []) {
+        if (r.status === "draft") continue; // a draft isn't really scheduled yet
+        if (r.sourcePostId) ids.add(r.sourcePostId);
+        if (r.designId) ids.add(r.designId);
+      }
+      setScheduledIds(ids);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [localMediaVersion, bulkScheduleQueue]);
 
   const togglePostSelected = (postId) => {
     setSelectedPostIds((prev) => {
@@ -948,10 +969,12 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-800">
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => setSelectedPostIds(new Set(posts.map((p) => p.post_id)))}
+                        onClick={() => setSelectedPostIds(new Set(
+                          posts.filter((p) => !scheduledIds.has(p.post_id)).map((p) => p.post_id)
+                        ))}
                         className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
                       >
-                        {isRtl ? "تحديد الكل" : "Select all"}
+                        {isRtl ? "تحديد غير المجدول" : "Select unscheduled"}
                       </button>
                       <button
                         onClick={clearSelection}
@@ -986,6 +1009,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 const cover = post.items[0];
                 const hasCaption = post.caption_title || post.caption_text;
                 const isSelected = selectedPostIds.has(post.post_id);
+                // Already has a scheduled/published entry → can't be picked
+                // again in select mode (prevents duplicate scheduling).
+                const isScheduled = scheduledIds.has(post.post_id);
+                const lockedForSelect = selectMode && isScheduled;
                 return (
                   <div
                     key={post.post_id}
@@ -995,22 +1022,40 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       // before. This pattern matches the way the
                       // bulk-upload modal and the iOS photos app
                       // behave — select mode is a temporary "lens"
-                      // over the grid.
+                      // over the grid. Already-scheduled cards are locked
+                      // in select mode but still open their preview when
+                      // select mode is off.
                       if (selectMode) {
+                        if (isScheduled) return; // locked — already scheduled
                         togglePostSelected(post.post_id);
                       } else {
                         setPreviewingPost(post);
                         setPreviewPage(0);
                       }
                     }}
-                    className={`group relative bg-slate-800 rounded-xl overflow-hidden cursor-pointer transition ${
+                    className={`group relative bg-slate-800 rounded-xl overflow-hidden transition ${
+                      lockedForSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                    } ${
                       isSelected
                         ? "ring-4 ring-indigo-500"
-                        : selectMode
-                          ? "hover:ring-2 hover:ring-indigo-400 opacity-90"
-                          : "hover:ring-2 hover:ring-indigo-500"
+                        : lockedForSelect
+                          ? ""
+                          : selectMode
+                            ? "hover:ring-2 hover:ring-indigo-400 opacity-90"
+                            : "hover:ring-2 hover:ring-indigo-500"
                     }`}
                   >
+                    {/* "Already scheduled" badge — shown whenever this post
+                        has a calendar entry, so the user knows not to
+                        re-schedule it. Sits top-start under the platform
+                        badge area; in select mode the whole card is dimmed
+                        and locked too. */}
+                    {isScheduled && (
+                      <div className={`absolute z-10 ${isRtl ? "right-2" : "left-2"} bottom-2 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow`}>
+                        <Calendar className="w-3 h-3" />
+                        {isRtl ? "مجدول" : "Scheduled"}
+                      </div>
+                    )}
                     {/* Selection checkbox overlay — visible whenever
                         select mode is on. The icon flips between empty
                         and filled to mirror native checkbox affordances. */}

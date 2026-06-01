@@ -141,6 +141,28 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     }));
   }, [isOpen, posts]);
 
+  // Manual ordering — lets the user reorder which post lands in which
+  // slot BEFORE confirming ("change its place"). `order` holds
+  // display-position → original-index. Reset whenever the modal opens or
+  // the incoming posts change so we never carry a stale order.
+  const [order, setOrder] = useState([]);
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setOrder(posts.map((_, i) => i));
+  }, [isOpen, posts]);
+  const orderedPosts = (order.length === posts.length)
+    ? order.map((i) => posts[i]).filter(Boolean)
+    : posts;
+  const moveItem = (from, to) => {
+    setOrder((prev) => {
+      const base = prev.length === posts.length ? prev.slice() : posts.map((_, i) => i);
+      if (to < 0 || to >= base.length) return base;
+      const [x] = base.splice(from, 1);
+      base.splice(to, 0, x);
+      return base;
+    });
+  };
+
   // ── Generate the slot list from current settings ────────────────────
   const slots = useMemo(() => {
     if (!posts.length) return [];
@@ -225,7 +247,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     // `url` (publish target) and `thumbnail` (UI preview).
     // One entry per (source post × selected post type). If the user picked
     // both feed + story, each post yields TWO scheduled entries.
-    const payload = posts.flatMap((p, i) => {
+    const payload = orderedPosts.flatMap((p, i) => {
       const slot = slots[i];
       const cover = p.items?.[0];
       const captionParts = [];
@@ -597,11 +619,27 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                   {isRtl ? "اختر تاريخاً ووقتاً لكل منشور:" : "Pick a date and time for each post:"}
                 </p>
                 <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                  {posts.map((p, i) => {
+                  {orderedPosts.map((p, i) => {
                     const slot = manualSlots[i] || { date: todayISO(), time: "19:00" };
                     const cover = p.items?.[0];
                     return (
                       <div key={p.post_id} className="bg-slate-800/60 rounded-lg p-2 flex items-center gap-2">
+                        {/* Reorder controls — change which post lands in
+                            which slot before scheduling. */}
+                        <div className="flex flex-col gap-0.5 flex-shrink-0">
+                          <button
+                            onClick={() => moveItem(i, i - 1)}
+                            disabled={i === 0}
+                            className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] leading-none disabled:opacity-30 flex items-center justify-center"
+                            title={isRtl ? "أعلى" : "Up"}
+                          >▲</button>
+                          <button
+                            onClick={() => moveItem(i, i + 1)}
+                            disabled={i === orderedPosts.length - 1}
+                            className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] leading-none disabled:opacity-30 flex items-center justify-center"
+                            title={isRtl ? "أسفل" : "Down"}
+                          >▼</button>
+                        </div>
                         {cover && (
                           <img src={cover.url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
                         )}
@@ -646,7 +684,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </div>
             ) : (
               <div className="space-y-1.5">
-                {posts.map((p, i) => {
+                {orderedPosts.map((p, i) => {
                   const slot = slots[i];
                   const cover = p.items?.[0];
                   if (!slot) return null;
@@ -660,9 +698,23 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           : "bg-slate-800/60 border-transparent"
                       }`}
                     >
-                      <span className="text-[10px] text-slate-500 font-bold w-5 text-center">
-                        {i + 1}
-                      </span>
+                      {/* Order index + reorder arrows — drag-free way to
+                          change which post takes which date/time slot. */}
+                      <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                        <button
+                          onClick={() => moveItem(i, i - 1)}
+                          disabled={i === 0}
+                          className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center"
+                          title={isRtl ? "أعلى" : "Up"}
+                        >▲</button>
+                        <span className="text-[10px] text-slate-500 font-bold">{i + 1}</span>
+                        <button
+                          onClick={() => moveItem(i, i + 1)}
+                          disabled={i === orderedPosts.length - 1}
+                          className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center"
+                          title={isRtl ? "أسفل" : "Down"}
+                        >▼</button>
+                      </div>
                       {cover && (
                         <img src={cover.url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
                       )}
