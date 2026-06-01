@@ -263,8 +263,8 @@ export default function BulkImageGen({ ar }) {
                 const uses = job.row.targets.filter((t) => t.aspect === job.aspect).map((t) => t.labelAr).join("، ");
                 return (
                   <div key={j} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700">
-                    <div className="aspect-square bg-slate-950 flex items-center justify-center relative">
-                      {r?.status === "done" ? <img src={r.dataUrl} alt="" className="w-full h-full object-cover" />
+                    <div className="h-44 bg-slate-950 flex items-center justify-center relative p-1">
+                      {r?.status === "done" ? <img src={r.dataUrl} alt="" className="max-w-full max-h-full object-contain rounded" />
                         : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
                         : r?.status === "error" ? <AlertCircle className="w-6 h-6 text-red-400" />
                         : <ImagePlus className="w-6 h-6 text-slate-700" />}
