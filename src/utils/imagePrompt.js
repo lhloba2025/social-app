@@ -82,7 +82,7 @@ Negative: any text, any words, any letters, any logo, any watermark, human faces
 
   return `${(scene || "").trim()}
 
-LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width. Place the logo DIRECTLY on the scene with a fully transparent background — NO white box, NO circle, NO frame, NO border, NO badge, NO card or container behind it. Do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
+LOGO PLACEMENT (mandatory): Use the ATTACHED logo PNG as reference and place it at the TOP-CENTER, about 10-12% of the image width, with a CLEAR MARGIN below the top edge. The COMPLETE logo (including the small symbol ABOVE the name) must be FULLY visible — never crop, cut, or let any part touch or cross the top/side edges. Place the logo DIRECTLY on the scene with a fully transparent background — NO white box, NO circle, NO frame, NO border, NO badge, NO card or container behind it. Do NOT redraw, distort, rearrange, or duplicate it. ${changeLogoColor ? `Recolor the logo to ${logoColor}.` : "Preserve the logo's ORIGINAL colors exactly."}
 
 ARABIC TEXT ACCURACY (critical): render ALL Arabic with PERFECT, correctly-spelled, properly-connected right-to-left letters — real, readable Arabic, never garbled or disconnected glyphs. Write each word EXACTLY ONCE — never duplicate or repeat a word, and never split a single word across two lines. Render the Arabic in ${fontStyle(font)}, Bold, clean, sharp and legible.
 
@@ -91,7 +91,7 @@ ${hook && hook.trim()
   : "No text overlay besides the logo."}
 
 COLOR & STYLE: primary text color ${mainColor}${hl.length ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
-${(() => { const cs = kitContacts(kit); return cs.length ? `\nCONTACT BAR (mandatory): at the very BOTTOM of the image, a slim full-width horizontal bar on a dark rounded translucent strip, kept fully INSIDE the frame and not covering the main subject. Show these evenly spaced, each as the correct platform ICON followed by its handle text in white, spelled EXACTLY as given, tidy and legible — do NOT alter, translate, or misspell any handle: ${cs.map((c) => `${c.p}: "${c.v}"`).join("  |  ")}.\n` : ""; })()}
+${(() => { const cs = kitContacts(kit); return cs.length ? `\nCONTACT FOOTER BAR — THIS IS REQUIRED, ALWAYS DRAW IT: reserve the bottom ~9% of the image for a slim full-width horizontal footer bar sitting on a dark, semi-transparent rounded strip, fully INSIDE the frame and clear of the main subject. Inside the bar, lay out these items in one row, evenly spaced and centered, each shown as the correct small platform ICON immediately followed by its handle in clean white text — spell each EXACTLY as given, never alter/translate/omit any of them: ${cs.map((c) => `[${c.p}] ${c.v}`).join("   ")}. The bar must be clearly visible and legible.\n` : ""; })()}
 Negative: white box / frame / circle / border / badge / card behind the logo, logo on a white sticker outline, distorted logo, redrawn logo, separated logo parts, multiple logos, duplicated word, repeated word, a word written twice, missing words, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
 
