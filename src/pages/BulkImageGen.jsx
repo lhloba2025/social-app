@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, CalendarClock, Eye, RefreshCw, X } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
@@ -131,19 +131,50 @@ export default function BulkImageGen({ ar }) {
     } finally { e.target.value = ""; }
   };
 
+  // Quick-edit (global, applies to all images) — keeps each raw AI scene so we
+  // can re-composite live without re-generating.
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5 };
+  const [layout, setLayout] = useState(DEFAULT_LAYOUT);
+  const [showEdit, setShowEdit] = useState(false);
+  const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
+  const jobsRef = useRef(jobs); jobsRef.current = jobs;
+  const resultsRef = useRef(results); resultsRef.current = results;
+
   // Generate the final image for one (row, aspect). High-precision mode (default)
   // makes the AI paint only the scene, then composites the real logo + hook
-  // (real font) + contact bar — same as the Custom tab.
+  // (real font) + contact bar. Returns { dataUrl, bgUrl } (bgUrl = raw scene).
   const genFor = async (row, aspect) => {
     const autoCompose = localStorage.getItem("ai_auto_compose") !== "0";
     if (autoCompose) {
       const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit, bgOnly: true });
       const bgUrl = await generateImage({ prompt, aspectRatio: aspect });
-      return await composeBranded({ bgUrl, logoUrl: logo || "", hook: row.hook, highlight: row.highlight, kit, contacts: kitContacts(kit) });
+      const dataUrl = await composeBranded({ bgUrl, logoUrl: logo || "", hook: row.hook, highlight: row.highlight, kit, contacts: kitContacts(kit), layout });
+      return { dataUrl, bgUrl };
     }
     const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit });
-    return await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect });
+    const dataUrl = await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect });
+    return { dataUrl, bgUrl: null };
   };
+
+  // Re-composite every (composable) image with the current layout/kit — used by
+  // the global quick-edit sliders. Reads via refs to avoid stale state.
+  const recomposeAll = async (lay) => {
+    const jobsNow = jobsRef.current;
+    const out = [...resultsRef.current];
+    await Promise.all(jobsNow.map(async (job, j) => {
+      if (out[j]?.status === "done" && out[j].bgUrl) {
+        try {
+          out[j] = { ...out[j], dataUrl: await composeBranded({ bgUrl: out[j].bgUrl, logoUrl: logo || "", hook: job.row.hook, highlight: job.row.highlight, kit, contacts: kitContacts(kit), layout: lay }) };
+        } catch { /* keep previous */ }
+      }
+    }));
+    setResults(out);
+  };
+  useEffect(() => {
+    if (!jobs.length || generating) return;
+    const t = setTimeout(() => recomposeAll(layout), 300);
+    return () => clearTimeout(t);
+  }, [layout, kit, logo]); // eslint-disable-line
 
   // Unique aspects per row → one image each (reused across platforms of same size).
   const rowAspects = (row) => Array.from(new Set(row.targets.map((t) => t.aspect)));
@@ -170,7 +201,8 @@ export default function BulkImageGen({ ar }) {
     for (let j = 0; j < newJobs.length; j++) {
       try {
         const { row, aspect } = newJobs[j];
-        res[j] = { status: "done", dataUrl: await genFor(row, aspect) };
+        const r = await genFor(row, aspect);
+        res[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl };
       } catch (err) {
         res[j] = { status: "error", error: err?.message || String(err) };
       }
@@ -185,8 +217,8 @@ export default function BulkImageGen({ ar }) {
     if (!job) return;
     setResults((prev) => { const n = [...prev]; n[j] = { status: "pending" }; return n; });
     try {
-      const dataUrl = await genFor(job.row, job.aspect);
-      setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl }; return n; });
+      const r = await genFor(job.row, job.aspect);
+      setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl }; return n; });
     } catch (err) {
       setResults((prev) => { const n = [...prev]; n[j] = { status: "error", error: err?.message || String(err) }; return n; });
     }
@@ -318,6 +350,34 @@ export default function BulkImageGen({ ar }) {
               </button>
             </div>
           </div>
+
+          {doneCount > 0 && !generating && (
+            <div>
+              <button onClick={() => setShowEdit((v) => !v)}
+                className={`px-3 py-2 rounded-lg text-sm font-bold transition inline-flex items-center gap-1.5 ${showEdit ? "bg-fuchsia-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-200"}`}>
+                🎨 {ar ? "تحرير (يطبّق على كل الصور)" : "Edit all"}
+              </button>
+              {showEdit && (
+                <div className="mt-2 bg-slate-900/60 border border-fuchsia-500/30 rounded-lg p-3 space-y-2 max-w-md">
+                  {[
+                    { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.08, max: 0.66, step: 0.01 },
+                    { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.2, max: 0.8, step: 0.01 },
+                    { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.6, max: 1.7, step: 0.05 },
+                    { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.3, step: 0.01 },
+                    { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.15, max: 0.85, step: 0.01 },
+                    { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.5, max: 1.9, step: 0.05 },
+                  ].map((s) => (
+                    <div key={s.k} className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{s.label}</span>
+                      <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k]} onChange={(e) => setLayoutField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
+                    </div>
+                  ))}
+                  <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] text-indigo-400 hover:text-indigo-300 underline">↺ {ar ? "إعادة الافتراضي" : "Reset"}</button>
+                  <p className="text-[10px] text-slate-500">{ar ? "يطبّق على كل الصور فوراً. الألوان/الخط/الشريط من «هويتك»." : "Applies to all images live."}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {jobs.length > 0 && VALID_ASPECTS.filter((a) => jobs.some((j) => j.aspect === a)).map((aspect) => {
             const group = jobs.map((job, j) => ({ job, j })).filter(({ job }) => job.aspect === aspect);
