@@ -54,6 +54,15 @@ export function addLocalMedia(record) {
   return writeAll(list) ? enriched : null;
 }
 
+// Merge `patch` into the local record with this id (no-op if not found).
+export function updateLocalMedia(id, patch) {
+  const list = readAll();
+  let changed = false;
+  const next = list.map((r) => { if (r.id === id) { changed = true; return { ...r, ...patch }; } return r; });
+  if (changed) writeAll(next);
+  return changed;
+}
+
 export function removeLocalMedia(id) {
   const list = readAll();
   const next = list.filter((r) => r.id !== id);

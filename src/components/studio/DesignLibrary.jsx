@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { localApi } from "@/api/localClient";
-import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload, CalendarPlus, ChevronLeft, ChevronRight, Search, CheckSquare, Square, Calendar, Ban } from "lucide-react";
+import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload, CalendarPlus, ChevronLeft, ChevronRight, Search, CheckSquare, Square, Calendar, Ban, Check } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MediaUploadModal from "../MediaUploadModal";
 import BulkMediaUploadModal, { readCaptionsMap, platformLabel, platformEmoji, PLATFORMS } from "../BulkMediaUploadModal";
 import BulkScheduleModal from "../BulkScheduleModal";
-import { listLocalMedia, removeLocalMedia, isLocalId } from "@/utils/localMediaStore";
+import { listLocalMedia, removeLocalMedia, isLocalId, updateLocalMedia } from "@/utils/localMediaStore";
 import { listAllPosts, cancelSchedule } from "@/utils/publishingService";
 
 function parseJson(val, fallback) {
@@ -227,7 +227,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   const [confirmDeletePost, setConfirmDeletePost] = useState(null);
   const [activeTab, setActiveTab] = useState("designs"); // designs or media
   const [editingMedia, setEditingMedia] = useState(null);
-  const [editingData, setEditingData] = useState({ name: "", platform: "" });
+  const [editingData, setEditingData] = useState({ name: "", platforms: [] });
   const [editingMediaContent, setEditingMediaContent] = useState(null);
   // Bulk selection mode for the media tab. When `true`, clicking a card
   // toggles selection instead of opening the preview. `selectedPostIds`
@@ -348,8 +348,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   });
 
   const updateMediaMutation = useMutation({
-    mutationFn: ({ id, name, platform }) =>
-      localApi.entities.Media.update(id, { name, platform }),
+    mutationFn: ({ id, name, platform, platforms }) =>
+      localApi.entities.Media.update(id, { name, platform, platforms }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["media"] });
       setEditingMedia(null);
@@ -391,16 +391,29 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
   const handleEditMedia = (media) => {
     setEditingMedia(media);
-    setEditingData({ name: media.name, platform: media.platform });
+    // Seed from the existing platforms array (multi) or the legacy single field.
+    const initial = (Array.isArray(media.platforms) && media.platforms.length)
+      ? media.platforms
+      : (media.platform ? [media.platform] : []);
+    setEditingData({ name: media.name, platforms: initial });
   };
 
   const handleSaveEdit = async () => {
     if (!editingData.name.trim()) return;
-    await updateMediaMutation.mutateAsync({
-      id: editingMedia.id,
+    const platforms = editingData.platforms || [];
+    const payload = {
       name: editingData.name.trim(),
-      platform: editingData.platform,
-    });
+      platforms,
+      platform: platforms[0] || "", // back-compat single field
+    };
+    // Local-only records never went to the backend — update them in place.
+    if (isLocalId(editingMedia.id)) {
+      updateLocalMedia(editingMedia.id, payload);
+      setLocalMediaVersion((v) => v + 1);
+      setEditingMedia(null);
+    } else {
+      await updateMediaMutation.mutateAsync({ id: editingMedia.id, ...payload });
+    }
   };
 
   // Edit-button entry point — opens the inline caption editor instead
@@ -1714,26 +1727,28 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  {isRtl ? "المنصة" : "Platform"}
+                  {isRtl ? "المنصات (اختر واحدة أو أكثر)" : "Platforms (one or more)"}
                 </label>
-                <select
-                  value={editingData.platform}
-                  onChange={(e) =>
-                    setEditingData((prev) => ({
-                      ...prev,
-                      platform: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
-                >
-                  <option value="facebook">Facebook</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="twitter">Twitter</option>
-                  <option value="tiktok">TikTok</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="linkedin">LinkedIn</option>
-                  <option value="snapchat">Snapchat</option>
-                </select>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {PLATFORMS.map((p) => {
+                    const on = (editingData.platforms || []).includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setEditingData((prev) => {
+                          const cur = prev.platforms || [];
+                          return { ...prev, platforms: on ? cur.filter((x) => x !== p.id) : [...cur, p.id] };
+                        })}
+                        className={`flex items-center gap-1.5 px-2 py-2 rounded-lg text-[12px] font-semibold border transition ${on ? "bg-indigo-600 border-indigo-400 text-white" : "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600"}`}
+                      >
+                        <span>{p.emoji}</span>
+                        <span className="truncate">{isRtl ? p.labelAr : p.label}</span>
+                        {on && <Check className="w-3.5 h-3.5 ms-auto flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
