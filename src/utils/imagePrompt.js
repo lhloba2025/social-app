@@ -35,7 +35,28 @@ export const DEFAULT_KIT = {
   font: "Tajawal",
   changeLogoColor: false,
   logoColor: "#09007C",
+  // Contact bar (footer) — fixed like the logo; included only when enabled.
+  showContact: false,
+  cInstagram: "",
+  cTiktok: "",
+  cSnapchat: "",
+  cTwitter: "",
+  cWhatsapp: "",
+  cWebsite: "",
 };
+
+// Build the contact-bar contacts list from the kit (empty when disabled).
+export function kitContacts(kit) {
+  if (!kit?.showContact) return [];
+  const c = [];
+  if (kit.cInstagram) c.push({ p: "Instagram", v: kit.cInstagram });
+  if (kit.cTiktok)    c.push({ p: "TikTok", v: kit.cTiktok });
+  if (kit.cSnapchat)  c.push({ p: "Snapchat", v: kit.cSnapchat });
+  if (kit.cTwitter)   c.push({ p: "X (Twitter)", v: kit.cTwitter });
+  if (kit.cWhatsapp)  c.push({ p: "WhatsApp", v: kit.cWhatsapp });
+  if (kit.cWebsite)   c.push({ p: "Website", v: kit.cWebsite });
+  return c;
+}
 
 export function loadKit() {
   try { return { ...DEFAULT_KIT, ...JSON.parse(localStorage.getItem(KIT_KEY) || "{}") }; }
@@ -70,7 +91,7 @@ ${hook && hook.trim()
   : "No text overlay besides the logo."}
 
 COLOR & STYLE: primary text color ${mainColor}${hl.length ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
-
+${(() => { const cs = kitContacts(kit); return cs.length ? `\nCONTACT BAR (mandatory): at the very BOTTOM of the image, a slim full-width horizontal bar on a dark rounded translucent strip, kept fully INSIDE the frame and not covering the main subject. Show these evenly spaced, each as the correct platform ICON followed by its handle text in white, spelled EXACTLY as given, tidy and legible — do NOT alter, translate, or misspell any handle: ${cs.map((c) => `${c.p}: "${c.v}"`).join("  |  ")}.\n` : ""; })()}
 Negative: white box / frame / circle / border / badge / card behind the logo, logo on a white sticker outline, distorted logo, redrawn logo, separated logo parts, multiple logos, duplicated word, repeated word, a word written twice, missing words, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
 

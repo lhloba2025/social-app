@@ -80,6 +80,33 @@ export default function BrandKitControls({ ar, onChange }) {
           <div className="mt-2"><ColorField label={ar ? "لون الشعار" : "Logo color"} value={kit.logoColor} onCh={(v) => setKitField("logoColor", v)} /></div>
         )}
       </div>
+
+      {/* Contact bar (handles) — fixed like the logo, used only when checked. */}
+      <div className="border-t border-slate-800 pt-3">
+        <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 cursor-pointer">
+          <input type="checkbox" checked={!!kit.showContact} onChange={(e) => setKitField("showContact", e.target.checked)} />
+          {ar ? "أضف شريط معرفات التواصل أسفل الصورة" : "Add a contact bar at the bottom"}
+        </label>
+        {kit.showContact && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {[
+              ["cInstagram", ar ? "انستقرام" : "Instagram", "@hovera_sa"],
+              ["cTiktok", ar ? "تيك توك" : "TikTok", "@hovera_sa"],
+              ["cSnapchat", ar ? "سناب" : "Snapchat", "@hovera_sa"],
+              ["cTwitter", ar ? "تويتر/X" : "X", "@hovera_sa"],
+              ["cWhatsapp", ar ? "واتساب/جوال" : "WhatsApp", "055 1 64 65 66"],
+              ["cWebsite", ar ? "الموقع" : "Website", "hovera.sa"],
+            ].map(([k, label, ph]) => (
+              <div key={k}>
+                <label className="text-[10px] text-slate-400 block mb-0.5">{label}</label>
+                <input value={kit[k] || ""} onChange={(e) => setKitField(k, e.target.value)} placeholder={ph} dir="ltr"
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-indigo-500" />
+              </div>
+            ))}
+            <p className="col-span-2 text-[10px] text-slate-500">{ar ? "اترك أي خانة فاضية لتجاهلها. تُضاف لكل الصور." : "Leave blank to skip. Added to all images."}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

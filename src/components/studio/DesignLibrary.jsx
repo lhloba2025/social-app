@@ -318,6 +318,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
     queryFn: () => localApi.entities.Media.list("-created_date"),
   });
 
+  // Real media count = unique posts across backend + local store (the tab used
+  // to show only backend rows, undercounting AI/local images).
+  const mediaTabCount = React.useMemo(() => {
+    const keys = new Set();
+    for (const m of [...mediaList, ...listLocalMedia()]) keys.add(m.post_id || `legacy_${m.id}`);
+    return keys.size;
+  }, [mediaList, localMediaVersion]);
+
   // Get unique sizes
   const uniqueSizes = Array.from(new Set(designs.map(d => {
     const s = parseJson(d.size, null);
@@ -532,7 +540,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 : "border-transparent text-slate-400 hover:text-white"
             }`}
           >
-            {isRtl ? "المكتبة" : "Media"} ({mediaList.length})
+            {isRtl ? "المكتبة" : "Media"} ({mediaTabCount})
           </button>
         </div>
 
