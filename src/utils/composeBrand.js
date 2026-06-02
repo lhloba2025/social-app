@@ -86,20 +86,27 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const isHi = (w) => { const nw = normAr(w); return !!nw && hlNorm.some((h) => nw === h || nw.includes(h)); };
   const scale = layout.hookScale ?? 1;
   const maxWidth = W * 0.86;
-  const maxLines = 4; // allow the text to grow into more lines instead of capping size
+  // Honor EXPLICIT line breaks (Enter) the user typed, then word-wrap each.
+  const segments = hook.split(/\r?\n/);
+  const nonEmptySegs = segments.filter((s) => s.trim()).length;
+  const maxLines = Math.max(4, nonEmptySegs + 2);
+  const allWords = segments.flatMap((s) => s.split(/\s+/).filter(Boolean));
   let size = Math.round(W * 0.075 * scale);
   ctx.textBaseline = "middle";
   const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
   setFont(size);
-  const words = hook.split(/\s+/).filter(Boolean);
-  let lines = wrapWords(ctx, words, maxWidth);
+  const wrap = () => segments.flatMap((seg) => {
+    const ws = seg.split(/\s+/).filter(Boolean);
+    return ws.length ? wrapWords(ctx, ws, maxWidth) : [[]]; // keep blank lines for spacing
+  });
+  let lines = wrap();
   // Only shrink if it spills past maxLines OR a single word is wider than the
   // line — NOT to force a fixed line count (that used to cancel out enlarging).
-  const overflows = () => lines.length > maxLines || words.some((w) => ctx.measureText(w).width > maxWidth);
+  const overflows = () => lines.length > maxLines || allWords.some((w) => ctx.measureText(w).width > maxWidth);
   while (overflows() && size > 18) {
     size = Math.round(size * 0.92);
     setFont(size);
-    lines = wrapWords(ctx, words, maxWidth);
+    lines = wrap();
   }
   // Measure the inter-word space at the FINAL size (the bug was measuring it at
   // the initial large size, so spacing grew while the glyphs did not).

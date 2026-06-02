@@ -132,8 +132,9 @@ function CustomGen({ ar }) {
 
         <div>
           <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "نص الهوك (العنوان على الصورة)" : "Hook text"}</label>
-          <input value={hook} onChange={(e) => setHook(e.target.value)} placeholder={ar ? "مثال: أديري صالونك من مكان واحد" : "e.g. Run your salon from one place"}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+          <textarea value={hook} onChange={(e) => setHook(e.target.value)} rows={2} placeholder={ar ? "مثال: أديري صالونك من مكان واحد" : "e.g. Run your salon from one place"}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 leading-relaxed resize-none" />
+          <p className="text-[10px] text-slate-500 mt-1">{ar ? "💡 اضغط Enter لإنزال الكلام على سطر جديد." : "💡 Press Enter for a new line."}</p>
         </div>
 
         <div>
