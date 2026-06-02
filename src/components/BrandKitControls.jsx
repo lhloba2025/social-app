@@ -28,12 +28,21 @@ export default function BrandKitControls({ ar, onChange }) {
     r.readAsDataURL(f);
   };
 
+  const SWATCHES = ["#09007C", "#2E14ED", "#EF43DC", "#000000", "#FFFFFF", "#0F172A", "#E9E8E8", "#D4AF37", "#1877F2", "#E4405F"];
   const ColorField = ({ label, value, onCh }) => (
     <div className="flex-1">
       <label className="text-[11px] font-semibold text-slate-300 block mb-1">{label}</label>
       <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5">
-        <input type="color" value={value} onChange={(e) => onCh(e.target.value)} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" />
+        <input type="color" value={value} onChange={(e) => onCh(e.target.value)} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" title={ar ? "منتقي متقدّم" : "Advanced picker"} />
         <input type="text" value={value} onChange={(e) => onCh(e.target.value)} className="flex-1 bg-transparent text-[12px] text-white outline-none" dir="ltr" />
+      </div>
+      {/* Clickable presets — no dragging needed */}
+      <div className="flex flex-wrap gap-1 mt-1.5">
+        {SWATCHES.map((c) => (
+          <button key={c} type="button" onClick={() => onCh(c)} title={c}
+            className={`w-5 h-5 rounded-full border transition ${String(value).toLowerCase() === c.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`}
+            style={{ backgroundColor: c }} />
+        ))}
       </div>
     </div>
   );
