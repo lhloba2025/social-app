@@ -112,7 +112,18 @@ export default function BrandKitControls({ ar, onChange }) {
                 <ColorField label={ar ? "لون نص الشريط" : "Bar text"} value={kit.contactText || "#FFFFFF"} onCh={(v) => setKitField("contactText", v)} />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">{ar ? "شكل الشريط" : "Bar shape"}</label>
+                <label className="text-[10px] text-slate-400 block mb-1">{ar ? "اتجاه الشريط" : "Bar direction"}</label>
+                <div className="grid grid-cols-2 gap-1">
+                  {[{ v: "horizontal", ar: "أفقي", en: "Horizontal" }, { v: "vertical", ar: "عمودي", en: "Vertical" }].map((s) => (
+                    <button key={s.v} onClick={() => setKitField("contactLayout", s.v)}
+                      className={`py-1.5 rounded text-[11px] font-bold transition ${ (kit.contactLayout || "horizontal") === s.v ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                      {ar ? s.ar : s.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">{ar ? "شكل الشريط (للأفقي)" : "Bar shape"}</label>
                 <div className="grid grid-cols-2 gap-1">
                   {[{ v: "strip", ar: "ممتد بعرض الصورة", en: "Full width" }, { v: "pill", ar: "كبسولة بالوسط", en: "Centered pill" }].map((s) => (
                     <button key={s.v} onClick={() => setKitField("contactShape", s.v)}

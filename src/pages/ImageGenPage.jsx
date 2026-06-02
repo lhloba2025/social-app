@@ -38,7 +38,9 @@ function CustomGen({ ar }) {
   // High-precision mode keeps the raw AI scene so brand elements can be
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
-  const [layout, setLayout] = useState({ hookY: 0.26, hookScale: 1, logoY: 0.04, logoScale: 1 });
+  const [showEdit, setShowEdit] = useState(false);
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5 };
+  const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
   // Re-composite whenever the scene, brand kit, layout, hook or logo changes
@@ -190,22 +192,24 @@ function CustomGen({ ar }) {
           ) : result ? (
             <div className="w-full">
               <img src={result} alt="generated" className="w-full rounded-lg" />
-              {bgUrl && (
+              {bgUrl && showEdit && (
                 <div className="mt-3 bg-slate-900/60 border border-fuchsia-500/30 rounded-lg p-3 space-y-2">
                   <p className="text-[11px] font-bold text-fuchsia-300">{ar ? "✦ تحرير سريع (يطبّق فوراً بدون إعادة توليد)" : "✦ Quick edit (live)"}</p>
                   {[
-                    { k: "hookY", label: ar ? "مكان النص" : "Text Y", min: 0.08, max: 0.62, step: 0.01 },
+                    { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.08, max: 0.66, step: 0.01 },
+                    { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.2, max: 0.8, step: 0.01 },
                     { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.6, max: 1.7, step: 0.05 },
-                    { k: "logoY", label: ar ? "مكان الشعار" : "Logo Y", min: 0, max: 0.25, step: 0.01 },
+                    { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.3, step: 0.01 },
+                    { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.15, max: 0.85, step: 0.01 },
                     { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.5, max: 1.9, step: 0.05 },
                   ].map((s) => (
                     <div key={s.k} className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{s.label}</span>
+                      <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{s.label}</span>
                       <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k]} onChange={(e) => setLayoutField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
                     </div>
                   ))}
-                  <p className="text-[10px] text-slate-500">{ar ? "الألوان والخط من «هويتك» — تتحدّث هنا فوراً. للون: غيّره فوق." : "Colors/font from your brand — update live."}</p>
-                  <button onClick={() => setLayout({ hookY: 0.26, hookScale: 1, logoY: 0.04, logoScale: 1 })} className="text-[10px] text-indigo-400 hover:text-indigo-300 underline">{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
+                  <p className="text-[10px] text-slate-500">{ar ? "الألوان والخط ولون/شكل الشريط من «هويتك» — تتحدّث هنا فوراً." : "Colors/font & bar style from your brand — update live."}</p>
+                  <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] text-indigo-400 hover:text-indigo-300 underline">{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
                 </div>
               )}
               <div className="flex gap-2 mt-3">
@@ -216,6 +220,12 @@ function CustomGen({ ar }) {
                 </button>
                 <a href={result} download={`image_${Date.now()}.png`} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><Download className="w-4 h-4" /></a>
                 <button onClick={handleGenerate} disabled={loading} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><RefreshCw className="w-4 h-4" /></button>
+                {bgUrl && (
+                  <button onClick={() => setShowEdit((v) => !v)} title={ar ? "تحرير" : "Edit"}
+                    className={`px-3 py-2.5 rounded-lg transition flex items-center gap-1 text-sm font-bold ${showEdit ? "bg-fuchsia-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-200"}`}>
+                    <Palette className="w-4 h-4" />{ar ? "تحرير" : "Edit"}
+                  </button>
+                )}
               </div>
               <button onClick={handleEditInStudio} disabled={saving}
                 className="w-full mt-2 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm transition flex items-center justify-center gap-2 disabled:opacity-60">

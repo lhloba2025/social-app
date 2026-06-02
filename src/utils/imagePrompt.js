@@ -47,6 +47,7 @@ export const DEFAULT_KIT = {
   contactBg: "#0F172A",
   contactText: "#FFFFFF",
   contactShape: "strip", // "strip" (full width) | "pill" (centered rounded)
+  contactLayout: "horizontal", // "horizontal" | "vertical"
 };
 
 // Build the contact-bar contacts list from the kit (empty when disabled).

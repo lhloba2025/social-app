@@ -92,8 +92,10 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     const widths = lineWords.map((w) => ctx.measureText(w).width);
     const lineW = widths.reduce((a, b) => a + b, 0) + space * (lineWords.length - 1);
     const y = startY + li * lineH;
-    // RTL: first word at the RIGHT. Start x at right edge of the centered line.
-    let x = W / 2 + lineW / 2;
+    // RTL: first word at the RIGHT. Start x at right edge of the line, centered
+    // around the chosen horizontal anchor (hookX).
+    const cx = W * (layout.hookX ?? 0.5);
+    let x = cx + lineW / 2;
     ctx.textAlign = "right";
     ctx.direction = "rtl";
     lineWords.forEach((w, i) => {
@@ -111,24 +113,45 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
   const bg = kit.contactBg || "#0F172A";
   const tx = kit.contactText || "#FFFFFF";
   const pill = kit.contactShape === "pill";
-  const fs = Math.round(W * 0.026);
+  const vertical = kit.contactLayout === "vertical";
+  const fs = Math.round(W * (vertical ? 0.03 : 0.026));
   const iconSize = Math.round(fs * 1.25);
   const iconGap = W * 0.006;
-  const gap = W * 0.028;
   ctx.font = `600 ${fs}px "Tajawal", sans-serif`;
   ctx.textBaseline = "middle";
   ctx.direction = "ltr";
   ctx.textAlign = "left";
-  // measure each item (icon + handle)
   const items = contacts.map((c, i) => {
     const tw = ctx.measureText(c.v).width;
     const hasIcon = !!iconImgs[i];
     return { img: iconImgs[i], v: c.v, w: (hasIcon ? iconSize + iconGap : 0) + tw };
   });
+
+  if (vertical) {
+    const lineH = Math.max(iconSize, fs) * 1.7;
+    const maxW = Math.max(...items.map((it) => it.w));
+    const padX = W * 0.035, padY = lineH * 0.35;
+    const panelW = Math.min(W * 0.7, maxW + padX * 2);
+    const panelH = items.length * lineH + padY * 2;
+    const px = (W - panelW) / 2;
+    const py = H - panelH - H * 0.02;
+    ctx.save(); ctx.globalAlpha = 0.82; ctx.fillStyle = bg;
+    roundRect(ctx, px, py, panelW, panelH, Math.min(panelW, panelH) * 0.1); ctx.fill(); ctx.restore();
+    let y = py + padY + lineH / 2;
+    for (const it of items) {
+      let x = px + (panelW - it.w) / 2;
+      if (it.img) { ctx.drawImage(it.img, x, y - iconSize / 2, iconSize, iconSize); x += iconSize + iconGap; }
+      ctx.fillStyle = tx; ctx.fillText(it.v, x, y);
+      y += lineH;
+    }
+    return;
+  }
+
+  // horizontal
+  const gap = W * 0.028;
   const totalW = items.reduce((a, b) => a + b.w, 0) + gap * (items.length - 1);
   const barH = Math.round(H * 0.075);
   const y = H - barH;
-  // bar background
   ctx.save();
   ctx.globalAlpha = 0.8;
   ctx.fillStyle = bg;
@@ -141,7 +164,6 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
     ctx.fillRect(0, y, W, barH);
   }
   ctx.restore();
-  // items centered
   let x = (W - totalW) / 2;
   const cy = y + barH / 2;
   for (const it of items) {
@@ -176,7 +198,21 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
       const lg = await loadImg(logoUrl);
       const lw = W * 0.20 * (layout.logoScale ?? 1);
       const lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
-      ctx.drawImage(lg, (W - lw) / 2, H * (layout.logoY ?? 0.04), lw, lh);
+      const lx = W * (layout.logoX ?? 0.5) - lw / 2;
+      const ly = H * (layout.logoY ?? 0.04);
+      if (kit.changeLogoColor && kit.logoColor) {
+        // Tint the whole logo to one color (matches the "recolor logo" option).
+        const off = document.createElement("canvas");
+        off.width = Math.max(1, Math.round(lw)); off.height = Math.max(1, Math.round(lh));
+        const octx = off.getContext("2d");
+        octx.drawImage(lg, 0, 0, off.width, off.height);
+        octx.globalCompositeOperation = "source-in";
+        octx.fillStyle = kit.logoColor;
+        octx.fillRect(0, 0, off.width, off.height);
+        ctx.drawImage(off, lx, ly, lw, lh);
+      } else {
+        ctx.drawImage(lg, lx, ly, lw, lh);
+      }
     } catch { /* logo optional */ }
   }
 
