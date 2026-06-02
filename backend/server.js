@@ -782,9 +782,13 @@ app.post('/api/generate-image', async (req, res) => {
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return res.status(400).json({ error: 'النص (البرومبت) مطلوب' });
     }
+    // Default to the cheaper Nano Banana (2.5 Flash Image, ~$0.039/img). In
+    // high-precision mode the AI only paints the SCENE (we composite text/logo
+    // ourselves), so the pricier Pro model's text quality isn't needed. Override
+    // with GEMINI_IMAGE_MODEL=gemini-3-pro-image-preview for max quality.
     const model = (typeof modelOverride === 'string' && modelOverride.trim())
       || process.env.GEMINI_IMAGE_MODEL
-      || 'gemini-3-pro-image-preview';
+      || 'gemini-2.5-flash-image';
 
     const parts = [{ text: prompt }];
     // Optional reference image (e.g. the Hovera logo). Accept either a data
