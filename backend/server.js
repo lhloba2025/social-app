@@ -412,6 +412,7 @@ app.get('/auth/meta', (req, res) => {
     'instagram_basic',
     'instagram_content_publish',
     'instagram_manage_comments',  // قراءة أسماء المعلّقين + الرد على التعليقات (انستقرام)
+    'instagram_manage_insights',  // عدد المشاهدات/الوصول لمنشورات انستقرام
     'pages_show_list',
     'pages_read_engagement',
     'pages_manage_engagement',     // الرد على تعليقات فيسبوك + هوية المعلّق
@@ -667,7 +668,7 @@ app.get('/api/engagement/feed', async (req, res) => {
     if (!acc) return res.json({ posts: [], connected: false });
     const token = acc.access_token;
     const out = [];
-    const debug = { hasPage: !!acc.page_id, hasIg: !!acc.ig_user_id, fbError: null, igError: null };
+    const debug = { hasPage: !!acc.page_id, hasIg: !!acc.ig_user_id, fbError: null, igError: null, igInsightsError: null };
     if (acc.page_id) {
       try {
         const r = await axios.get(`${GRAPH}/${acc.page_id}/posts`, {
@@ -688,11 +689,24 @@ app.get('/api/engagement/feed', async (req, res) => {
           params: { fields: 'id,caption,media_url,thumbnail_url,timestamp,permalink,comments_count,like_count', limit: 25, access_token: token },
           timeout: 20000,
         });
-        for (const p of r.data?.data || []) out.push({
+        const igPosts = (r.data?.data || []).map((p) => ({
           platform: 'instagram', id: p.id, message: p.caption || '', image: p.media_url || p.thumbnail_url || null,
           created: p.timestamp, commentsCount: p.comments_count || 0, likesCount: p.like_count || 0, sharesCount: 0,
-          permalink: p.permalink || null,
-        });
+          viewsCount: 0, permalink: p.permalink || null,
+        }));
+        // Views per media (best-effort; needs instagram_manage_insights). IG
+        // unified "views" covers all post types; fall back to reach.
+        await Promise.all(igPosts.map(async (p) => {
+          for (const metric of ['views', 'reach']) {
+            try {
+              const ins = await axios.get(`${GRAPH}/${p.id}/insights`, { params: { metric, access_token: token }, timeout: 15000 });
+              const d = ins.data?.data?.[0];
+              const v = d?.total_value?.value ?? d?.values?.[0]?.value;
+              if (v != null) { p.viewsCount = v; break; }
+            } catch (ie) { if (!debug.igInsightsError) debug.igInsightsError = ie.response?.data?.error?.message || ie.message; }
+          }
+        }));
+        for (const p of igPosts) out.push(p);
       } catch (e) { debug.igError = e.response?.data?.error?.message || e.message; }
     }
     out.sort((a, b) => (b.created || '').localeCompare(a.created || ''));

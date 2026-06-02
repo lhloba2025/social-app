@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageCircle, Loader2, Send, RefreshCw, ExternalLink, Inbox, CornerDownLeft, Heart, Share2 } from "lucide-react";
+import { MessageCircle, Loader2, Send, RefreshCw, ExternalLink, Inbox, CornerDownLeft, Heart, Share2, Eye } from "lucide-react";
 import { platformEmoji, platformLabel } from "@/components/BulkMediaUploadModal";
 import { tenantToken } from "@/api/localClient";
 
@@ -123,6 +123,7 @@ export default function EngagementPage({ language }) {
                     </div>
                     <p className="text-[12px] text-slate-200 line-clamp-2 mt-0.5">{p.message || (ar ? "بدون نص" : "No text")}</p>
                     <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                      {p.viewsCount > 0 && <span className="inline-flex items-center gap-0.5 text-sky-300"><Eye className="w-3 h-3" />{p.viewsCount}</span>}
                       <span className="inline-flex items-center gap-0.5 text-pink-300"><Heart className="w-3 h-3" />{p.likesCount || 0}</span>
                       <span className="inline-flex items-center gap-0.5 text-indigo-300"><MessageCircle className="w-3 h-3" />{p.commentsCount || 0}</span>
                       {p.platform === "facebook" && <span className="inline-flex items-center gap-0.5"><Share2 className="w-3 h-3" />{p.sharesCount || 0}</span>}
@@ -141,6 +142,7 @@ export default function EngagementPage({ language }) {
               <div className="max-w-2xl mx-auto">
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-800">{platformEmoji(active.platform)} {platformLabel(active.platform, ar)}</span>
+                  {active.viewsCount > 0 && <span className="text-xs text-sky-300 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{active.viewsCount} {ar ? "مشاهدة" : "views"}</span>}
                   <span className="text-xs text-pink-300 inline-flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{active.likesCount || 0} {ar ? "إعجاب" : "likes"}</span>
                   <span className="text-xs text-indigo-300 inline-flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{active.commentsCount || 0} {ar ? "تعليق" : "comments"}</span>
                   {active.platform === "facebook" && <span className="text-xs text-slate-300 inline-flex items-center gap-1"><Share2 className="w-3.5 h-3.5" />{active.sharesCount || 0} {ar ? "مشاركة" : "shares"}</span>}
