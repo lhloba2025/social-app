@@ -4,7 +4,8 @@ import { Sparkles, Loader2, ImagePlus, Download, Check, RefreshCw, Palette, Laye
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
-import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo } from "@/utils/imagePrompt";
+import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo, kitContacts } from "@/utils/imagePrompt";
+import { composeBranded } from "@/utils/composeBrand";
 import BrandKitControls from "@/components/BrandKitControls";
 // Lazy-load the bulk tab so the heavy Excel library only loads when used.
 const BulkImageGen = React.lazy(() => import("./BulkImageGen"));
@@ -22,6 +23,10 @@ function CustomGen({ ar }) {
   const [highlight, setHighlight] = useState("");
   const [aspect, setAspect] = useState("4:5");
   const [bgOnly, setBgOnly] = useState(false);
+  // High-precision mode: AI paints only the scene, then we composite the real
+  // logo + hook (real font) + contact bar on top — exact every time.
+  const [autoCompose, setAutoCompose] = useState(() => localStorage.getItem("ai_auto_compose") !== "0");
+  React.useEffect(() => { localStorage.setItem("ai_auto_compose", autoCompose ? "1" : "0"); }, [autoCompose]);
   const [kit, setKit] = useState(loadKit);
   const [logo, setLogo] = useState(loadLogo);
 
@@ -35,9 +40,17 @@ function CustomGen({ ar }) {
     if (!scene.trim()) { setError(ar ? "اكتب فكرة المشهد أولاً." : "Describe the scene first."); return; }
     setError(""); setSaved(false); setResult(""); setLoading(true);
     try {
-      const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly });
-      const dataUrl = await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect });
-      setResult(dataUrl);
+      if (autoCompose && !bgOnly) {
+        // AI paints the scene only; we composite the brand elements precisely.
+        const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly: true });
+        const bgUrl = await generateImage({ prompt, aspectRatio: aspect });
+        const composed = await composeBranded({ bgUrl, logoUrl: logo || "", hook, highlight, kit, contacts: kitContacts(kit) });
+        setResult(composed);
+      } else {
+        const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly });
+        const dataUrl = await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect });
+        setResult(dataUrl);
+      }
     } catch (e) {
       setError((ar ? "تعذّر التوليد: " : "Generation failed: ") + (e?.message || e));
     } finally { setLoading(false); }
@@ -119,13 +132,23 @@ function CustomGen({ ar }) {
           </div>
         </div>
 
-        <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
-          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
-          <span className="text-[12px] text-slate-200 leading-relaxed">
-            {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
-            <span className="block text-[10px] text-slate-500">{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
+        <label className="flex items-start gap-2 bg-fuchsia-900/20 border border-fuchsia-500/40 rounded-lg p-2.5 cursor-pointer">
+          <input type="checkbox" checked={autoCompose} onChange={(e) => setAutoCompose(e.target.checked)} className="mt-0.5" />
+          <span className="text-[12px] text-slate-100 leading-relaxed">
+            {ar ? "🎯 دقة عالية (تركيب الشعار والخط تلقائياً)" : "🎯 High precision (auto-composite logo & font)"}
+            <span className="block text-[10px] text-slate-400">{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك بخط تجوال الحقيقي والشريط بدقة." : "AI paints the scene; we composite the real logo, font & contact bar."}</span>
           </span>
         </label>
+
+        {!autoCompose && (
+          <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
+            <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
+            <span className="text-[12px] text-slate-200 leading-relaxed">
+              {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
+              <span className="block text-[10px] text-slate-500">{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
+            </span>
+          </label>
+        )}
 
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
 
