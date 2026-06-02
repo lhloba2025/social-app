@@ -55,8 +55,14 @@ function pick(row, names) {
   for (const k of Object.keys(row)) if (names.includes(String(k).trim())) return String(row[k] ?? "").trim();
   return "";
 }
+// Fuzzy column match: a header counts as this platform if it CONTAINS the name
+// (so "تويتر (X)" matches "تويتر", "انستقرام 📷" matches "انستقرام", etc.).
 function cellRaw(row, names) {
-  for (const k of Object.keys(row)) if (names.includes(String(k).trim())) return row[k];
+  const lnames = names.map((n) => String(n).trim().toLowerCase()).filter((n) => n.length >= 3);
+  for (const k of Object.keys(row)) {
+    const kk = String(k).trim().toLowerCase();
+    if (lnames.some((n) => kk.includes(n))) return row[k];
+  }
   return "";
 }
 async function dataUrlToBlob(dataUrl) { return (await fetch(dataUrl)).blob(); }
@@ -263,8 +269,8 @@ export default function BulkImageGen({ ar }) {
                 const uses = job.row.targets.filter((t) => t.aspect === job.aspect).map((t) => t.labelAr).join("، ");
                 return (
                   <div key={j} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700">
-                    <div className="h-44 bg-slate-950 flex items-center justify-center relative p-1">
-                      {r?.status === "done" ? <img src={r.dataUrl} alt="" className="max-w-full max-h-full object-contain rounded" />
+                    <div className="bg-slate-950 flex items-center justify-center relative w-full overflow-hidden" style={{ aspectRatio: job.aspect.replace(":", "/") }}>
+                      {r?.status === "done" ? <img src={r.dataUrl} alt="" className="w-full h-full object-cover" />
                         : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
                         : r?.status === "error" ? <AlertCircle className="w-6 h-6 text-red-400" />
                         : <ImagePlus className="w-6 h-6 text-slate-700" />}
