@@ -32,6 +32,7 @@ const PLATFORM_COLS = [
 ];
 
 const VALID_ASPECTS = ["4:5", "1:1", "9:16", "16:9", "3:4", "4:3"];
+const ASPECT_LABEL = { "4:5": "منشور 4:5", "1:1": "مربع 1:1", "9:16": "ستوري/ريلز 9:16", "16:9": "عريض 16:9", "3:4": "عمودي 3:4", "4:3": "أفقي 4:3" };
 const ASPECT_RATIO = { "4:5": 0.8, "1:1": 1, "9:16": 0.5625, "16:9": 1.7778, "3:4": 0.75, "4:3": 1.3333 };
 const NAME_TO_ASPECT = { "منشور": "4:5", "مربع": "1:1", "ستوري": "9:16", "ريلز": "9:16", "عريض": "16:9", "عمودي": "3:4", "أفقي": "4:3" };
 
@@ -262,30 +263,39 @@ export default function BulkImageGen({ ar }) {
             </button>
           </div>
 
-          {jobs.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {jobs.map((job, j) => {
-                const r = results[j];
-                const uses = job.row.targets.filter((t) => t.aspect === job.aspect).map((t) => t.labelAr).join("، ");
-                return (
-                  <div key={j} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700">
-                    <div className="bg-slate-950 flex items-center justify-center relative w-full overflow-hidden" style={{ aspectRatio: job.aspect.replace(":", "/") }}>
-                      {r?.status === "done" ? <img src={r.dataUrl} alt="" className="w-full h-full object-cover" />
-                        : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-                        : r?.status === "error" ? <AlertCircle className="w-6 h-6 text-red-400" />
-                        : <ImagePlus className="w-6 h-6 text-slate-700" />}
-                      <span className="absolute top-1.5 end-1.5 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full" dir="ltr">{job.aspect}</span>
-                    </div>
-                    <div className="p-2">
-                      <p className="text-[11px] text-white truncate font-semibold">{job.row.hook || job.row.scene || `#${job.rowIndex + 1}`}</p>
-                      <p className="text-[9px] text-slate-400 truncate">{uses}</p>
-                      {r?.status === "error" && <p className="text-[9px] text-red-300 truncate">{r.error}</p>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {jobs.length > 0 && VALID_ASPECTS.filter((a) => jobs.some((j) => j.aspect === a)).map((aspect) => {
+            const group = jobs.map((job, j) => ({ job, j })).filter(({ job }) => job.aspect === aspect);
+            return (
+              <div key={aspect} className="space-y-2">
+                <p className="text-[12px] font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-1">
+                  <span>{ASPECT_LABEL[aspect] || aspect}</span>
+                  <span className="text-slate-500 font-normal">({group.length})</span>
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {group.map(({ job, j }) => {
+                    const r = results[j];
+                    const uses = job.row.targets.filter((t) => t.aspect === job.aspect).map((t) => t.labelAr).join("، ");
+                    return (
+                      <div key={j} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700">
+                        <div className="bg-slate-950 flex items-center justify-center relative w-full overflow-hidden" style={{ aspectRatio: job.aspect.replace(":", "/") }}>
+                          {r?.status === "done" ? <img src={r.dataUrl} alt="" className="w-full h-full object-cover" />
+                            : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                            : r?.status === "error" ? <AlertCircle className="w-6 h-6 text-red-400" />
+                            : <ImagePlus className="w-6 h-6 text-slate-700" />}
+                          <span className="absolute top-1.5 end-1.5 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full" dir="ltr">{job.aspect}</span>
+                        </div>
+                        <div className="p-2">
+                          <p className="text-[11px] text-white truncate font-semibold">{job.row.hook || job.row.scene || `#${job.rowIndex + 1}`}</p>
+                          <p className="text-[9px] text-slate-400 truncate">{uses}</p>
+                          {r?.status === "error" && <p className="text-[9px] text-red-300 truncate">{r.error}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
 
           {doneCount > 0 && !generating && (
             <div className="space-y-4">
