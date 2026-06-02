@@ -69,11 +69,11 @@ function wrapWords(ctx, words, maxWidth) {
   return lines;
 }
 
-function drawHook(ctx, W, H, hook, highlights, kit, font) {
+function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
   const hlSet = new Set(highlights);
-  let size = Math.round(W * 0.075);
+  let size = Math.round(W * 0.075 * (layout.hookScale ?? 1));
   ctx.textBaseline = "middle";
   ctx.font = `800 ${size}px "${font}", "Tajawal", sans-serif`;
   const space = ctx.measureText(" ").width;
@@ -86,8 +86,8 @@ function drawHook(ctx, W, H, hook, highlights, kit, font) {
     lines = wrapWords(ctx, words, W * 0.86);
   }
   const lineH = size * 1.35;
-  // place block starting below the logo area
-  const startY = H * 0.26;
+  // place block starting below the logo area (adjustable)
+  const startY = H * (layout.hookY ?? 0.26);
   lines.forEach((lineWords, li) => {
     const widths = lineWords.map((w) => ctx.measureText(w).width);
     const lineW = widths.reduce((a, b) => a + b, 0) + space * (lineWords.length - 1);
@@ -156,7 +156,7 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
 }
 
 // Main entry. Returns a PNG data URL of the composed image.
-export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, contacts }) {
+export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, contacts, layout = {} }) {
   const bg = await loadImg(bgUrl);
   const W = bg.naturalWidth || bg.width, H = bg.naturalHeight || bg.height;
   const c = document.createElement("canvas");
@@ -174,15 +174,15 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
-      const lw = W * 0.20;
+      const lw = W * 0.20 * (layout.logoScale ?? 1);
       const lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
-      ctx.drawImage(lg, (W - lw) / 2, H * 0.04, lw, lh);
+      ctx.drawImage(lg, (W - lw) / 2, H * (layout.logoY ?? 0.04), lw, lh);
     } catch { /* logo optional */ }
   }
 
   if (hook && hook.trim()) {
     const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
-    drawHook(ctx, W, H, hook.trim(), hl, kit, font);
+    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout);
   }
 
   if (contacts && contacts.length) {

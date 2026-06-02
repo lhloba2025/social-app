@@ -411,9 +411,11 @@ app.get('/auth/meta', (req, res) => {
   const scopes = [
     'instagram_basic',
     'instagram_content_publish',
+    'instagram_manage_comments',  // قراءة أسماء المعلّقين + الرد على التعليقات (انستقرام)
     'pages_show_list',
     'pages_read_engagement',
-    'pages_manage_posts',   // نشر على صفحة فيسبوك (يتطلب use case "Manage everything on your Page")
+    'pages_manage_engagement',     // الرد على تعليقات فيسبوك + هوية المعلّق
+    'pages_manage_posts',          // نشر على صفحة فيسبوك
     'business_management',
   ].join(',');
 
