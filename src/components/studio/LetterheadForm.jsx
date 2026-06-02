@@ -15,18 +15,18 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
 
   const [logo, setLogo] = useState(savedLogo || "");
   const [f, setF] = useState({
-    companyName: "",
-    tagline: "",
+    nameAr: "",
+    subAr: "",
+    nameEn: "",
+    subEn: "",
     cr: "",
     vat: "",
     phone: kit.cWhatsapp || "",
-    email: "",
     website: kit.cWebsite || "",
-    address: "",
   });
-  const [headerColor, setHeaderColor] = useState(kit.mainColor || "#09007C");
+  const [headerColor, setHeaderColor] = useState(kit.mainColor || "#0F172A");
+  const [accentColor, setAccentColor] = useState(kit.highlightColor || "#8DB600");
   const [font, setFont] = useState(kit.font || "Tajawal");
-  const [band, setBand] = useState("band"); // "band" | "line"
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -39,15 +39,17 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
     r.readAsDataURL(file);
   };
 
+  // Right side = Arabic, left side = English, logo centered. CR/VAT/phone/site
+  // appear as the small line under each side.
   const FIELDS = [
-    ["companyName", ar ? "اسم المنشأة" : "Company name", ar ? "مثال: مؤسسة هوفيرا للتجارة" : "Company"],
-    ["tagline", ar ? "وصف / شعار نصي (اختياري)" : "Tagline", ar ? "مثال: حلول إدارة الصالونات" : "Tagline"],
-    ["cr", ar ? "رقم السجل التجاري" : "CR number", "1010xxxxxx"],
-    ["vat", ar ? "الرقم الضريبي (VAT)" : "VAT number", "3xxxxxxxxxxxxx3"],
-    ["phone", ar ? "الجوال / الهاتف" : "Phone", "0551 64 65 66"],
-    ["email", ar ? "البريد الإلكتروني" : "Email", "info@hovera.sa"],
-    ["website", ar ? "الموقع الإلكتروني" : "Website", "hovera.sa"],
-    ["address", ar ? "العنوان" : "Address", ar ? "الرياض، المملكة العربية السعودية" : "Address"],
+    ["nameAr", ar ? "الاسم بالعربي (يمين)" : "Arabic name (right)", "صالون روز التجميلي", "rtl"],
+    ["subAr", ar ? "السطر التحتي بالعربي" : "Arabic subtitle", "للتزيين النسائي", "rtl"],
+    ["nameEn", ar ? "الاسم بالإنجليزي (يسار)" : "English name (left)", "ROSE BEAUTY SALON", "ltr"],
+    ["subEn", ar ? "السطر التحتي بالإنجليزي" : "English subtitle", "FOR WOMEN'S BEAUTY", "ltr"],
+    ["cr", ar ? "رقم السجل التجاري" : "CR number", "1010915001", "ltr"],
+    ["vat", ar ? "الرقم الضريبي (VAT) — اختياري" : "VAT (optional)", "3xxxxxxxxxxxxx3", "ltr"],
+    ["phone", ar ? "الجوال / الهاتف — اختياري" : "Phone (optional)", "0551 64 65 66", "ltr"],
+    ["website", ar ? "الموقع — اختياري" : "Website (optional)", "hovera.sa", "ltr"],
   ];
 
   const anyFilled = logo || Object.values(f).some((v) => v && v.trim());
@@ -58,11 +60,11 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
     try {
       const dataUrl = await composeLetterhead({
         width: size?.width || 1654,
-        height: size?.height || 2339,
+        height: size?.height || 280,
         kit: { ...kit, font },
         logoUrl: logo || "",
         fields: f,
-        style: { band, headerColor, textColor: "#0F172A" },
+        style: { headerColor, accentColor },
         ar,
       });
       onDone(dataUrl);
@@ -99,10 +101,10 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
 
           {/* Fields */}
           <div className="grid grid-cols-2 gap-3">
-            {FIELDS.map(([k, label, ph]) => (
-              <div key={k} className={k === "companyName" || k === "tagline" || k === "address" ? "col-span-2" : ""}>
+            {FIELDS.map(([k, label, ph, dir]) => (
+              <div key={k}>
                 <label className="text-[11px] font-semibold text-slate-300 block mb-1">{label}</label>
-                <input value={f[k]} onChange={(e) => set(k, e.target.value)} placeholder={ph} dir={k === "companyName" || k === "tagline" || k === "address" ? "rtl" : "ltr"}
+                <input value={f[k]} onChange={(e) => set(k, e.target.value)} placeholder={ph} dir={dir}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-[13px] text-white outline-none focus:border-indigo-500" />
               </div>
             ))}
@@ -110,15 +112,29 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
 
           {/* Style */}
           <div className="border-t border-slate-800 pt-3 space-y-3">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "اللون الأساسي" : "Primary color"}</label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={headerColor} onChange={(e) => setHeaderColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
-                <div className="flex flex-wrap gap-1">
-                  {SWATCHES.map((s) => (
-                    <button key={s} type="button" onClick={() => setHeaderColor(s)}
-                      className={`w-5 h-5 rounded-full border ${headerColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
-                  ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "لون الاسم" : "Name color"}</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={headerColor} onChange={(e) => setHeaderColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
+                  <div className="flex flex-wrap gap-1">
+                    {SWATCHES.slice(0, 6).map((s) => (
+                      <button key={s} type="button" onClick={() => setHeaderColor(s)}
+                        className={`w-5 h-5 rounded-full border ${headerColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "لون التمييز (الوصف والخط)" : "Accent color"}</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
+                  <div className="flex flex-wrap gap-1">
+                    {["#8DB600", "#EF43DC", "#D4AF37", "#0A7E5E", "#2E14ED", "#8A1538"].map((s) => (
+                      <button key={s} type="button" onClick={() => setAccentColor(s)}
+                        className={`w-5 h-5 rounded-full border ${accentColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -127,15 +143,6 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
               <select value={font} onChange={(e) => setFont(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-[12px] text-white outline-none">
                 {FONTS.map((ff) => <option key={ff.v} value={ff.v}>{ar ? ff.ar : ff.v}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "خلفية الرأس" : "Header style"}</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {[{ v: "band", ar: "شريط ملوّن خفيف", en: "Soft band" }, { v: "line", ar: "خط فقط (أبيض)", en: "Line only" }].map((s) => (
-                  <button key={s.v} onClick={() => setBand(s.v)}
-                    className={`py-1.5 rounded text-[11px] font-bold transition ${band === s.v ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? s.ar : s.en}</button>
-                ))}
-              </div>
             </div>
           </div>
 

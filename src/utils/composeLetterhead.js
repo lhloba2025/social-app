@@ -1,7 +1,7 @@
-// composeLetterhead.js — builds an official A4 LETTERHEAD (ترويسة) header.
-// Header-only: the brand sits in the TOP band of the page; the rest stays white
-// so it can be placed at the top of a Word document / official paper. Every
-// field is optional — only the ones the user fills get drawn.
+// composeLetterhead.js — builds an official LETTERHEAD STRIP (ترويسة).
+// A simple horizontal strip (like a printed letterhead band): the logo sits in
+// the CENTER, the Arabic name/subtitle/CR on the RIGHT, and the English
+// name/subtitle/CR on the LEFT. Every field is optional.
 
 function loadImg(src) {
   return new Promise((resolve, reject) => {
@@ -13,49 +13,40 @@ function loadImg(src) {
   });
 }
 
-function drawCenteredLine(ctx, text, cx, y, color) {
-  if (!text) return;
-  ctx.fillStyle = color;
-  ctx.textAlign = "center";
-  ctx.direction = "rtl";
-  ctx.fillText(text, cx, y);
-}
-
-// Compose the letterhead. Returns a PNG data URL (white A4 page + top header).
-//  fields: { companyName, tagline, cr, vat, phone, email, website, address }
-//  style:  { band: "band"|"line", headerColor, textColor }
-export async function composeLetterhead({ width = 1654, height = 2339, kit = {}, logoUrl = "", fields = {}, style = {}, ar = true }) {
+// Compose the strip. Returns a PNG data URL.
+//  fields: { nameAr, subAr, nameEn, subEn, cr, vat, phone, email, website }
+//  style:  { headerColor, accentColor, transparent }
+export async function composeLetterhead({ width = 1654, height = 280, kit = {}, logoUrl = "", fields = {}, style = {}, ar = true }) {
   const W = width, H = height;
 
-  const headerColor = style.headerColor || kit.mainColor || "#09007C";
-  const textColor   = style.textColor   || kit.mainColor || "#0F172A";
+  const nameColor   = style.headerColor || kit.mainColor || "#0F172A";
+  const accentColor = style.accentColor || kit.highlightColor || "#8DB600";
   const font = kit.font || "Tajawal";
-  const banded = style.band !== "line"; // default: a soft tinted band
 
   try {
-    await document.fonts.load(`800 ${Math.round(W * 0.04)}px "${font}"`);
-    await document.fonts.load(`600 ${Math.round(W * 0.017)}px "Tajawal"`);
+    await document.fonts.load(`800 ${Math.round(H * 0.26)}px "${font}"`);
+    await document.fonts.load(`700 ${Math.round(H * 0.16)}px "${font}"`);
     await document.fonts.ready;
   } catch { /* best-effort */ }
 
-  // Content layer (transparent) — drawn on top of the page + optional band.
-  const cc = document.createElement("canvas");
-  cc.width = W; cc.height = H;
-  const ctx = cc.getContext("2d");
-  ctx.textBaseline = "alphabetic";
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  if (!style.transparent) { ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H); }
 
-  const marginX = W * 0.08;
-  const cx = W / 2;
-  let y = H * 0.045;
+  const marginX = W * 0.03;
+  const midY = H / 2;
 
-  // Logo (centered, top)
+  // ── Center logo ──────────────────────────────────────────────────────
+  let logoHalf = W * 0.09; // half-width reserved for the logo zone
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
-      let lw = W * 0.17;
-      let lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
-      const maxLh = H * 0.08;
-      if (lh > maxLh) { const s = maxLh / lh; lw *= s; lh *= s; }
+      let lh = H * 0.82;
+      let lw = lh * ((lg.naturalWidth || 1) / (lg.naturalHeight || 1));
+      const maxLw = W * 0.2;
+      if (lw > maxLw) { const s = maxLw / lw; lw *= s; lh *= s; }
+      const lx = (W - lw) / 2, ly = (H - lh) / 2;
       if (kit.changeLogoColor && kit.logoColor) {
         const off = document.createElement("canvas");
         off.width = Math.max(1, Math.round(lw)); off.height = Math.max(1, Math.round(lh));
@@ -64,73 +55,68 @@ export async function composeLetterhead({ width = 1654, height = 2339, kit = {},
         octx.globalCompositeOperation = "source-in";
         octx.fillStyle = kit.logoColor;
         octx.fillRect(0, 0, off.width, off.height);
-        ctx.drawImage(off, cx - lw / 2, y, lw, lh);
+        ctx.drawImage(off, lx, ly, lw, lh);
       } else {
-        ctx.drawImage(lg, cx - lw / 2, y, lw, lh);
+        ctx.drawImage(lg, lx, ly, lw, lh);
       }
-      y += lh + H * 0.02;
+      logoHalf = lw / 2 + W * 0.02;
     } catch { /* optional */ }
   }
 
-  // Company name
-  if (fields.companyName) {
-    const fs = Math.round(W * 0.04);
-    ctx.font = `800 ${fs}px "${font}", "Tajawal", sans-serif`;
-    y += fs;
-    drawCenteredLine(ctx, fields.companyName, cx, y, headerColor);
+  const fsName = Math.round(H * 0.26);
+  const fsSub  = Math.round(H * 0.16);
+  const fsInfo = Math.round(H * 0.145);
+  const lineGap = H * 0.06;
+
+  // Build the small info line for each side from the available fields.
+  const infoAr = [
+    fields.cr  && `س.ت : ${fields.cr}`,
+    fields.vat && `الرقم الضريبي : ${fields.vat}`,
+    fields.phone && `جوال : ${fields.phone}`,
+    fields.website && fields.website,
+  ].filter(Boolean).join("   |   ");
+  const infoEn = [
+    fields.cr  && `C.R. No. : ${fields.cr}`,
+    fields.vat && `VAT : ${fields.vat}`,
+    fields.phone && `Tel : ${fields.phone}`,
+    fields.website && fields.website,
+  ].filter(Boolean).join("   |   ");
+
+  // Draw a stacked block (name → subtitle → accent underline → info line),
+  // vertically centered, aligned to `align` ("right" | "left") at edge `xEdge`.
+  function drawBlock({ name, sub, info, align, xEdge }) {
+    const rows = [];
+    if (name) rows.push({ t: name, fs: fsName, color: nameColor, weight: 800 });
+    if (sub)  rows.push({ t: sub,  fs: fsSub,  color: accentColor, weight: 700 });
+    if (info) rows.push({ t: info, fs: fsInfo, color: nameColor, weight: 600, info: true });
+    if (!rows.length) return;
+    const totalH = rows.reduce((a, r) => a + r.fs, 0) + lineGap * (rows.length - 1);
+    let y = midY - totalH / 2;
+    ctx.textAlign = align;
+    ctx.direction = align === "right" ? "rtl" : "ltr";
+    ctx.textBaseline = "top";
+    for (const r of rows) {
+      ctx.font = `${r.weight} ${r.fs}px "${font}", "Tajawal", sans-serif`;
+      ctx.fillStyle = r.color;
+      ctx.fillText(r.t, xEdge, y);
+      // accent underline beneath the subtitle row
+      if (r === rows[1] && rows.length > 1) {
+        const w = Math.min(ctx.measureText(r.t).width, W * 0.28);
+        const uy = y + r.fs + lineGap * 0.35;
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = Math.max(2, H * 0.012);
+        ctx.beginPath();
+        if (align === "right") { ctx.moveTo(xEdge, uy); ctx.lineTo(xEdge - w, uy); }
+        else { ctx.moveTo(xEdge, uy); ctx.lineTo(xEdge + w, uy); }
+        ctx.stroke();
+      }
+      y += r.fs + lineGap;
+    }
   }
 
-  // Tagline
-  if (fields.tagline) {
-    const fs = Math.round(W * 0.019);
-    ctx.font = `500 ${fs}px "${font}", "Tajawal", sans-serif`;
-    y += fs * 1.9;
-    drawCenteredLine(ctx, fields.tagline, cx, y, "#64748B");
-  }
+  // Right = Arabic, Left = English.
+  drawBlock({ name: fields.nameAr, sub: fields.subAr, info: infoAr, align: "right", xEdge: W - marginX });
+  drawBlock({ name: fields.nameEn, sub: fields.subEn, info: infoEn, align: "left",  xEdge: marginX });
 
-  // Accent divider (double rule)
-  y += H * 0.022;
-  ctx.strokeStyle = headerColor;
-  ctx.lineWidth = Math.max(2, W * 0.0022);
-  ctx.beginPath(); ctx.moveTo(marginX, y); ctx.lineTo(W - marginX, y); ctx.stroke();
-  y += H * 0.006;
-  ctx.strokeStyle = headerColor + "55";
-  ctx.lineWidth = Math.max(1, W * 0.0009);
-  ctx.beginPath(); ctx.moveTo(marginX, y); ctx.lineTo(W - marginX, y); ctx.stroke();
-
-  // Contact / registration lines (centered)
-  const fsC = Math.round(W * 0.017);
-  ctx.font = `600 ${fsC}px "${font}", "Tajawal", sans-serif`;
-  const sep = "   •   ";
-  const row1 = [
-    fields.phone   && `${ar ? "هاتف" : "Tel"}: ${fields.phone}`,
-    fields.email   && `${ar ? "البريد" : "Email"}: ${fields.email}`,
-    fields.website && `${ar ? "الموقع" : "Web"}: ${fields.website}`,
-  ].filter(Boolean).join(sep);
-  const row2 = fields.address ? `${ar ? "العنوان" : "Address"}: ${fields.address}` : "";
-  const row3 = [
-    fields.cr  && `${ar ? "س.ت" : "CR"}: ${fields.cr}`,
-    fields.vat && `${ar ? "الرقم الضريبي" : "VAT"}: ${fields.vat}`,
-  ].filter(Boolean).join(sep);
-
-  let yC = y + fsC * 2.1;
-  for (const row of [row1, row2, row3]) {
-    if (!row) continue;
-    drawCenteredLine(ctx, row, cx, yC, textColor);
-    yC += fsC * 1.8;
-  }
-  const bandH = Math.min(H * 0.4, yC + fsC * 0.6);
-
-  // Final page: white → optional tint band → content overlay.
-  const c = document.createElement("canvas");
-  c.width = W; c.height = H;
-  const fx = c.getContext("2d");
-  fx.fillStyle = "#FFFFFF";
-  fx.fillRect(0, 0, W, H);
-  if (banded) {
-    fx.fillStyle = headerColor + "12"; // ~7% tint
-    fx.fillRect(0, 0, W, bandH);
-  }
-  fx.drawImage(cc, 0, 0);
   return c.toDataURL("image/png");
 }

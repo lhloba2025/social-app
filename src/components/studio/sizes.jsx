@@ -127,10 +127,10 @@ export const SIZES = [
   },
   {
     id: "letterhead",
-    nameAr: "ترويسة رسمية (A4)",
-    nameEn: "Letterhead (A4)",
+    nameAr: "ترويسة رسمية (شريط)",
+    nameEn: "Letterhead strip",
     width: 1654,
-    height: 2339,
+    height: 280,
     ratio: "A4",
     platform: "مستندات",
     isLetterhead: true,

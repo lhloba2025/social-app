@@ -12,7 +12,7 @@ function RatioShape({ ratio }) {
     "16:9": "w-10 h-6",
     "Wide": "w-12 h-4",
     "Other": "w-10 h-7",
-    "A4": "w-7 h-10",
+    "A4": "w-12 h-3",
   };
   return (
     <div className={`${styles[ratio] || "w-8 h-8"} border-2 border-indigo-400 rounded bg-indigo-500/20 mx-auto mb-2`} />
