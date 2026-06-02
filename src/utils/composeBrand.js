@@ -3,10 +3,33 @@
 // REAL Arabic font (with highlighted words), and a contact footer bar. The AI
 // only paints the scene; everything brand-critical is drawn here, guaranteed.
 
-const EMOJI = {
-  instagram: "📸", facebook: "f", tiktok: "🎵", snapchat: "👻",
-  twitter: "𝕏", linkedin: "in", youtube: "▶", whatsapp: "📞", website: "🌐",
+import { siInstagram, siTiktok, siSnapchat, siWhatsapp, siFacebook, siX, siYoutube } from "simple-icons";
+
+const ICONS = {
+  instagram: siInstagram, tiktok: siTiktok, snapchat: siSnapchat, whatsapp: siWhatsapp,
+  facebook: siFacebook, twitter: siX, x: siX, youtube: siYoutube,
 };
+function platformKey(p) {
+  const s = (p || "").toLowerCase();
+  if (s.includes("insta")) return "instagram";
+  if (s.includes("tik")) return "tiktok";
+  if (s.includes("snap")) return "snapchat";
+  if (s.includes("whats")) return "whatsapp";
+  if (s.includes("face")) return "facebook";
+  if (s.includes("link")) return "linkedin";
+  if (s.includes("you")) return "youtube";
+  if (s.includes("x") || s.includes("twit")) return "twitter";
+  return "website";
+}
+function iconSvgUrl(icon, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${color}" d="${icon.path}"/></svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+async function loadIcon(p, color) {
+  const icon = ICONS[platformKey(p)];
+  if (!icon) return null;
+  try { return await loadImg(iconSvgUrl(icon, color)); } catch { return null; }
+}
 
 function loadImg(src) {
   return new Promise((resolve, reject) => {
@@ -84,41 +107,34 @@ function drawHook(ctx, W, H, hook, highlights, kit, font) {
   });
 }
 
-function drawContactBar(ctx, W, H, contacts, kit) {
+function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
   const bg = kit.contactBg || "#0F172A";
   const tx = kit.contactText || "#FFFFFF";
   const pill = kit.contactShape === "pill";
   const fs = Math.round(W * 0.026);
+  const iconSize = Math.round(fs * 1.25);
+  const iconGap = W * 0.006;
+  const gap = W * 0.028;
   ctx.font = `600 ${fs}px "Tajawal", sans-serif`;
   ctx.textBaseline = "middle";
   ctx.direction = "ltr";
   ctx.textAlign = "left";
-  const gap = W * 0.03;
-  const iconGap = W * 0.008;
-  // measure
-  const items = contacts.map((c) => {
-    const icon = EMOJI[(c.p || "").toLowerCase().includes("insta") ? "instagram"
-      : (c.p || "").toLowerCase().includes("tik") ? "tiktok"
-      : (c.p || "").toLowerCase().includes("snap") ? "snapchat"
-      : (c.p || "").toLowerCase().includes("face") ? "facebook"
-      : (c.p || "").toLowerCase().includes("whats") ? "whatsapp"
-      : (c.p || "").toLowerCase().includes("x") || (c.p || "").toLowerCase().includes("twit") ? "twitter"
-      : (c.p || "").toLowerCase().includes("link") ? "linkedin"
-      : (c.p || "").toLowerCase().includes("you") ? "youtube" : "website"] || "•";
-    const iw = ctx.measureText(icon).width;
+  // measure each item (icon + handle)
+  const items = contacts.map((c, i) => {
     const tw = ctx.measureText(c.v).width;
-    return { icon, v: c.v, w: iw + iconGap + tw };
+    const hasIcon = !!iconImgs[i];
+    return { img: iconImgs[i], v: c.v, w: (hasIcon ? iconSize + iconGap : 0) + tw };
   });
   const totalW = items.reduce((a, b) => a + b.w, 0) + gap * (items.length - 1);
   const barH = Math.round(H * 0.075);
   const y = H - barH;
   // bar background
   ctx.save();
-  ctx.globalAlpha = 0.78;
+  ctx.globalAlpha = 0.8;
   ctx.fillStyle = bg;
   if (pill) {
     const padX = W * 0.03, padY = barH * 0.18;
-    const bw = Math.min(W * 0.92, totalW + padX * 2);
+    const bw = Math.min(W * 0.94, totalW + padX * 2);
     roundRect(ctx, (W - bw) / 2, y + padY, bw, barH - padY * 2, (barH - padY * 2) / 2);
     ctx.fill();
   } else {
@@ -129,9 +145,10 @@ function drawContactBar(ctx, W, H, contacts, kit) {
   let x = (W - totalW) / 2;
   const cy = y + barH / 2;
   for (const it of items) {
-    ctx.fillStyle = tx;
-    ctx.fillText(it.icon, x, cy);
-    x += ctx.measureText(it.icon).width + iconGap;
+    if (it.img) {
+      ctx.drawImage(it.img, x, cy - iconSize / 2, iconSize, iconSize);
+      x += iconSize + iconGap;
+    }
     ctx.fillStyle = tx;
     ctx.fillText(it.v, x, cy);
     x += ctx.measureText(it.v).width + gap;
@@ -168,7 +185,10 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
     drawHook(ctx, W, H, hook.trim(), hl, kit, font);
   }
 
-  if (contacts && contacts.length) drawContactBar(ctx, W, H, contacts, kit);
+  if (contacts && contacts.length) {
+    const iconImgs = await Promise.all(contacts.map((cc) => loadIcon(cc.p, kit.contactText || "#FFFFFF")));
+    drawContactBar(ctx, W, H, contacts, kit, iconImgs);
+  }
 
   return c.toDataURL("image/png");
 }
