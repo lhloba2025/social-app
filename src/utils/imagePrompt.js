@@ -43,6 +43,10 @@ export const DEFAULT_KIT = {
   cTwitter: "",
   cWhatsapp: "",
   cWebsite: "",
+  // Contact bar style.
+  contactBg: "#0F172A",
+  contactText: "#FFFFFF",
+  contactShape: "strip", // "strip" (full width) | "pill" (centered rounded)
 };
 
 // Build the contact-bar contacts list from the kit (empty when disabled).
@@ -91,7 +95,14 @@ ${hook && hook.trim()
   : "No text overlay besides the logo."}
 
 COLOR & STYLE: primary text color ${mainColor}${hl.length ? `, highlight color ${highlightColor}` : ""}, on a clean light/cream background. Premium, harmonious, uncluttered, photorealistic. Aspect ratio ${aspect}. No human faces.
-${(() => { const cs = kitContacts(kit); return cs.length ? `\nCONTACT FOOTER BAR — THIS IS REQUIRED, ALWAYS DRAW IT: reserve the bottom ~9% of the image for a slim full-width horizontal footer bar sitting on a dark, semi-transparent rounded strip, fully INSIDE the frame and clear of the main subject. Inside the bar, lay out these items in one row, evenly spaced and centered, each shown as the correct small platform ICON immediately followed by its handle in clean white text — spell each EXACTLY as given, never alter/translate/omit any of them: ${cs.map((c) => `[${c.p}] ${c.v}`).join("   ")}. The bar must be clearly visible and legible.\n` : ""; })()}
+${(() => {
+  const cs = kitContacts(kit);
+  if (!cs.length) return "";
+  const shape = kit.contactShape === "pill" ? "a centered rounded-pill bar (not full width)" : "a slim full-width horizontal bar";
+  const bg = kit.contactBg || "#0F172A";
+  const tx = kit.contactText || "#FFFFFF";
+  return `\nCONTACT FOOTER BAR — THIS IS REQUIRED, ALWAYS DRAW IT: at the very bottom, ${shape} with a ${bg} semi-transparent background, fully INSIDE the frame and clear of the main subject. In one centered row, evenly spaced, show each item as ONLY the correct platform ICON (its recognizable logo glyph) immediately followed by its handle text in ${tx} — do NOT write any platform NAME as words (icons only), and spell each handle EXACTLY as given, never alter/translate/omit it: ${cs.map((c) => `${c.p}-icon "${c.v}"`).join("   ")}. The bar must be clearly visible and legible.\n`;
+})()}
 Negative: white box / frame / circle / border / badge / card behind the logo, logo on a white sticker outline, distorted logo, redrawn logo, separated logo parts, multiple logos, duplicated word, repeated word, a word written twice, missing words, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
 

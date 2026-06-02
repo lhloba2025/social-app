@@ -103,7 +103,26 @@ export default function BrandKitControls({ ar, onChange }) {
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-indigo-500" />
               </div>
             ))}
-            <p className="col-span-2 text-[10px] text-slate-500">{ar ? "اترك أي خانة فاضية لتجاهلها. تُضاف لكل الصور." : "Leave blank to skip. Added to all images."}</p>
+            <p className="col-span-2 text-[10px] text-slate-500">{ar ? "اترك أي خانة فاضية لتجاهلها. الأيقونات فقط بدون أسماء المنصات." : "Leave blank to skip. Icons only — no platform names."}</p>
+
+            {/* Bar style */}
+            <div className="col-span-2 border-t border-slate-800 pt-2 mt-1 space-y-2">
+              <div className="flex gap-2">
+                <ColorField label={ar ? "لون الشريط" : "Bar color"} value={kit.contactBg || "#0F172A"} onCh={(v) => setKitField("contactBg", v)} />
+                <ColorField label={ar ? "لون نص الشريط" : "Bar text"} value={kit.contactText || "#FFFFFF"} onCh={(v) => setKitField("contactText", v)} />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">{ar ? "شكل الشريط" : "Bar shape"}</label>
+                <div className="grid grid-cols-2 gap-1">
+                  {[{ v: "strip", ar: "ممتد بعرض الصورة", en: "Full width" }, { v: "pill", ar: "كبسولة بالوسط", en: "Centered pill" }].map((s) => (
+                    <button key={s.v} onClick={() => setKitField("contactShape", s.v)}
+                      className={`py-1.5 rounded text-[11px] font-bold transition ${ (kit.contactShape || "strip") === s.v ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                      {ar ? s.ar : s.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
