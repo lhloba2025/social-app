@@ -79,7 +79,8 @@ export default function EngagementPage({ language }) {
       <div className="border-b border-slate-800 bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2"><MessageCircle className="w-5 h-5 text-indigo-400" />{ar ? "صندوق التفاعل" : "Engagement"}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{ar ? "منشوراتك — اقرأ التعليقات وردّ عليها" : "Your posts — read & reply to comments"}</p>
+          <p className="text-sm text-slate-500 mt-0.5">{ar ? "منشوراتك وتعليقاتها" : "Your posts & comments"}</p>
+          <p className="text-[11px] text-amber-300/80 mt-1">{ar ? "ℹ️ أسماء المعلّقين والمشاهدات والرد وفيسبوك تنفعّل مع النسخة الرسمية (مراجعة Meta)." : "ℹ️ Commenter names, views, replies & Facebook unlock with the official version (Meta review)."}</p>
         </div>
         <button onClick={loadFeed} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title={ar ? "تحديث" : "Refresh"}><RefreshCw className="w-4 h-4" /></button>
       </div>
@@ -163,7 +164,7 @@ export default function EngagementPage({ language }) {
                   <div className="space-y-3">
                     {comments.map((c) => (
                       <div key={c.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                        <div className="flex items-center gap-2 text-[12px]"><span className="font-bold text-white">{c.from || "—"}</span><span className="text-slate-500 text-[10px]">{timeAgo(c.created, ar)}</span></div>
+                        <div className="flex items-center gap-2 text-[12px]"><span className="font-bold text-white">{c.from || (ar ? "زائر" : "Visitor")}</span><span className="text-slate-500 text-[10px]">{timeAgo(c.created, ar)}</span></div>
                         <p className="text-[13px] text-slate-200 mt-1" dir="auto">{c.text}</p>
 
                         {c.replies?.length > 0 && (

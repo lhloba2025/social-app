@@ -408,15 +408,16 @@ app.get('/auth/meta', (req, res) => {
   // Exactly the permissions granted by the Instagram API "Manage content on
   // Instagram" use case (Facebook-login setup). Requesting anything outside this
   // set triggers Facebook's "Invalid Scopes" error.
+  // NOTE: advanced engagement permissions (instagram_manage_comments /
+  // instagram_manage_insights / pages_manage_engagement) are parked until the
+  // official Hovera + Meta App Review. Keeping only the approved, working set so
+  // reconnecting never fails on unavailable scopes.
   const scopes = [
     'instagram_basic',
     'instagram_content_publish',
-    'instagram_manage_comments',  // قراءة أسماء المعلّقين + الرد على التعليقات (انستقرام)
-    'instagram_manage_insights',  // عدد المشاهدات/الوصول لمنشورات انستقرام
     'pages_show_list',
     'pages_read_engagement',
-    'pages_manage_engagement',     // الرد على تعليقات فيسبوك + هوية المعلّق
-    'pages_manage_posts',          // نشر على صفحة فيسبوك
+    'pages_manage_posts',   // نشر على صفحة فيسبوك
     'business_management',
   ].join(',');
 
