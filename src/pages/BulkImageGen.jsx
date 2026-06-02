@@ -424,6 +424,7 @@ export default function BulkImageGen({ ar }) {
                             <div className="flex gap-1 mt-1.5">
                               <button onClick={() => setPreview(r.dataUrl)} className="flex-1 text-[10px] py-1 rounded bg-slate-700 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-1"><Eye className="w-3 h-3" /> {ar ? "معاينة" : "View"}</button>
                               {r.bgUrl && <button onClick={() => openEdit(j)} title={ar ? "تحرير" : "Edit"} className="px-2 py-1 rounded bg-slate-700 hover:bg-fuchsia-600 text-white inline-flex items-center justify-center text-[10px] font-bold">🎨</button>}
+                              <a href={r.dataUrl} download={`${(job.row.hook || "image").slice(0, 30)}_${job.aspect.replace(":", "x")}.png`} title={ar ? "تحميل للكمبيوتر" : "Download"} className="px-2 py-1 rounded bg-slate-700 hover:bg-emerald-600 text-white inline-flex items-center justify-center"><Download className="w-3 h-3" /></a>
                               <button onClick={() => regenerateOne(j)} title={ar ? "إعادة التوليد" : "Regenerate"} className="px-2 py-1 rounded bg-slate-700 hover:bg-fuchsia-600 text-white inline-flex items-center justify-center"><RefreshCw className="w-3 h-3" /></button>
                             </div>
                           )}
