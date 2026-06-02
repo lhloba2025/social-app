@@ -665,6 +665,7 @@ app.get('/api/engagement/feed', async (req, res) => {
     if (!acc) return res.json({ posts: [], connected: false });
     const token = acc.access_token;
     const out = [];
+    const debug = { hasPage: !!acc.page_id, hasIg: !!acc.ig_user_id, fbError: null, igError: null };
     if (acc.page_id) {
       try {
         const r = await axios.get(`${GRAPH}/${acc.page_id}/posts`, {
@@ -677,7 +678,7 @@ app.get('/api/engagement/feed', async (req, res) => {
           likesCount: p.reactions?.summary?.total_count || 0, sharesCount: p.shares?.count || 0,
           permalink: p.permalink_url || null,
         });
-      } catch (e) { /* page posts unavailable */ }
+      } catch (e) { debug.fbError = e.response?.data?.error?.message || e.message; }
     }
     if (acc.ig_user_id) {
       try {
@@ -690,10 +691,10 @@ app.get('/api/engagement/feed', async (req, res) => {
           created: p.timestamp, commentsCount: p.comments_count || 0, likesCount: p.like_count || 0, sharesCount: 0,
           permalink: p.permalink || null,
         });
-      } catch (e) { /* ig media unavailable */ }
+      } catch (e) { debug.igError = e.response?.data?.error?.message || e.message; }
     }
     out.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
-    res.json({ posts: out, connected: true });
+    res.json({ posts: out, connected: true, debug });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
