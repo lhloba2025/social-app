@@ -195,16 +195,24 @@ export default function BulkImageGen({ ar }) {
     setTransferring(true); setError("");
     let saved = 0;
     try {
-      for (const t of allTargets()) {
-        const j = jobIdx(t.rowIndex, t.aspect);
-        if (j < 0 || results[j]?.status !== "done") continue;
-        const url = await ensureUploaded(j);
-        const name = `${(t.row.hook || t.row.scene || "AI").slice(0, 30)} (${t.labelAr})`;
-        for (const platform of t.platforms) {
+      // ONE library entry per unique image (row × aspect), tagged with ALL the
+      // platforms that use that size — no duplicate copies.
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        for (const aspect of rowAspects(row)) {
+          const j = jobIdx(i, aspect);
+          if (j < 0 || results[j]?.status !== "done") continue;
+          const url = await ensureUploaded(j);
+          const platforms = Array.from(new Set(
+            row.targets.filter((t) => t.aspect === aspect).flatMap((t) => t.platforms)
+          ));
           addLocalMedia({
-            url, name, platform,
-            post_id: `post_${Date.now()}_${t.rowIndex}_${platform}_${Math.random().toString(36).slice(2, 5)}`,
-            caption_title: t.row.hook || "", caption_text: t.row.caption || "", position: 0, type: "image",
+            url,
+            name: (row.hook || row.scene || "AI").slice(0, 40),
+            platform: platforms[0] || "instagram", // back-compat (single)
+            platforms,                              // multi-platform tags
+            post_id: `post_${Date.now()}_${i}_${aspect.replace(":", "x")}_${Math.random().toString(36).slice(2, 5)}`,
+            caption_title: row.hook || "", caption_text: row.caption || "", position: 0, type: "image",
           });
           saved++;
         }

@@ -688,6 +688,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           //    ones with zero posts — so the filter row works like a
           //    fixed tab system (Instagram always sits in the same
           //    place whether you have 0 or 50 posts there).
+          // A post can target SEVERAL platforms (one image, multiple tags) —
+          // count it under each of its platforms.
+          const postPlatforms = (m) =>
+            (Array.isArray(m.platforms) && m.platforms.length) ? m.platforms : [m.platform || "unknown"];
           const platformCounts = (() => {
             const counts = {};
             const seenPosts = new Set();
@@ -695,12 +699,11 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               const postKey = m.post_id || `legacy_${m.id}`;
               if (seenPosts.has(postKey)) continue;
               seenPosts.add(postKey);
-              const pl = m.platform || "unknown";
-              counts[pl] = (counts[pl] || 0) + 1;
+              for (const pl of postPlatforms(m)) counts[pl] = (counts[pl] || 0) + 1;
             }
             return counts;
           })();
-          const totalPosts = Object.values(platformCounts).reduce((a, b) => a + b, 0);
+          const totalPosts = new Set(enriched.map((m) => m.post_id || `legacy_${m.id}`)).size;
 
           // Group rows by post_id so carousels render as a single card.
           // Rows without a post_id (legacy or single-file uploads) get
@@ -712,7 +715,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           for (const m of enriched) {
             const key = m.post_id || `legacy_${m.id}`;
             if (!byPostId.has(key)) {
-              const post = { post_id: key, items: [], platform: m.platform, caption_title: m.caption_title, caption_text: m.caption_text };
+              const post = { post_id: key, items: [], platform: m.platform, platforms: postPlatforms(m).filter((p) => p !== "unknown"), caption_title: m.caption_title, caption_text: m.caption_text };
               byPostId.set(key, post);
               posts.push(post);
             }
@@ -741,9 +744,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           //    they don't disappear from the library entirely.
           if (mediaPlatform !== "all") {
             if (mediaPlatform === "unknown") {
-              posts = posts.filter((p) => !p.platform);
+              posts = posts.filter((p) => !(p.platforms && p.platforms.length));
             } else {
-              posts = posts.filter((p) => p.platform === mediaPlatform);
+              posts = posts.filter((p) => (p.platforms && p.platforms.length ? p.platforms : [p.platform]).includes(mediaPlatform));
             }
           }
           // Snapshot the post list *after* search + platform but
@@ -1123,15 +1126,16 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         on what the post is and which app it's for. */}
                     <div className="aspect-square bg-slate-700 flex items-center justify-center overflow-hidden relative">
                       <img src={cover.url} alt={cover.name} className="w-full h-full object-cover" />
-                      {/* Platform badge on the opposite corner from the
-                          carousel one so they never overlap. */}
-                      <span
-                        className="absolute top-2 start-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-bold inline-flex items-center gap-1"
-                        title={platformLabel(post.platform, isRtl)}
-                      >
-                        <span>{platformEmoji(post.platform)}</span>
-                        <span>{platformLabel(post.platform, isRtl)}</span>
-                      </span>
+                      {/* Platform badges (one image can serve several
+                          platforms) — compact emoji row at top-start. */}
+                      <div className="absolute top-2 start-2 flex flex-wrap gap-1 max-w-[85%]">
+                        {(post.platforms && post.platforms.length ? post.platforms : [post.platform]).filter(Boolean).slice(0, 5).map((pl) => (
+                          <span key={pl} title={platformLabel(pl, isRtl)}
+                            className="px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-bold inline-flex items-center">
+                            {platformEmoji(pl)}
+                          </span>
+                        ))}
+                      </div>
                       {isCarousel && (
                         <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-cyan-500 text-slate-900 text-[10px] font-bold">
                           🎠 {post.items.length}
@@ -1146,10 +1150,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       <p className="font-semibold text-sm truncate">
                         {post.caption_title || cover.name}
                       </p>
-                      <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-200 text-[10px] font-semibold">
-                        <span>{platformEmoji(post.platform)}</span>
-                        <span>{platformLabel(post.platform, isRtl)}</span>
-                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(post.platforms && post.platforms.length ? post.platforms : [post.platform]).filter(Boolean).map((pl) => (
+                          <span key={pl} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-200 text-[10px] font-semibold">
+                            <span>{platformEmoji(pl)}</span>
+                            <span>{platformLabel(pl, isRtl)}</span>
+                          </span>
+                        ))}
+                      </div>
                       {hasCaption && post.caption_text && (
                         <p className="text-slate-500 text-[11px] mt-1.5 line-clamp-2" dir="auto">
                           {post.caption_text}
