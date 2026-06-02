@@ -4,7 +4,8 @@ import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, Cal
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
-import { buildPrompt, generateImage, loadKit, loadLogo } from "@/utils/imagePrompt";
+import { buildPrompt, generateImage, loadKit, loadLogo, kitContacts } from "@/utils/imagePrompt";
+import { composeBranded } from "@/utils/composeBrand";
 import { createScheduledPosts } from "@/utils/publishingService";
 import { todayISO, toISODate } from "@/utils/localScheduleStore";
 import BrandKitControls from "@/components/BrandKitControls";
@@ -130,6 +131,20 @@ export default function BulkImageGen({ ar }) {
     } finally { e.target.value = ""; }
   };
 
+  // Generate the final image for one (row, aspect). High-precision mode (default)
+  // makes the AI paint only the scene, then composites the real logo + hook
+  // (real font) + contact bar — same as the Custom tab.
+  const genFor = async (row, aspect) => {
+    const autoCompose = localStorage.getItem("ai_auto_compose") !== "0";
+    if (autoCompose) {
+      const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit, bgOnly: true });
+      const bgUrl = await generateImage({ prompt, aspectRatio: aspect });
+      return await composeBranded({ bgUrl, logoUrl: logo || "", hook: row.hook, highlight: row.highlight, kit, contacts: kitContacts(kit) });
+    }
+    const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit });
+    return await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect });
+  };
+
   // Unique aspects per row → one image each (reused across platforms of same size).
   const rowAspects = (row) => Array.from(new Set(row.targets.map((t) => t.aspect)));
   const jobIdx = (rowIndex, aspect) => jobs.findIndex((j) => j.rowIndex === rowIndex && j.aspect === aspect);
@@ -155,8 +170,7 @@ export default function BulkImageGen({ ar }) {
     for (let j = 0; j < newJobs.length; j++) {
       try {
         const { row, aspect } = newJobs[j];
-        const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit });
-        res[j] = { status: "done", dataUrl: await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: aspect }) };
+        res[j] = { status: "done", dataUrl: await genFor(row, aspect) };
       } catch (err) {
         res[j] = { status: "error", error: err?.message || String(err) };
       }
@@ -171,8 +185,7 @@ export default function BulkImageGen({ ar }) {
     if (!job) return;
     setResults((prev) => { const n = [...prev]; n[j] = { status: "pending" }; return n; });
     try {
-      const prompt = buildPrompt({ scene: job.row.scene, hook: job.row.hook, highlight: job.row.highlight, aspect: job.aspect, kit });
-      const dataUrl = await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: job.aspect });
+      const dataUrl = await genFor(job.row, job.aspect);
       setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl }; return n; });
     } catch (err) {
       setResults((prev) => { const n = [...prev]; n[j] = { status: "error", error: err?.message || String(err) }; return n; });
