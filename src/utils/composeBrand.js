@@ -84,18 +84,26 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const hi = kit.highlightColor || "#EF43DC";
   const hlNorm = (highlights || []).map(normAr).filter(Boolean);
   const isHi = (w) => { const nw = normAr(w); return !!nw && hlNorm.some((h) => nw === h || nw.includes(h)); };
-  let size = Math.round(W * 0.075 * (layout.hookScale ?? 1));
+  const scale = layout.hookScale ?? 1;
+  const maxWidth = W * 0.86;
+  const maxLines = 4; // allow the text to grow into more lines instead of capping size
+  let size = Math.round(W * 0.075 * scale);
   ctx.textBaseline = "middle";
-  ctx.font = `800 ${size}px "${font}", "Tajawal", sans-serif`;
-  const space = ctx.measureText(" ").width;
+  const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
+  setFont(size);
   const words = hook.split(/\s+/).filter(Boolean);
-  // shrink until at most 2 lines
-  let lines = wrapWords(ctx, words, W * 0.86);
-  while (lines.length > 2 && size > 24) {
-    size = Math.round(size * 0.9);
-    ctx.font = `800 ${size}px "${font}", "Tajawal", sans-serif`;
-    lines = wrapWords(ctx, words, W * 0.86);
+  let lines = wrapWords(ctx, words, maxWidth);
+  // Only shrink if it spills past maxLines OR a single word is wider than the
+  // line — NOT to force a fixed line count (that used to cancel out enlarging).
+  const overflows = () => lines.length > maxLines || words.some((w) => ctx.measureText(w).width > maxWidth);
+  while (overflows() && size > 18) {
+    size = Math.round(size * 0.92);
+    setFont(size);
+    lines = wrapWords(ctx, words, maxWidth);
   }
+  // Measure the inter-word space at the FINAL size (the bug was measuring it at
+  // the initial large size, so spacing grew while the glyphs did not).
+  const space = ctx.measureText(" ").width;
   const lineH = size * 1.35;
   // place block starting below the logo area (adjustable)
   const startY = H * (layout.hookY ?? 0.26);
