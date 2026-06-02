@@ -11,6 +11,7 @@ import { todayISO, toISODate } from "@/utils/localScheduleStore";
 import BrandKitControls from "@/components/BrandKitControls";
 
 const DEFAULT_TIMES = ["19:00", "13:00", "16:00", "21:00", "10:00", "12:00", "15:00", "18:00", "20:00", "22:00"];
+const SWATCHES = ["#09007C", "#2E14ED", "#EF43DC", "#000000", "#FFFFFF", "#0F172A", "#E9E8E8", "#D4AF37", "#1877F2", "#E4405F"];
 
 // Content columns.
 const COL = {
@@ -131,14 +132,30 @@ export default function BulkImageGen({ ar }) {
     } finally { e.target.value = ""; }
   };
 
-  // PER-IMAGE quick-edit — each image keeps its raw AI scene + its own layout,
-  // so editing one image doesn't touch the others.
+  // PER-IMAGE editor — each image keeps its raw AI scene + its OWN layout AND
+  // its OWN overrides (text, colors, logo on/off, contact bar on/off), so
+  // editing one image never touches the others.
   const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0 };
+  // Per-image content/brand overrides — start from the row + the global kit.
+  const defaultOv = (row) => ({
+    hook: row?.hook || "",
+    highlight: row?.highlight || "",
+    showLogo: !!logo,
+    showContact: !!kit.showContact,
+    mainColor: kit.mainColor,
+    highlightColor: kit.highlightColor,
+    changeLogoColor: !!kit.changeLogoColor,
+    logoColor: kit.logoColor || "#09007C",
+  });
   const [editing, setEditing] = useState(null);     // index of image being edited
   const [editLayout, setEditLayout] = useState(DEFAULT_LAYOUT);
+  const [editOv, setEditOv] = useState(() => defaultOv(null));
   const setEditField = (k, v) => setEditLayout((p) => ({ ...p, [k]: parseFloat(v) }));
+  const setOvField = (k, v) => setEditOv((p) => ({ ...p, [k]: v }));
   const jobsRef = useRef(jobs); jobsRef.current = jobs;
   const resultsRef = useRef(results); resultsRef.current = results;
+  // Build a per-image kit by layering this image's color overrides on the global kit.
+  const kitFor = (ov) => ({ ...kit, mainColor: ov.mainColor, highlightColor: ov.highlightColor, changeLogoColor: ov.changeLogoColor, logoColor: ov.logoColor, showContact: ov.showContact });
 
   // Generate the final image for one (row, aspect). High-precision mode (default)
   // makes the AI paint only the scene, then composites the real logo + hook
@@ -156,31 +173,35 @@ export default function BulkImageGen({ ar }) {
     return { dataUrl, bgUrl: null };
   };
 
-  // Re-composite ONE image with a given layout (used by the per-image editor).
-  const recomposeOne = async (j, lay) => {
+  // Re-composite ONE image with a given layout + overrides (per-image editor).
+  const recomposeOne = async (j, lay, ov) => {
     const job = jobsRef.current[j]; const cur = resultsRef.current[j];
     if (!job || !cur?.bgUrl) return;
     try {
-      const dataUrl = await composeBranded({ bgUrl: cur.bgUrl, logoUrl: logo || "", hook: job.row.hook, highlight: job.row.highlight, kit, contacts: kitContacts(kit), layout: lay });
-      setResults((prev) => { const n = [...prev]; if (n[j]) n[j] = { ...n[j], dataUrl, layout: lay }; return n; });
+      const pk = kitFor(ov);
+      const dataUrl = await composeBranded({ bgUrl: cur.bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: lay });
+      setResults((prev) => { const n = [...prev]; if (n[j]) n[j] = { ...n[j], dataUrl, layout: lay, ov, edited: true }; return n; });
     } catch { /* keep previous */ }
   };
-  // Live recompose the edited image as its sliders move (debounced).
+  // Live recompose the edited image as its controls change (debounced).
   useEffect(() => {
     if (editing == null) return;
-    const t = setTimeout(() => recomposeOne(editing, editLayout), 250);
+    const t = setTimeout(() => recomposeOne(editing, editLayout, editOv), 250);
     return () => clearTimeout(t);
-  }, [editLayout]); // eslint-disable-line
+  }, [editLayout, editOv]); // eslint-disable-line
 
-  // When brand colors/font/logo change, re-composite ALL images (each with its
-  // own saved layout) so the change is reflected everywhere.
+  // When the GLOBAL brand kit/logo changes, re-composite ALL images. Images you
+  // edited individually keep their own overrides; untouched images follow the
+  // new global brand.
   const recomposeAllForKit = async () => {
     const jobsNow = jobsRef.current;
     const out = [...resultsRef.current];
     await Promise.all(jobsNow.map(async (job, j) => {
       if (out[j]?.status === "done" && out[j].bgUrl) {
+        const ov = out[j].edited ? out[j].ov : defaultOv(job.row);
+        const pk = kitFor(ov);
         try {
-          out[j] = { ...out[j], dataUrl: await composeBranded({ bgUrl: out[j].bgUrl, logoUrl: logo || "", hook: job.row.hook, highlight: job.row.highlight, kit, contacts: kitContacts(kit), layout: out[j].layout || DEFAULT_LAYOUT }) };
+          out[j] = { ...out[j], ov, dataUrl: await composeBranded({ bgUrl: out[j].bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: out[j].layout || DEFAULT_LAYOUT }) };
         } catch { /* keep previous */ }
       }
     }));
@@ -192,7 +213,12 @@ export default function BulkImageGen({ ar }) {
     return () => clearTimeout(t);
   }, [kit, logo]); // eslint-disable-line
 
-  const openEdit = (j) => { setEditing(j); setEditLayout(resultsRef.current[j]?.layout || DEFAULT_LAYOUT); };
+  const openEdit = (j) => {
+    const r = resultsRef.current[j];
+    setEditing(j);
+    setEditLayout(r?.layout || DEFAULT_LAYOUT);
+    setEditOv(r?.ov || defaultOv(jobsRef.current[j]?.row));
+  };
 
   // Unique aspects per row → one image each (reused across platforms of same size).
   const rowAspects = (row) => Array.from(new Set(row.targets.map((t) => t.aspect)));
@@ -220,7 +246,7 @@ export default function BulkImageGen({ ar }) {
       try {
         const { row, aspect } = newJobs[j];
         const r = await genFor(row, aspect);
-        res[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl, layout: DEFAULT_LAYOUT };
+        res[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl, layout: DEFAULT_LAYOUT, ov: defaultOv(row) };
       } catch (err) {
         res[j] = { status: "error", error: err?.message || String(err) };
       }
@@ -236,7 +262,7 @@ export default function BulkImageGen({ ar }) {
     setResults((prev) => { const n = [...prev]; n[j] = { status: "pending" }; return n; });
     try {
       const r = await genFor(job.row, job.aspect);
-      setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl, layout: DEFAULT_LAYOUT }; return n; });
+      setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl: r.dataUrl, bgUrl: r.bgUrl, layout: DEFAULT_LAYOUT, ov: defaultOv(job.row) }; return n; });
     } catch (err) {
       setResults((prev) => { const n = [...prev]; n[j] = { status: "error", error: err?.message || String(err) }; return n; });
     }
@@ -470,24 +496,98 @@ export default function BulkImageGen({ ar }) {
         </div>
       )}
 
-      {/* Per-image quick editor */}
+      {/* Per-image full editor — text, colors, logo & contact bar, all for THIS image only */}
       {editing != null && results[editing] && (
         <div className="fixed inset-0 bg-black/85 z-[80] flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div className="bg-slate-900 rounded-xl p-4 max-w-sm w-full border border-slate-700" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-fuchsia-300">🎨 {ar ? "تحرير هذه الصورة" : "Edit this image"}</p>
+          <div className="bg-slate-900 rounded-xl p-4 max-w-md w-full border border-slate-700 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 sticky top-0 bg-slate-900 -mt-1 pt-1 pb-1 z-10">
+              <p className="text-sm font-bold text-fuchsia-300">🎨 {ar ? "تحرير هذه الصورة فقط" : "Edit this image only"}</p>
               <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-            <img src={results[editing].dataUrl} alt="" className="w-full rounded-lg mb-3 max-h-[48vh] object-contain bg-slate-950" />
-            <div className="space-y-2">
+            <img src={results[editing].dataUrl} alt="" className="w-full rounded-lg mb-3 max-h-[40vh] object-contain bg-slate-950" />
+
+            {/* Text content */}
+            <div className="space-y-2 mb-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "النص (الهوك)" : "Text"}</label>
+                <textarea value={editOv.hook} onChange={(e) => setOvField("hook", e.target.value)} rows={2} dir="rtl"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-indigo-500 leading-relaxed" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "الكلمات المميزة — افصلها بفاصلة" : "Highlight words (comma-separated)"}</label>
+                <input value={editOv.highlight} onChange={(e) => setOvField("highlight", e.target.value)} dir="rtl" placeholder={ar ? "مثال: صالونك، الأفضل" : "e.g. salon, best"}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[
+                { k: "mainColor", label: ar ? "لون النص" : "Text color" },
+                { k: "highlightColor", label: ar ? "لون الكلمة المميزة" : "Highlight color" },
+              ].map((c) => (
+                <div key={c.k}>
+                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">{c.label}</label>
+                  <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1">
+                    <input type="color" value={editOv[c.k]} onChange={(e) => setOvField(c.k, e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" />
+                    <input type="text" value={editOv[c.k]} onChange={(e) => setOvField(c.k, e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] text-white outline-none w-0" />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {SWATCHES.map((s) => (
+                      <button key={s} type="button" onClick={() => setOvField(c.k, s)} title={s}
+                        className={`w-4 h-4 rounded-full border ${String(editOv[c.k]).toLowerCase() === s.toLowerCase() ? "border-white ring-1 ring-white/70" : "border-slate-500"}`}
+                        style={{ backgroundColor: s }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Logo & contact toggles */}
+            <div className="space-y-2 mb-3 border-t border-slate-800 pt-3">
+              {logo && (
+                <>
+                  <label className="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
+                    <input type="checkbox" checked={editOv.showLogo} onChange={(e) => setOvField("showLogo", e.target.checked)} />
+                    {ar ? "إظهار الشعار في هذه الصورة" : "Show logo on this image"}
+                  </label>
+                  {editOv.showLogo && (
+                    <div className="ms-5 space-y-1.5">
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                        <input type="checkbox" checked={editOv.changeLogoColor} onChange={(e) => setOvField("changeLogoColor", e.target.checked)} />
+                        {ar ? "غيّر لون الشعار لهذه الصورة" : "Recolor logo for this image"}
+                      </label>
+                      {editOv.changeLogoColor && (
+                        <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1 w-40">
+                          <input type="color" value={editOv.logoColor} onChange={(e) => setOvField("logoColor", e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" />
+                          <input type="text" value={editOv.logoColor} onChange={(e) => setOvField("logoColor", e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] text-white outline-none w-0" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+              {kit.showContact && (
+                <label className="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={editOv.showContact} onChange={(e) => setOvField("showContact", e.target.checked)} />
+                  {ar ? "إظهار شريط التواصل في هذه الصورة" : "Show contact bar on this image"}
+                </label>
+              )}
+            </div>
+
+            {/* Position & size sliders */}
+            <div className="space-y-2 border-t border-slate-800 pt-3">
+              <p className="text-[11px] font-semibold text-slate-400">{ar ? "المكان والحجم" : "Position & size"}</p>
               {[
                 { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.02, max: 0.92, step: 0.01 },
                 { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.1, max: 0.9, step: 0.01 },
                 { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.3, max: 2.6, step: 0.05 },
-                { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.88, step: 0.01 },
-                { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.05, max: 0.95, step: 0.01 },
-                { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 3, step: 0.05 },
-                ...(kit.showContact ? [
+                ...(editOv.showLogo && logo ? [
+                  { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.88, step: 0.01 },
+                  { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.05, max: 0.95, step: 0.01 },
+                  { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 3, step: 0.05 },
+                ] : []),
+                ...(editOv.showContact ? [
                   { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },
                   { k: "contactY", label: ar ? "الشريط ↕" : "Bar ↕", min: 0, max: 0.8, step: 0.01 },
                 ] : []),
@@ -498,7 +598,7 @@ export default function BulkImageGen({ ar }) {
                 </div>
               ))}
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setEditLayout(DEFAULT_LAYOUT)} className="text-[11px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">↺ {ar ? "إعادة" : "Reset"}</button>
+                <button onClick={() => { setEditLayout(DEFAULT_LAYOUT); setEditOv(defaultOv(jobsRef.current[editing]?.row)); }} className="text-[11px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">↺ {ar ? "إعادة" : "Reset"}</button>
                 <button onClick={() => setEditing(null)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm">{ar ? "تم" : "Done"}</button>
               </div>
             </div>

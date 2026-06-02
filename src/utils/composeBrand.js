@@ -69,10 +69,21 @@ function wrapWords(ctx, words, maxWidth) {
   return lines;
 }
 
+// Normalize an Arabic word for matching: drop tashkeel (diacritics), tatweel,
+// and surrounding punctuation. This is why a highlight like "صالونك" now matches
+// "صالونكِ،" in the hook (previously it didn't, so the color wasn't applied).
+function normAr(s) {
+  return String(s || "")
+    .replace(/[ً-ٰٟـ]/g, "")
+    .replace(/[؟?.!،,؛:"'()«»‏‎]/g, "")
+    .trim();
+}
+
 function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
-  const hlSet = new Set(highlights);
+  const hlNorm = (highlights || []).map(normAr).filter(Boolean);
+  const isHi = (w) => { const nw = normAr(w); return !!nw && hlNorm.some((h) => nw === h || nw.includes(h)); };
   let size = Math.round(W * 0.075 * (layout.hookScale ?? 1));
   ctx.textBaseline = "middle";
   ctx.font = `800 ${size}px "${font}", "Tajawal", sans-serif`;
@@ -99,7 +110,7 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     ctx.textAlign = "right";
     ctx.direction = "rtl";
     lineWords.forEach((w, i) => {
-      ctx.fillStyle = hlSet.has(w.replace(/[؟?.!،,]/g, "")) || hlSet.has(w) ? hi : main;
+      ctx.fillStyle = isHi(w) ? hi : main;
       // subtle shadow for legibility on light/busy backgrounds
       ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = size * 0.12;
       ctx.fillText(w, x, y);
