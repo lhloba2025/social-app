@@ -645,6 +645,106 @@ app.post('/api/fetch-image', async (req, res) => {
   }
 });
 
+// ---- Engagement inbox (your own posts + comments) ----
+// Lets the owner browse their connected Page/IG posts, read comments, and
+// reply — for THEIR OWN accounts only (no public-feed browsing; platforms
+// don't allow that). Reading FB comments needs pages_read_engagement (already
+// granted). Replying / reading IG comments needs pages_manage_engagement /
+// instagram_manage_comments — if not granted yet, we surface a clear message.
+const GRAPH = 'https://graph.facebook.com/v19.0';
+function metaAccount(tenantId) {
+  return queryOne(
+    `SELECT * FROM social_accounts WHERE platform='meta' AND tenant_id=? AND isConnected=1 LIMIT 1`,
+    [tenantId]
+  );
+}
+
+app.get('/api/engagement/feed', async (req, res) => {
+  try {
+    const acc = metaAccount(req.tenantId);
+    if (!acc) return res.json({ posts: [], connected: false });
+    const token = acc.access_token;
+    const out = [];
+    if (acc.page_id) {
+      try {
+        const r = await axios.get(`${GRAPH}/${acc.page_id}/posts`, {
+          params: { fields: 'id,message,created_time,full_picture,permalink_url,comments.summary(true).limit(0)', limit: 25, access_token: token },
+          timeout: 20000,
+        });
+        for (const p of r.data?.data || []) out.push({
+          platform: 'facebook', id: p.id, message: p.message || '', image: p.full_picture || null,
+          created: p.created_time, commentsCount: p.comments?.summary?.total_count || 0, permalink: p.permalink_url || null,
+        });
+      } catch (e) { /* page posts unavailable */ }
+    }
+    if (acc.ig_user_id) {
+      try {
+        const r = await axios.get(`${GRAPH}/${acc.ig_user_id}/media`, {
+          params: { fields: 'id,caption,media_url,thumbnail_url,timestamp,permalink,comments_count', limit: 25, access_token: token },
+          timeout: 20000,
+        });
+        for (const p of r.data?.data || []) out.push({
+          platform: 'instagram', id: p.id, message: p.caption || '', image: p.media_url || p.thumbnail_url || null,
+          created: p.timestamp, commentsCount: p.comments_count || 0, permalink: p.permalink || null,
+        });
+      } catch (e) { /* ig media unavailable */ }
+    }
+    out.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    res.json({ posts: out, connected: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/engagement/comments', async (req, res) => {
+  try {
+    const acc = metaAccount(req.tenantId);
+    if (!acc) return res.json({ comments: [] });
+    const token = acc.access_token;
+    const { platform, postId } = req.query;
+    if (!postId) return res.status(400).json({ error: 'postId required' });
+    let comments = [];
+    if (platform === 'instagram') {
+      const r = await axios.get(`${GRAPH}/${postId}/comments`, {
+        params: { fields: 'id,text,username,timestamp,replies{id,text,username,timestamp}', access_token: token }, timeout: 20000,
+      });
+      comments = (r.data?.data || []).map((c) => ({
+        id: c.id, from: c.username || '', text: c.text || '', created: c.timestamp,
+        replies: (c.replies?.data || []).map((rp) => ({ id: rp.id, from: rp.username || '', text: rp.text || '', created: rp.timestamp })),
+      }));
+    } else {
+      const r = await axios.get(`${GRAPH}/${postId}/comments`, {
+        params: { fields: 'id,message,from,created_time,comments{id,message,from,created_time}', access_token: token }, timeout: 20000,
+      });
+      comments = (r.data?.data || []).map((c) => ({
+        id: c.id, from: c.from?.name || '', text: c.message || '', created: c.created_time,
+        replies: (c.comments?.data || []).map((rp) => ({ id: rp.id, from: rp.from?.name || '', text: rp.message || '', created: rp.created_time })),
+      }));
+    }
+    res.json({ comments });
+  } catch (err) {
+    res.status(502).json({ error: err.response?.data?.error?.message || err.message });
+  }
+});
+
+app.post('/api/engagement/reply', async (req, res) => {
+  try {
+    const acc = metaAccount(req.tenantId);
+    if (!acc) return res.status(400).json({ error: 'لا يوجد حساب مرتبط' });
+    const token = acc.access_token;
+    const { platform, commentId, message } = req.body || {};
+    if (!commentId || !message?.trim()) return res.status(400).json({ error: 'الرد مطلوب' });
+    if (platform === 'instagram') {
+      await axios.post(`${GRAPH}/${commentId}/replies`, null, { params: { message, access_token: token }, timeout: 20000 });
+    } else {
+      await axios.post(`${GRAPH}/${commentId}/comments`, null, { params: { message, access_token: token }, timeout: 20000 });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(502).json({ error: err.response?.data?.error?.message || err.message });
+  }
+});
+
 // ---- AI image generation (Google Gemini "Nano Banana") ----
 // Generates a branded image from a text prompt + an optional reference logo
 // image, so the whole "write prompt → get image" loop happens inside the app

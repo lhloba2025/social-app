@@ -17,6 +17,7 @@ import ContentCalendar from './pages/ContentCalendar';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ImageGenPage from './pages/ImageGenPage';
+import EngagementPage from './pages/EngagementPage';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
 
       <Route path="/DesignStudio" element={<LayoutWrapper currentPageName="DesignStudio"><DesignStudio /></LayoutWrapper>} />
       <Route path="/ImageGen" element={<LayoutWrapper currentPageName="ImageGen"><ImageGenPage language={localStorage.getItem('appLanguage') || 'ar'} /></LayoutWrapper>} />
+      <Route path="/Engagement" element={<LayoutWrapper currentPageName="Engagement"><EngagementPage language={localStorage.getItem('appLanguage') || 'ar'} /></LayoutWrapper>} />
       <Route path="/DesignLibraryPage" element={<LayoutWrapper currentPageName="DesignLibraryPage"><DesignLibraryPage /></LayoutWrapper>} />
       <Route path="/AccountsPage" element={<LayoutWrapper currentPageName="AccountsPage"><AccountsPage /></LayoutWrapper>} />
       <Route path="/GreetingCards" element={<LayoutWrapper currentPageName="GreetingCards"><GreetingCardsPage /></LayoutWrapper>} />
