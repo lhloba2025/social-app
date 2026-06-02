@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, CalendarClock } from "lucide-react";
+import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, CalendarClock, Eye, RefreshCw, X } from "lucide-react";
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
@@ -76,6 +76,8 @@ export default function BulkImageGen({ ar }) {
   const [jobs, setJobs] = useState([]);       // unique images: [{rowIndex, aspect, row}]
   const [results, setResults] = useState([]); // parallel to jobs: {status, dataUrl, url, error}
   const [generating, setGenerating] = useState(false);
+  const [preview, setPreview] = useState("");   // enlarged image modal
+  const [retrying, setRetrying] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [error, setError] = useState("");
@@ -163,6 +165,29 @@ export default function BulkImageGen({ ar }) {
     setGenerating(false);
   };
 
+  // Re-generate a single image (for a failed one, or one you didn't like).
+  const regenerateOne = async (j) => {
+    const job = jobs[j];
+    if (!job) return;
+    setResults((prev) => { const n = [...prev]; n[j] = { status: "pending" }; return n; });
+    try {
+      const prompt = buildPrompt({ scene: job.row.scene, hook: job.row.hook, highlight: job.row.highlight, aspect: job.aspect, kit });
+      const dataUrl = await generateImage({ prompt, referenceImage: logo || undefined, aspectRatio: job.aspect });
+      setResults((prev) => { const n = [...prev]; n[j] = { status: "done", dataUrl }; return n; });
+    } catch (err) {
+      setResults((prev) => { const n = [...prev]; n[j] = { status: "error", error: err?.message || String(err) }; return n; });
+    }
+  };
+
+  // Retry every failed image, one by one.
+  const retryFailed = async () => {
+    const idxs = results.map((r, j) => (r?.status === "error" ? j : -1)).filter((j) => j >= 0);
+    if (!idxs.length) return;
+    setRetrying(true);
+    for (const j of idxs) await regenerateOne(j);
+    setRetrying(false);
+  };
+
   // Flatten all (row × target) into schedulable items.
   const allTargets = () => rows.flatMap((row, i) => row.targets.map((t) => ({ rowIndex: i, row, ...t })));
 
@@ -222,6 +247,7 @@ export default function BulkImageGen({ ar }) {
   const totalImages = rows.reduce((s, row) => s + rowAspects(row).length, 0);
   const totalTargets = rows.reduce((s, row) => s + row.targets.length, 0);
   const doneCount = results.filter((r) => r?.status === "done").length;
+  const failedCount = results.filter((r) => r?.status === "error").length;
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -256,11 +282,20 @@ export default function BulkImageGen({ ar }) {
             <p className="text-sm text-slate-300 font-semibold">
               {ar ? `${rows.length} منشور · ${totalImages} صورة · ${totalTargets} وجهة نشر` : `${rows.length} posts · ${totalImages} images · ${totalTargets} targets`}
             </p>
-            <button onClick={generateAll} disabled={generating}
-              className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold text-sm transition disabled:opacity-50 flex items-center gap-2">
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {generating ? (ar ? `جارٍ التوليد… (${doneCount}/${totalImages})` : `Generating… (${doneCount}/${totalImages})`) : (ar ? `ولّد الصور (${totalImages})` : `Generate (${totalImages})`)}
-            </button>
+            <div className="flex items-center gap-2">
+              {failedCount > 0 && !generating && (
+                <button onClick={retryFailed} disabled={retrying}
+                  className="px-3 py-2.5 rounded-lg bg-amber-700/50 hover:bg-amber-600 text-amber-100 font-bold text-sm transition disabled:opacity-50 flex items-center gap-2">
+                  {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {ar ? `إعادة الفاشلة (${failedCount})` : `Retry failed (${failedCount})`}
+                </button>
+              )}
+              <button onClick={generateAll} disabled={generating || retrying}
+                className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold text-sm transition disabled:opacity-50 flex items-center gap-2">
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {generating ? (ar ? `جارٍ التوليد… (${doneCount}/${totalImages})` : `Generating… (${doneCount}/${totalImages})`) : (ar ? `ولّد الصور (${totalImages})` : `Generate (${totalImages})`)}
+              </button>
+            </div>
           </div>
 
           {jobs.length > 0 && VALID_ASPECTS.filter((a) => jobs.some((j) => j.aspect === a)).map((aspect) => {
@@ -288,6 +323,15 @@ export default function BulkImageGen({ ar }) {
                           <p className="text-[11px] text-white truncate font-semibold">{job.row.hook || job.row.scene || `#${job.rowIndex + 1}`}</p>
                           <p className="text-[9px] text-slate-400 truncate">{uses}</p>
                           {r?.status === "error" && <p className="text-[9px] text-red-300 truncate">{r.error}</p>}
+                          {r?.status === "done" && (
+                            <div className="flex gap-1 mt-1.5">
+                              <button onClick={() => setPreview(r.dataUrl)} className="flex-1 text-[10px] py-1 rounded bg-slate-700 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-1"><Eye className="w-3 h-3" /> {ar ? "معاينة" : "View"}</button>
+                              <button onClick={() => regenerateOne(j)} title={ar ? "إعادة التوليد" : "Regenerate"} className="px-2 py-1 rounded bg-slate-700 hover:bg-fuchsia-600 text-white inline-flex items-center justify-center"><RefreshCw className="w-3 h-3" /></button>
+                            </div>
+                          )}
+                          {r?.status === "error" && (
+                            <button onClick={() => regenerateOne(j)} className="w-full mt-1.5 text-[10px] py-1 rounded bg-amber-700/50 hover:bg-amber-600 text-amber-100 font-bold inline-flex items-center justify-center gap-1"><RefreshCw className="w-3 h-3" /> {ar ? "إعادة المحاولة" : "Retry"}</button>
+                          )}
                         </div>
                       </div>
                     );
@@ -343,6 +387,14 @@ export default function BulkImageGen({ ar }) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Enlarged preview */}
+      {preview && (
+        <div className="fixed inset-0 bg-black/85 z-[80] flex items-center justify-center p-4" onClick={() => setPreview("")}>
+          <img src={preview} alt="" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          <button onClick={() => setPreview("")} className="absolute top-4 end-4 text-white bg-slate-800/80 hover:bg-slate-700 rounded-full p-2"><X className="w-5 h-5" /></button>
         </div>
       )}
     </div>
