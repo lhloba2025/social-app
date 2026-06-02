@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageCircle, Loader2, Send, RefreshCw, ExternalLink, Inbox, CornerDownLeft } from "lucide-react";
+import { MessageCircle, Loader2, Send, RefreshCw, ExternalLink, Inbox, CornerDownLeft, Heart, Share2 } from "lucide-react";
 import { platformEmoji, platformLabel } from "@/components/BulkMediaUploadModal";
 import { tenantToken } from "@/api/localClient";
 
@@ -23,6 +23,7 @@ export default function EngagementPage({ language }) {
   const [posts, setPosts] = useState([]);
   const [connected, setConnected] = useState(null);
   const [loadingFeed, setLoadingFeed] = useState(true);
+  const [tab, setTab] = useState("all");           // all | instagram | facebook
   const [active, setActive] = useState(null);      // selected post
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -94,23 +95,42 @@ export default function EngagementPage({ language }) {
       ) : (
         <div className="flex-1 flex overflow-hidden">
           {/* Posts list */}
-          <div className="w-[320px] flex-shrink-0 border-e border-slate-800 overflow-y-auto">
-            {posts.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 text-sm">{ar ? "لا توجد منشورات." : "No posts."}</div>
-            ) : posts.map((p) => (
-              <button key={p.id} onClick={() => openPost(p)}
-                className={`w-full text-start p-3 border-b border-slate-800/60 flex gap-3 transition ${active?.id === p.id ? "bg-slate-800" : "hover:bg-slate-900"}`}>
-                {p.image ? <img src={p.image} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" /> : <div className="w-12 h-12 rounded bg-slate-800 flex-shrink-0" />}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                    <span>{platformEmoji(p.platform)}</span><span>{platformLabel(p.platform, ar)}</span>
-                    <span className="ms-auto">{timeAgo(p.created, ar)}</span>
+          <div className="w-[330px] flex-shrink-0 border-e border-slate-800 flex flex-col">
+            {/* Platform tabs */}
+            <div className="flex gap-1 p-2 border-b border-slate-800 flex-shrink-0 bg-slate-900/60">
+              {[
+                { id: "all", label: ar ? "الكل" : "All", n: posts.length },
+                { id: "instagram", label: ar ? "انستقرام" : "Instagram", n: posts.filter((p) => p.platform === "instagram").length },
+                { id: "facebook", label: ar ? "فيسبوك" : "Facebook", n: posts.filter((p) => p.platform === "facebook").length },
+              ].map((t) => (
+                <button key={t.id} onClick={() => { setTab(t.id); setActive(null); }}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${tab === t.id ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                  {t.label} ({t.n})
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {(tab === "all" ? posts : posts.filter((p) => p.platform === tab)).length === 0 ? (
+                <div className="p-6 text-center text-slate-500 text-sm">{ar ? "لا توجد منشورات." : "No posts."}</div>
+              ) : (tab === "all" ? posts : posts.filter((p) => p.platform === tab)).map((p) => (
+                <button key={p.id} onClick={() => openPost(p)}
+                  className={`w-full text-start p-3 border-b border-slate-800/60 flex gap-3 transition ${active?.id === p.id ? "bg-slate-800" : "hover:bg-slate-900"}`}>
+                  {p.image ? <img src={p.image} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" /> : <div className="w-12 h-12 rounded bg-slate-800 flex-shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                      <span>{platformEmoji(p.platform)}</span><span>{platformLabel(p.platform, ar)}</span>
+                      <span className="ms-auto">{timeAgo(p.created, ar)}</span>
+                    </div>
+                    <p className="text-[12px] text-slate-200 line-clamp-2 mt-0.5">{p.message || (ar ? "بدون نص" : "No text")}</p>
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                      <span className="inline-flex items-center gap-0.5 text-pink-300"><Heart className="w-3 h-3" />{p.likesCount || 0}</span>
+                      <span className="inline-flex items-center gap-0.5 text-indigo-300"><MessageCircle className="w-3 h-3" />{p.commentsCount || 0}</span>
+                      {p.platform === "facebook" && <span className="inline-flex items-center gap-0.5"><Share2 className="w-3 h-3" />{p.sharesCount || 0}</span>}
+                    </div>
                   </div>
-                  <p className="text-[12px] text-slate-200 line-clamp-2 mt-0.5">{p.message || (ar ? "بدون نص" : "No text")}</p>
-                  <p className="text-[10px] text-indigo-300 mt-0.5 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{p.commentsCount} {ar ? "تعليق" : "comments"}</p>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Comments pane */}
@@ -119,9 +139,12 @@ export default function EngagementPage({ language }) {
               <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2"><MessageCircle className="w-12 h-12 opacity-30" /><p className="text-sm">{ar ? "اختر منشوراً لعرض تعليقاته" : "Pick a post to see its comments"}</p></div>
             ) : (
               <div className="max-w-2xl mx-auto">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-800">{platformEmoji(active.platform)} {platformLabel(active.platform, ar)}</span>
-                  {active.permalink && <a href={active.permalink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 text-xs inline-flex items-center gap-1">{ar ? "فتح المنشور" : "Open post"} <ExternalLink className="w-3 h-3" /></a>}
+                  <span className="text-xs text-pink-300 inline-flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{active.likesCount || 0} {ar ? "إعجاب" : "likes"}</span>
+                  <span className="text-xs text-indigo-300 inline-flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{active.commentsCount || 0} {ar ? "تعليق" : "comments"}</span>
+                  {active.platform === "facebook" && <span className="text-xs text-slate-300 inline-flex items-center gap-1"><Share2 className="w-3.5 h-3.5" />{active.sharesCount || 0} {ar ? "مشاركة" : "shares"}</span>}
+                  {active.permalink && <a href={active.permalink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 text-xs inline-flex items-center gap-1 ms-auto">{ar ? "فتح المنشور" : "Open post"} <ExternalLink className="w-3 h-3" /></a>}
                 </div>
                 <p className="text-sm text-slate-300 mb-4 line-clamp-3">{active.message}</p>
 

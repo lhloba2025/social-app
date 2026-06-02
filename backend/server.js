@@ -668,24 +668,27 @@ app.get('/api/engagement/feed', async (req, res) => {
     if (acc.page_id) {
       try {
         const r = await axios.get(`${GRAPH}/${acc.page_id}/posts`, {
-          params: { fields: 'id,message,created_time,full_picture,permalink_url,comments.summary(true).limit(0)', limit: 25, access_token: token },
+          params: { fields: 'id,message,created_time,full_picture,permalink_url,comments.summary(true).limit(0),reactions.summary(true).limit(0),shares', limit: 25, access_token: token },
           timeout: 20000,
         });
         for (const p of r.data?.data || []) out.push({
           platform: 'facebook', id: p.id, message: p.message || '', image: p.full_picture || null,
-          created: p.created_time, commentsCount: p.comments?.summary?.total_count || 0, permalink: p.permalink_url || null,
+          created: p.created_time, commentsCount: p.comments?.summary?.total_count || 0,
+          likesCount: p.reactions?.summary?.total_count || 0, sharesCount: p.shares?.count || 0,
+          permalink: p.permalink_url || null,
         });
       } catch (e) { /* page posts unavailable */ }
     }
     if (acc.ig_user_id) {
       try {
         const r = await axios.get(`${GRAPH}/${acc.ig_user_id}/media`, {
-          params: { fields: 'id,caption,media_url,thumbnail_url,timestamp,permalink,comments_count', limit: 25, access_token: token },
+          params: { fields: 'id,caption,media_url,thumbnail_url,timestamp,permalink,comments_count,like_count', limit: 25, access_token: token },
           timeout: 20000,
         });
         for (const p of r.data?.data || []) out.push({
           platform: 'instagram', id: p.id, message: p.caption || '', image: p.media_url || p.thumbnail_url || null,
-          created: p.timestamp, commentsCount: p.comments_count || 0, permalink: p.permalink || null,
+          created: p.timestamp, commentsCount: p.comments_count || 0, likesCount: p.like_count || 0, sharesCount: 0,
+          permalink: p.permalink || null,
         });
       } catch (e) { /* ig media unavailable */ }
     }
