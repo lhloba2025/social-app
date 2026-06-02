@@ -579,6 +579,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   useEffect(() => {
     if (mediaToEdit?.url && mediaToEdit.type !== "video") {
       const img = defaultImage(mediaToEdit.url, false, null, size ? size.width / size.height : 1);
+      // fullBleed: cover the whole canvas (used by the letterhead template).
+      if (mediaToEdit.fullBleed) { img.x = 0; img.y = 0; img.width = 100; img.height = 100; }
       setImages(p => { const next = [...p, img]; imagesRef.current = next; return next; });
       setSelectedId(img.id);
       setSelectedType("image");

@@ -126,6 +126,16 @@ export const SIZES = [
     platform: "General",
   },
   {
+    id: "letterhead",
+    nameAr: "ترويسة رسمية (A4)",
+    nameEn: "Letterhead (A4)",
+    width: 1654,
+    height: 2339,
+    ratio: "A4",
+    platform: "مستندات",
+    isLetterhead: true,
+  },
+  {
     id: "custom",
     nameAr: "مخصص",
     nameEn: "Custom",
@@ -137,4 +147,4 @@ export const SIZES = [
   },
 ];
 
-export const RATIO_GROUPS = ["1:1", "9:16", "4:5", "16:9", "Wide", "Other"];
+export const RATIO_GROUPS = ["1:1", "9:16", "4:5", "16:9", "Wide", "Other", "A4"];

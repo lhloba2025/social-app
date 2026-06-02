@@ -37,8 +37,11 @@ export default function DesignStudio({ language: propLanguage, onLanguageChange 
     sessionStorage.removeItem("mediaToEdit");
   }, []);
 
-  const handleSelectSize = (size) => {
+  const handleSelectSize = (size, image) => {
     setSelectedSize(size);
+    // Letterhead (and any guided template): open the composed image in the editor
+    // as an editable layer, sized to the chosen canvas.
+    if (image) setMediaToEdit({ type: "image", url: image, name: size?.nameAr || "ترويسة", fullBleed: true });
     setView("editor");
   };
 

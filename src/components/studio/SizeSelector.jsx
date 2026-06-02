@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { SIZES, RATIO_GROUPS } from "./sizes";
 import { Sparkles, Globe, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import LetterheadForm from "./LetterheadForm";
 
 function RatioShape({ ratio }) {
   const styles = {
@@ -11,6 +12,7 @@ function RatioShape({ ratio }) {
     "16:9": "w-10 h-6",
     "Wide": "w-12 h-4",
     "Other": "w-10 h-7",
+    "A4": "w-7 h-10",
   };
   return (
     <div className={`${styles[ratio] || "w-8 h-8"} border-2 border-indigo-400 rounded bg-indigo-500/20 mx-auto mb-2`} />
@@ -21,10 +23,13 @@ export default function SizeSelector({ onSelect, language, setLanguage }) {
   const isRtl = language === "ar";
   const [customW, setCustomW] = useState(1080);
   const [customH, setCustomH] = useState(1080);
+  const [letterheadSize, setLetterheadSize] = useState(null); // opens the guided form
   const navigate = useNavigate();
 
   const handleSelect = (size) => {
-    if (size.isCustom) {
+    if (size.isLetterhead) {
+      setLetterheadSize(size); // open the guided letterhead form
+    } else if (size.isCustom) {
       onSelect({ ...size, width: customW, height: customH });
     } else {
       onSelect(size);
@@ -127,6 +132,15 @@ export default function SizeSelector({ onSelect, language, setLanguage }) {
           );
         })}
       </div>
+
+      {letterheadSize && (
+        <LetterheadForm
+          isRtl={isRtl}
+          size={letterheadSize}
+          onCancel={() => setLetterheadSize(null)}
+          onDone={(dataUrl) => { const s = letterheadSize; setLetterheadSize(null); onSelect(s, dataUrl); }}
+        />
+      )}
     </div>
   );
 }
