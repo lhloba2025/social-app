@@ -133,7 +133,7 @@ export default function BulkImageGen({ ar }) {
 
   // PER-IMAGE quick-edit — each image keeps its raw AI scene + its own layout,
   // so editing one image doesn't touch the others.
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5 };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0 };
   const [editing, setEditing] = useState(null);     // index of image being edited
   const [editLayout, setEditLayout] = useState(DEFAULT_LAYOUT);
   const setEditField = (k, v) => setEditLayout((p) => ({ ...p, [k]: parseFloat(v) }));
@@ -481,16 +481,20 @@ export default function BulkImageGen({ ar }) {
             <img src={results[editing].dataUrl} alt="" className="w-full rounded-lg mb-3 max-h-[48vh] object-contain bg-slate-950" />
             <div className="space-y-2">
               {[
-                { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.08, max: 0.66, step: 0.01 },
-                { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.2, max: 0.8, step: 0.01 },
-                { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.6, max: 1.7, step: 0.05 },
-                { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.3, step: 0.01 },
-                { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.15, max: 0.85, step: 0.01 },
-                { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.5, max: 1.9, step: 0.05 },
+                { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.02, max: 0.92, step: 0.01 },
+                { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.1, max: 0.9, step: 0.01 },
+                { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.3, max: 2.6, step: 0.05 },
+                { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.88, step: 0.01 },
+                { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.05, max: 0.95, step: 0.01 },
+                { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 3, step: 0.05 },
+                ...(kit.showContact ? [
+                  { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },
+                  { k: "contactY", label: ar ? "الشريط ↕" : "Bar ↕", min: 0, max: 0.8, step: 0.01 },
+                ] : []),
               ].map((s) => (
                 <div key={s.k} className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{s.label}</span>
-                  <input type="range" min={s.min} max={s.max} step={s.step} value={editLayout[s.k]} onChange={(e) => setEditField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
+                  <input type="range" min={s.min} max={s.max} step={s.step} value={editLayout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setEditField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
                 </div>
               ))}
               <div className="flex gap-2 pt-1">

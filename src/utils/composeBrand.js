@@ -109,12 +109,14 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   });
 }
 
-function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
+function drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout = {}) {
+  const cScale = layout.contactScale ?? 1;       // resize the whole bar
+  const cShift = layout.contactY ?? 0;           // move UP from the bottom (fraction of H)
   const bg = kit.contactBg || "#0F172A";
   const tx = kit.contactText || "#FFFFFF";
   const pill = kit.contactShape === "pill";
   const vertical = kit.contactLayout === "vertical";
-  const fs = Math.round(W * (vertical ? 0.03 : 0.026));
+  const fs = Math.round(W * (vertical ? 0.03 : 0.026) * cScale);
   const iconSize = Math.round(fs * 1.25);
   const iconGap = W * 0.006;
   ctx.font = `600 ${fs}px "Tajawal", sans-serif`;
@@ -134,7 +136,7 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
     const panelW = Math.min(W * 0.7, maxW + padX * 2);
     const panelH = items.length * lineH + padY * 2;
     const px = (W - panelW) / 2;
-    const py = H - panelH - H * 0.02;
+    const py = H - panelH - H * 0.02 - H * cShift;
     ctx.save(); ctx.globalAlpha = 0.82; ctx.fillStyle = bg;
     roundRect(ctx, px, py, panelW, panelH, Math.min(panelW, panelH) * 0.1); ctx.fill(); ctx.restore();
     let y = py + padY + lineH / 2;
@@ -150,8 +152,8 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs) {
   // horizontal
   const gap = W * 0.028;
   const totalW = items.reduce((a, b) => a + b.w, 0) + gap * (items.length - 1);
-  const barH = Math.round(H * 0.075);
-  const y = H - barH;
+  const barH = Math.round(H * 0.075 * cScale);
+  const y = H - barH - H * cShift;
   ctx.save();
   ctx.globalAlpha = 0.8;
   ctx.fillStyle = bg;
@@ -223,7 +225,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
 
   if (contacts && contacts.length) {
     const iconImgs = await Promise.all(contacts.map((cc) => loadIcon(cc.p, kit.contactText || "#FFFFFF")));
-    drawContactBar(ctx, W, H, contacts, kit, iconImgs);
+    drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout);
   }
 
   return c.toDataURL("image/png");
