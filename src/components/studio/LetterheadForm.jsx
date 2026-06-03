@@ -30,6 +30,28 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
   const [logoColor, setLogoColor] = useState(kit.mainColor || "#0F172A");
   const [layout, setLayout] = useState({ orientation: "center", logoScale: 1, logoDy: 0, textScale: 1 });
 
+  // Background controls.
+  const [bgColor, setBgColor] = useState("#FFFFFF");
+  const [transparent, setTransparent] = useState(false);
+  const [accentBorder, setAccentBorder] = useState(false);
+
+  // Contact bar (optional bottom band).
+  const [showContact, setShowContact] = useState(false);
+  const [contactBg, setContactBg] = useState(kit.mainColor || "#0F172A");
+  const [contacts, setContacts] = useState({
+    instagram: kit.cInstagram || "", snapchat: kit.cSnapchat || "", tiktok: kit.cTiktok || "",
+    twitter: kit.cTwitter || "", whatsapp: kit.cWhatsapp || "", website: kit.cWebsite || "",
+  });
+  const setContact = (k, v) => { setContacts((p) => ({ ...p, [k]: v })); setSaved(false); };
+  const contactsList = showContact ? [
+    contacts.instagram && { p: "Instagram", v: contacts.instagram },
+    contacts.snapchat && { p: "Snapchat", v: contacts.snapchat },
+    contacts.tiktok && { p: "TikTok", v: contacts.tiktok },
+    contacts.twitter && { p: "X (Twitter)", v: contacts.twitter },
+    contacts.whatsapp && { p: "WhatsApp", v: contacts.whatsapp },
+    contacts.website && { p: "Website", v: contacts.website },
+  ].filter(Boolean) : [];
+
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -58,7 +80,7 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
     ["website", ar ? "الموقع — اختياري" : "Website (optional)", "hovera.sa", "ltr"],
   ];
 
-  const anyFilled = logo || Object.values(f).some((v) => v && v.trim());
+  const anyFilled = logo || Object.values(f).some((v) => v && v.trim()) || contactsList.length > 0;
 
   // Live re-composite (debounced) whenever anything changes.
   useEffect(() => {
@@ -71,14 +93,15 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
           kit: { ...kit, font, changeLogoColor: recolorLogo, logoColor },
           logoUrl: logo || "",
           fields: f,
-          style: { headerColor, accentColor },
+          style: { headerColor, accentColor, bgColor, transparent, accentBorder, contactBg, contactText: "#FFFFFF" },
+          contacts: contactsList,
           layout, ar,
         });
         if (!cancelled) setPreview(dataUrl);
       } catch (e) { if (!cancelled) setErr(e?.message || String(e)); }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [f, logo, headerColor, accentColor, font, recolorLogo, logoColor, layout]); // eslint-disable-line
+  }, [f, logo, headerColor, accentColor, font, recolorLogo, logoColor, layout, bgColor, transparent, accentBorder, showContact, contacts, contactBg]); // eslint-disable-line
 
   const handleSave = async () => {
     if (!preview) return;
@@ -171,6 +194,66 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
                 <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k]} onChange={(e) => setLay(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
               </div>
             ))}
+
+            {/* Background */}
+            <div className="bg-slate-800/40 rounded-lg p-2.5 space-y-2">
+              <p className="text-[11px] font-bold text-slate-200">{ar ? "الخلفية" : "Background"}</p>
+              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                <input type="checkbox" checked={transparent} onChange={(e) => { setTransparent(e.target.checked); setSaved(false); }} />
+                {ar ? "خلفية شفافة (للوضع فوق ورق)" : "Transparent background"}
+              </label>
+              {!transparent && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{ar ? "لون الخلفية" : "Bg color"}</span>
+                  <input type="color" value={bgColor} onChange={(e) => { setBgColor(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
+                  <div className="flex flex-wrap gap-1">
+                    {["#FFFFFF", "#F7F5F0", "#0F172A", "#09007C", "#FCE7F3", "#ECFCCB"].map((s) => (
+                      <button key={s} type="button" onClick={() => { setBgColor(s); setSaved(false); }}
+                        className={`w-5 h-5 rounded-full border ${bgColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                <input type="checkbox" checked={accentBorder} onChange={(e) => { setAccentBorder(e.target.checked); setSaved(false); }} />
+                {ar ? "إضافة خط ملوّن (إطار علوي)" : "Accent border line"}
+              </label>
+            </div>
+
+            {/* Contact bar */}
+            <div className="bg-slate-800/40 rounded-lg p-2.5 space-y-2">
+              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-200 cursor-pointer">
+                <input type="checkbox" checked={showContact} onChange={(e) => { setShowContact(e.target.checked); setSaved(false); }} />
+                {ar ? "أضف شريط التواصل (شريط سفلي بالأيقونات)" : "Add contact bar"}
+              </label>
+              {showContact && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["instagram", ar ? "انستقرام" : "Instagram"],
+                      ["snapchat", ar ? "سناب شات" : "Snapchat"],
+                      ["tiktok", ar ? "تيك توك" : "TikTok"],
+                      ["twitter", ar ? "تويتر / X" : "Twitter / X"],
+                      ["whatsapp", ar ? "واتساب" : "WhatsApp"],
+                      ["website", ar ? "الموقع" : "Website"],
+                    ].map(([k, label]) => (
+                      <input key={k} value={contacts[k]} onChange={(e) => setContact(k, e.target.value)} placeholder={label} dir="ltr"
+                        className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-indigo-500" />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{ar ? "لون الشريط" : "Bar color"}</span>
+                    <input type="color" value={contactBg} onChange={(e) => { setContactBg(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
+                    <div className="flex flex-wrap gap-1">
+                      {SWATCHES.map((s) => (
+                        <button key={s} type="button" onClick={() => { setContactBg(s); setSaved(false); }}
+                          className={`w-5 h-5 rounded-full border ${contactBg.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Logo recolor */}
             {logo && (

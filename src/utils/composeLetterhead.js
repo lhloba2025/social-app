@@ -3,6 +3,36 @@
 // on the LEFT; the Arabic name/subtitle/CR go on the right, the English on the
 // left. Everything (logo size/position/recolor + text size) is adjustable, and
 // each text block is clamped to its own zone so it never overlaps the logo.
+// Optional: a solid/transparent background, an accent border line, and a
+// bottom CONTACT BAR with real platform icons (same simple-icons as the AI
+// composer).
+
+import { siInstagram, siTiktok, siSnapchat, siWhatsapp, siFacebook, siX, siYoutube } from "simple-icons";
+
+const ICONS = {
+  instagram: siInstagram, tiktok: siTiktok, snapchat: siSnapchat, whatsapp: siWhatsapp,
+  facebook: siFacebook, twitter: siX, x: siX, youtube: siYoutube,
+};
+function platformKey(p) {
+  const s = (p || "").toLowerCase();
+  if (s.includes("insta")) return "instagram";
+  if (s.includes("tik")) return "tiktok";
+  if (s.includes("snap")) return "snapchat";
+  if (s.includes("whats")) return "whatsapp";
+  if (s.includes("face")) return "facebook";
+  if (s.includes("you")) return "youtube";
+  if (s.includes("x") || s.includes("twit")) return "twitter";
+  return "website";
+}
+function iconSvgUrl(icon, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${color}" d="${icon.path}"/></svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+async function loadIcon(p, color) {
+  const icon = ICONS[platformKey(p)];
+  if (!icon) return null;
+  try { return await loadImg(iconSvgUrl(icon, color)); } catch { return null; }
+}
 
 function loadImg(src) {
   return new Promise((resolve, reject) => {
@@ -25,7 +55,7 @@ function fitFont(ctx, text, weight, px, font, maxW) {
   return px;
 }
 
-export async function composeLetterhead({ width = 1654, height = 280, kit = {}, logoUrl = "", fields = {}, style = {}, layout = {}, ar = true }) {
+export async function composeLetterhead({ width = 1654, height = 280, kit = {}, logoUrl = "", fields = {}, style = {}, layout = {}, contacts = [], ar = true }) {
   const W = width, H = height;
   const nameColor   = style.headerColor || kit.mainColor || "#0F172A";
   const accentColor = style.accentColor || kit.highlightColor || "#8DB600";
@@ -44,17 +74,30 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  if (!style.transparent) { ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H); }
+
+  // ── Background ────────────────────────────────────────────────────────
+  // Solid color by default; transparent when asked (good for overlaying in
+  // Word). The chosen bgColor lets the user give the strip a tinted band.
+  if (!style.transparent) {
+    ctx.fillStyle = style.bgColor || "#FFFFFF";
+    ctx.fillRect(0, 0, W, H);
+  }
 
   const marginX = W * 0.03;
-  const midY = H / 2;
+
+  // ── Contact bar (optional) — a bottom band with real platform icons. ──
+  const contactList = (contacts || []).filter((c) => c && c.v);
+  const bandH = contactList.length ? Math.round(H * 0.22) : 0;
+  // The logo + text center within the area ABOVE the contact band.
+  const contentH = H - bandH;
+  const midY = contentH / 2;
 
   // ── Logo ─────────────────────────────────────────────────────────────
   let logoBox = { x: W / 2, w: 0 }; // center x of the logo + its half footprint
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
-      let lh = H * 0.82 * logoScale;
+      let lh = contentH * 0.82 * logoScale;
       let lw = lh * ((lg.naturalWidth || 1) / (lg.naturalHeight || 1));
       const maxLw = W * 0.26;
       if (lw > maxLw) { const s = maxLw / lw; lw *= s; lh *= s; }
@@ -63,7 +106,7 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
       else if (orient === "left") cxLogo = marginX + lw / 2;
       else cxLogo = W / 2;
       const lx = cxLogo - lw / 2;
-      const ly = (H - lh) / 2 + H * logoDy;
+      const ly = (contentH - lh) / 2 + H * logoDy;
       if (kit.changeLogoColor && kit.logoColor) {
         const off = document.createElement("canvas");
         off.width = Math.max(1, Math.round(lw)); off.height = Math.max(1, Math.round(lh));
@@ -156,6 +199,51 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
       info: infoEn || infoAr,
       align: "left", xEdge: textLeftEdge, maxW: Math.max(40, maxW),
     });
+  }
+
+  // ── Contact bar band (bottom) ─────────────────────────────────────────
+  if (bandH) {
+    const bandY = H - bandH;
+    const barBg = style.contactBg || nameColor;
+    const barTx = style.contactText || "#FFFFFF";
+    ctx.fillStyle = barBg;
+    ctx.fillRect(0, bandY, W, bandH);
+
+    const fs = Math.round(bandH * 0.42);
+    const iconSize = Math.round(fs * 1.2);
+    const iconGap = W * 0.005;
+    const gap = W * 0.022;
+    ctx.font = `600 ${fs}px "${font}", "Tajawal", sans-serif`;
+    ctx.textBaseline = "middle";
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
+
+    const iconImgs = await Promise.all(contactList.map((c) => loadIcon(c.p, barTx)));
+    const items = contactList.map((c, i) => ({ img: iconImgs[i], v: c.v }));
+    let totalW = items.reduce((a, it) => a + (it.img ? iconSize + iconGap : 0) + ctx.measureText(it.v).width, 0) + gap * (items.length - 1);
+    // Shrink to fit width if the contact line is too long.
+    if (totalW > W * 0.96) {
+      const s = (W * 0.96) / totalW;
+      const fs2 = Math.max(8, Math.round(fs * s));
+      ctx.font = `600 ${fs2}px "${font}", "Tajawal", sans-serif`;
+      totalW = items.reduce((a, it) => a + (it.img ? iconSize + iconGap : 0) + ctx.measureText(it.v).width, 0) + gap * (items.length - 1);
+    }
+    let x = (W - totalW) / 2;
+    const cy = bandY + bandH / 2;
+    for (const it of items) {
+      if (it.img) { ctx.drawImage(it.img, x, cy - iconSize / 2, iconSize, iconSize); x += iconSize + iconGap; }
+      ctx.fillStyle = barTx;
+      ctx.fillText(it.v, x, cy);
+      x += ctx.measureText(it.v).width + gap;
+    }
+  }
+
+  // ── Accent border (optional) — thin line top (and bottom if no band). ──
+  if (style.accentBorder) {
+    ctx.fillStyle = accentColor;
+    const t = Math.max(3, Math.round(H * 0.03));
+    ctx.fillRect(0, 0, W, t);
+    if (!bandH) ctx.fillRect(0, H - t, W, t);
   }
 
   return c.toDataURL("image/png");
