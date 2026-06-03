@@ -86,30 +86,30 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const isHi = (w) => { const nw = normAr(w); return !!nw && hlNorm.some((h) => nw === h || nw.includes(h)); };
   const scale = layout.hookScale ?? 1;
   const maxWidth = W * 0.86;
-  // Honor EXPLICIT line breaks (Enter) the user typed, then word-wrap each.
+  // Honor EXPLICIT line breaks (Enter), then word-wrap each segment.
   const segments = hook.split(/\r?\n/);
-  const nonEmptySegs = segments.filter((s) => s.trim()).length;
-  const maxLines = Math.max(4, nonEmptySegs + 2);
   const allWords = segments.flatMap((s) => s.split(/\s+/).filter(Boolean));
-  let size = Math.round(W * 0.075 * scale);
   ctx.textBaseline = "middle";
   const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
-  setFont(size);
   const wrap = () => segments.flatMap((seg) => {
     const ws = seg.split(/\s+/).filter(Boolean);
     return ws.length ? wrapWords(ctx, ws, maxWidth) : [[]]; // keep blank lines for spacing
   });
+  // 1) Pick a comfortable BASE size (default look) that fits within ~3 lines.
+  let base = Math.round(W * 0.075);
+  setFont(base);
   let lines = wrap();
-  // Only shrink if it spills past maxLines OR a single word is wider than the
-  // line — NOT to force a fixed line count (that used to cancel out enlarging).
-  const overflows = () => lines.length > maxLines || allWords.some((w) => ctx.measureText(w).width > maxWidth);
-  while (overflows() && size > 18) {
-    size = Math.round(size * 0.92);
-    setFont(size);
-    lines = wrap();
+  while (lines.length > 3 && base > 22) { base = Math.round(base * 0.92); setFont(base); lines = wrap(); }
+  // 2) Apply the user's scale ON TOP of that base — enlarging truly enlarges the
+  //    glyphs (it is NOT re-capped by line count, which used to neutralise it).
+  let size = Math.max(12, Math.round(base * scale));
+  setFont(size);
+  lines = wrap();
+  // 3) Only shrink to stop a SINGLE word from spilling past the width.
+  while (size > 14 && allWords.some((w) => ctx.measureText(w).width > maxWidth)) {
+    size = Math.round(size * 0.94); setFont(size); lines = wrap();
   }
-  // Measure the inter-word space at the FINAL size (the bug was measuring it at
-  // the initial large size, so spacing grew while the glyphs did not).
+  // Measure the inter-word space at the FINAL size (so spacing matches glyphs).
   const space = ctx.measureText(" ").width;
   const lineH = size * 1.35;
   // place block starting below the logo area (adjustable)
@@ -217,6 +217,8 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high"; // best resampling when scaling the logo up
   // Cover-fit: scale the background to fully cover the exact target, centered.
   const scale = Math.max(W / bw, H / bh);
   const dw = bw * scale, dh = bh * scale;
@@ -237,11 +239,13 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
       const lx = W * (layout.logoX ?? 0.5) - lw / 2;
       const ly = H * (layout.logoY ?? 0.04);
       if (kit.changeLogoColor && kit.logoColor) {
-        // Tint the whole logo to one color (matches the "recolor logo" option).
+        // Tint the logo at its NATIVE resolution, then resample ONCE to the
+        // display size (high quality) — avoids the double-resample blur.
         const off = document.createElement("canvas");
-        off.width = Math.max(1, Math.round(lw)); off.height = Math.max(1, Math.round(lh));
+        off.width = Math.max(1, lg.naturalWidth || Math.round(lw));
+        off.height = Math.max(1, lg.naturalHeight || Math.round(lh));
         const octx = off.getContext("2d");
-        octx.drawImage(lg, 0, 0, off.width, off.height);
+        octx.drawImage(lg, 0, 0);
         octx.globalCompositeOperation = "source-in";
         octx.fillStyle = kit.logoColor;
         octx.fillRect(0, 0, off.width, off.height);

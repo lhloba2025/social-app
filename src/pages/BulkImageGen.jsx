@@ -589,7 +589,7 @@ export default function BulkImageGen({ ar }) {
                 ...(editOv.showLogo && logo ? [
                   { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.88, step: 0.01 },
                   { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.05, max: 0.95, step: 0.01 },
-                  { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 3, step: 0.05 },
+                  { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 4, step: 0.05 },
                 ] : []),
                 ...(editOv.showContact ? [
                   { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },

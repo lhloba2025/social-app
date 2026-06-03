@@ -204,7 +204,7 @@ function CustomGen({ ar }) {
                     { k: "hookScale", label: ar ? "حجم النص" : "Text size", min: 0.3, max: 2.6, step: 0.05 },
                     { k: "logoY", label: ar ? "الشعار ↕" : "Logo ↕", min: 0, max: 0.88, step: 0.01 },
                     { k: "logoX", label: ar ? "الشعار ↔" : "Logo ↔", min: 0.05, max: 0.95, step: 0.01 },
-                    { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 3, step: 0.05 },
+                    { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.25, max: 4, step: 0.05 },
                     ...(kit.showContact ? [
                       { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },
                       { k: "contactY", label: ar ? "الشريط ↕" : "Bar ↕", min: 0, max: 0.8, step: 0.01 },
