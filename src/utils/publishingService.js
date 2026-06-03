@@ -29,6 +29,24 @@ function authHeaders() {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+// ── Deletion tombstones ───────────────────────────────────────────────────
+// When the user deletes/cancels a post we record its id here. listAllPosts
+// then filters these out EVEN IF the backend still returns the row (a failed
+// or eventually-consistent DELETE used to make deleted posts reappear after
+// the 20s poll). Re-creating a post with the same id (reschedule) clears it.
+const TOMBSTONE_KEY = "deleted_post_ids_v1";
+function readTombstones() {
+  try { return new Set(JSON.parse(localStorage.getItem(TOMBSTONE_KEY) || "[]")); } catch { return new Set(); }
+}
+function addTombstone(id) {
+  if (!id) return;
+  try { const s = readTombstones(); s.add(id); localStorage.setItem(TOMBSTONE_KEY, JSON.stringify([...s])); } catch { /* quota */ }
+}
+function removeTombstone(id) {
+  if (!id) return;
+  try { const s = readTombstones(); if (s.delete(id)) localStorage.setItem(TOMBSTONE_KEY, JSON.stringify([...s])); } catch { /* quota */ }
+}
+
 // Probe the backend once per session; reuses the result so the schedule
 // flow doesn't fire a /health on every modal open. The result is cached
 // in a module-scoped promise: subsequent callers await the same probe.
@@ -119,6 +137,10 @@ export async function createScheduledPosts(posts) {
   const localSaved = appendLocal(localPending);
   for (const row of localSaved) persisted.push(row);
 
+  // A freshly created post must never be hidden by an old tombstone (e.g. the
+  // user re-scheduled something they'd cancelled and it got the same id).
+  for (const row of persisted) removeTombstone(row.id);
+
   // Also mirror backend-saved rows into localStorage so offline reads work.
   // We rely on the localStore's id-aware appendScheduledPosts to dedupe.
   if (backendCount > 0) {
@@ -143,7 +165,8 @@ export async function createScheduledPosts(posts) {
 // "scheduled" while the backend already published it).
 export async function listAllPosts() {
   const backendUp = await probeBackend();
-  const local = listLocal();
+  const tomb = readTombstones();
+  const local = listLocal().filter((p) => !tomb.has(p.id));
   if (!backendUp) return local;
   try {
     const res = await fetch(`${API}?sort=-created_at`, { headers: authHeaders() });
@@ -153,9 +176,10 @@ export async function listAllPosts() {
     // Merge — backend rows take precedence on shared ids.
     const byId = new Map(local.map((p) => [p.id, p]));
     for (const r of remoteNorm) byId.set(r.id, r);
-    return Array.from(byId.values()).sort(
-      (a, b) => (b.scheduledAt || "").localeCompare(a.scheduledAt || ""),
-    );
+    // Drop anything the user deleted, even if the backend still lists it.
+    return Array.from(byId.values())
+      .filter((p) => !tomb.has(p.id))
+      .sort((a, b) => (b.scheduledAt || "").localeCompare(a.scheduledAt || ""));
   } catch {
     return local;
   }
@@ -229,6 +253,8 @@ export async function cancelSchedule(post) {
 
 // ── Delete post ─────────────────────────────────────────────────────────
 export async function deleteScheduledPost(postId) {
+  // Record a tombstone so the post can't reappear via the backend merge.
+  addTombstone(postId);
   // Local mirror — strip out the post regardless of backend status.
   try {
     const raw = localStorage.getItem("scheduled_posts");

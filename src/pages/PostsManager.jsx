@@ -55,7 +55,10 @@ function formatTime(t) {
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-function PostCard({ post, onDelete, onEdit, onCancel, view, ar = true }) {
+// `post` is a topic REPRESENTATIVE (cover image + union of platforms). `count`
+// is how many scheduled placements the topic holds (post + story, IG + FB…).
+// onDelete/onCancel/onEdit act on the whole topic and take no args.
+function PostCard({ post, count = 1, onDelete, onEdit, onCancel, view, ar = true }) {
   const [menu, setMenu] = useState(false);
   const status = STATUS_CONFIG[post.status] || STATUS_CONFIG.draft;
   const StatusIcon = status.icon;
@@ -83,6 +86,11 @@ function PostCard({ post, onDelete, onEdit, onCancel, view, ar = true }) {
                 <span key={pid} className="w-2 h-2 rounded-full" style={{ background: PLATFORMS[pid]?.color || "#666" }} />
               ))}
             </div>
+            {count > 1 && (
+              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full">
+                {count} {ar ? "نشرات" : "posts"}
+              </span>
+            )}
             {post.scheduledAt && (
               <span className="text-[11px] text-slate-500 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
@@ -102,17 +110,17 @@ function PostCard({ post, onDelete, onEdit, onCancel, view, ar = true }) {
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
           {canCancel && (
             <button
-              onClick={() => onCancel(post)}
+              onClick={() => onCancel()}
               title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
               className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 transition"
             >
               <Ban className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={() => onEdit(post)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <button onClick={() => onEdit()} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
             <Edit3 className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => onDelete(post.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition">
+          <button onClick={() => onDelete()} className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -133,28 +141,33 @@ function PostCard({ post, onDelete, onEdit, onCancel, view, ar = true }) {
             </div>}
 
         {/* Status badge */}
-        <div className="absolute top-2 start-2">
+        <div className="absolute top-2 start-2 flex items-center gap-1">
           <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold backdrop-blur-sm ${status.cls}`}>
             <StatusIcon className="w-2.5 h-2.5" />
             {statusLabel}
           </span>
+          {count > 1 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold backdrop-blur-sm">
+              {count} {ar ? "نشرات" : "posts"}
+            </span>
+          )}
         </div>
 
         {/* Actions overlay */}
         <div className="absolute top-2 end-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
           {canCancel && (
             <button
-              onClick={() => onCancel(post)}
-              title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
+              onClick={() => onCancel()}
+              title={ar ? (count > 1 ? "إلغاء جدولة الموضوع كامل" : "إلغاء الجدولة") : "Cancel schedule"}
               className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-amber-400 transition backdrop-blur-sm"
             >
               <Ban className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={() => onEdit(post)} className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-white transition backdrop-blur-sm">
+          <button onClick={() => onEdit()} className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-white transition backdrop-blur-sm">
             <Edit3 className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => onDelete(post.id)} className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-red-400 transition backdrop-blur-sm">
+          <button onClick={() => onDelete()} title={ar ? (count > 1 ? "حذف الموضوع كامل" : "حذف") : "Delete"} className="w-7 h-7 rounded-lg bg-slate-900/80 flex items-center justify-center text-slate-300 hover:text-red-400 transition backdrop-blur-sm">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -240,17 +253,63 @@ export default function PostsManager({ language }) {
 
   const filtered = filter === "all" ? posts : posts.filter(p => p.status === filter);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm(T.deleteConfirm)) return;
-    await deleteScheduledPost(id);
+  // ── Group scheduled posts into TOPICS by title ───────────────────────────
+  // A topic's placements (IG post, IG story, FB post, FB story, multiple
+  // sizes…) were scheduled together and share the same caption. We collapse
+  // them into ONE card so the view isn't flooded with near-identical images.
+  // The title = the first line of the caption (which is the topic title).
+  // Posts with no caption each stay their own card.
+  const STATUS_PRIORITY = { queued: 0, scheduled: 1, published: 2 };
+  const topics = React.useMemo(() => {
+    const map = new Map();
+    for (const p of filtered) {
+      const title = (p.caption || "").split(/\r?\n/)[0].trim();
+      const key = title || `__${p.id}`;
+      if (!map.has(key)) map.set(key, { key, title, posts: [], platforms: [] });
+      const t = map.get(key);
+      t.posts.push(p);
+      for (const pl of (p.platforms || [])) if (!t.platforms.includes(pl)) t.platforms.push(pl);
+    }
+    // Derive a representative cover + status + earliest date per topic.
+    return Array.from(map.values()).map((t) => {
+      const cover = t.posts.find((p) => p.media?.thumbnail) || t.posts[0];
+      // Most-pending status wins (queued > scheduled > published) so the badge
+      // reflects whether anything still needs to go out.
+      const repStatus = t.posts
+        .map((p) => p.status)
+        .sort((a, b) => (STATUS_PRIORITY[a] ?? 9) - (STATUS_PRIORITY[b] ?? 9))[0] || cover.status;
+      // Earliest schedule across the topic.
+      const earliest = [...t.posts].sort((a, b) => (a.scheduledAt || "").localeCompare(b.scheduledAt || ""))[0];
+      return {
+        ...t,
+        rep: {
+          ...cover,
+          platforms: t.platforms,
+          status: repStatus,
+          scheduleDate: earliest?.scheduleDate,
+          scheduleTime: earliest?.scheduleTime,
+          scheduledAt: earliest?.scheduledAt,
+        },
+      };
+    });
+  }, [filtered]);
+
+  const handleDeleteTopic = async (topic) => {
+    const n = topic.posts.length;
+    if (!window.confirm(ar
+      ? (n > 1 ? `حذف الموضوع «${topic.title || ""}» وكل نشراته (${n})؟` : T.deleteConfirm)
+      : (n > 1 ? `Delete topic and all its ${n} posts?` : T.deleteConfirm))) return;
+    for (const p of topic.posts) { try { await deleteScheduledPost(p.id); } catch { /* keep going */ } }
     load();
   };
 
-  const handleCancel = async (post) => {
+  const handleCancelTopic = async (topic) => {
+    const cancelable = topic.posts.filter((p) => ["scheduled", "queued"].includes(p.status));
+    const n = cancelable.length;
     if (!window.confirm(ar
-      ? "إلغاء جدولة هذا المنشور؟ بينحذف من قائمة المنشورات ولن يُنشر — وتصميمه يبقى محفوظاً في المكتبة تقدر تعيد جدولته."
-      : "Cancel this post's schedule? It's removed from the list and won't publish — the design stays in your library to reschedule.")) return;
-    await cancelSchedule(post);
+      ? `إلغاء جدولة الموضوع «${topic.title || ""}»${n > 1 ? ` (${n} نشرات)` : ""}؟ بينحذف من القائمة ولن يُنشر — وتصميمه يبقى في المكتبة تقدر تعيد جدولته.`
+      : `Cancel this topic's schedule${n > 1 ? ` (${n} posts)` : ""}? It's removed and won't publish — designs stay in your library.`)) return;
+    for (const p of cancelable) { try { await cancelSchedule(p); } catch { /* keep going */ } }
     load();
   };
 
@@ -276,9 +335,8 @@ export default function PostsManager({ language }) {
           <div>
             <h1 className="text-xl font-bold text-white">{T.title}</h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              {posts.length} {T.posts} •
-              {counts.scheduled ? ` ${counts.scheduled} ${T.scheduled_lbl}` : ""}
-              {counts.draft ? ` • ${counts.draft} ${T.draft_lbl}` : ""}
+              {ar ? `${topics.length} موضوع` : `${topics.length} topics`} · {posts.length} {T.posts}
+              {counts.scheduled ? ` • ${counts.scheduled} ${T.scheduled_lbl}` : ""}
             </p>
           </div>
           <button
@@ -343,7 +401,7 @@ export default function PostsManager({ language }) {
 
       {/* Content */}
       <div className="p-6">
-        {filtered.length === 0 ? (
+        {topics.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center">
               <FileText className="w-8 h-8 text-slate-600" />
@@ -360,14 +418,16 @@ export default function PostsManager({ language }) {
           </div>
         ) : view === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filtered.map(post => (
-              <PostCard key={post.id} post={post} view="grid" ar={ar} onDelete={handleDelete} onEdit={handleEdit} onCancel={handleCancel} />
+            {topics.map(topic => (
+              <PostCard key={topic.key} post={topic.rep} count={topic.posts.length} view="grid" ar={ar}
+                onDelete={() => handleDeleteTopic(topic)} onEdit={() => handleEdit(topic.rep)} onCancel={() => handleCancelTopic(topic)} />
             ))}
           </div>
         ) : (
           <div className="space-y-2 max-w-3xl">
-            {filtered.map(post => (
-              <PostCard key={post.id} post={post} view="list" ar={ar} onDelete={handleDelete} onEdit={handleEdit} onCancel={handleCancel} />
+            {topics.map(topic => (
+              <PostCard key={topic.key} post={topic.rep} count={topic.posts.length} view="list" ar={ar}
+                onDelete={() => handleDeleteTopic(topic)} onEdit={() => handleEdit(topic.rep)} onCancel={() => handleCancelTopic(topic)} />
             ))}
           </div>
         )}
