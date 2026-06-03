@@ -134,6 +134,26 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   // The type a given post will be scheduled as (respecting the chosen mode).
   const typeForPost = (p) => (typeMode === "auto" ? (typeByPost[p.post_id] || "feed") : typeMode);
 
+  // ── Group same-topic images into ONE scheduling unit ─────────────────
+  // A topic's feed post and its story are separate library rows but share the
+  // same hook/caption (they came from the same Excel row / idea). Grouping them
+  // guarantees the post and its story go out on the SAME day — so "today's post"
+  // and "today's story" are about the same subject.
+  const [groupTopics, setGroupTopics] = useState(true);
+  const topicKey = (p) => ((p.caption_title || p.caption_text || p.items?.[0]?.name || "").trim());
+  const units = useMemo(() => {
+    if (!groupTopics) return posts.map((p) => ({ key: p.post_id, posts: [p] }));
+    const map = new Map();
+    for (const p of posts) {
+      const k = topicKey(p) || p.post_id; // no shared title → its own unit
+      if (!map.has(k)) map.set(k, { key: k, posts: [] });
+      map.get(k).posts.push(p);
+    }
+    return Array.from(map.values());
+  }, [posts, groupTopics]);
+  const unitCover = (u) => u.posts[0]?.items?.[0];
+  const unitTitle = (u) => u.posts[0]?.caption_title || unitCover(u)?.name || "";
+
   // ── Mode + form state ───────────────────────────────────────────────
   // weekly: pick days + per-day times + start date
   // daily:  one slot every N days at a single time
@@ -171,7 +191,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   // carry stale entries across opens.
   React.useEffect(() => {
     if (!isOpen) return;
-    setManualSlots(posts.map((_, i) => {
+    setManualSlots(units.map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() + i); // one per day starting today
       return {
@@ -179,23 +199,21 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
         time: "19:00",
       };
     }));
-  }, [isOpen, posts]);
+  }, [isOpen, units]);
 
-  // Manual ordering — lets the user reorder which post lands in which
-  // slot BEFORE confirming ("change its place"). `order` holds
-  // display-position → original-index. Reset whenever the modal opens or
-  // the incoming posts change so we never carry a stale order.
+  // Manual ordering — reorders the UNITS (topic groups) so a topic's whole set
+  // moves together. `order` holds display-position → original-unit-index.
   const [order, setOrder] = useState([]);
   React.useEffect(() => {
     if (!isOpen) return;
-    setOrder(posts.map((_, i) => i));
-  }, [isOpen, posts]);
-  const orderedPosts = (order.length === posts.length)
-    ? order.map((i) => posts[i]).filter(Boolean)
-    : posts;
+    setOrder(units.map((_, i) => i));
+  }, [isOpen, units]);
+  const orderedUnits = (order.length === units.length)
+    ? order.map((i) => units[i]).filter(Boolean)
+    : units;
   const moveItem = (from, to) => {
     setOrder((prev) => {
-      const base = prev.length === posts.length ? prev.slice() : posts.map((_, i) => i);
+      const base = prev.length === units.length ? prev.slice() : units.map((_, i) => i);
       if (to < 0 || to >= base.length) return base;
       const [x] = base.splice(from, 1);
       base.splice(to, 0, x);
@@ -205,30 +223,30 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
 
   // ── Generate the slot list from current settings ────────────────────
   const slots = useMemo(() => {
-    if (!posts.length) return [];
+    if (!units.length) return [];
     if (mode === "weekly") {
       if (!weekdays.length) return [];
       return buildRecurringSlots({
         startISO,
         weekdays,
         timesByDay,
-        count: posts.length,
+        count: units.length,
         defaultTime: DEFAULT_DAY_TIME,
       });
     }
     if (mode === "daily") {
-      // `perDay` posts each day at `dailyTimes`, rolling onto the next day
+      // `perDay` units each day at `dailyTimes`, rolling onto the next day
       // once the day's slots are filled. perDay = total → all on day one.
       const pd = Math.max(1, Math.min(10, parseInt(perDay) || 1));
       const [y, m, d] = startISO.split("-").map(Number);
-      return posts.map((_, i) => {
+      return units.map((_, i) => {
         const dt = new Date(y, m - 1, d + Math.floor(i / pd));
         return { date: toISODate(dt), time: dailyTimes[i % pd] || "19:00" };
       });
     }
     // manual
-    return manualSlots.slice(0, posts.length);
-  }, [mode, posts, weekdays, timesByDay, startISO, perDay, dailyTimes, manualSlots]);
+    return manualSlots.slice(0, units.length);
+  }, [mode, units, weekdays, timesByDay, startISO, perDay, dailyTimes, manualSlots]);
 
   // ── Backend availability ─────────────────────────────────────────────
   // We probe once when the modal opens. If down, the user sees a banner
@@ -263,15 +281,15 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const pastCount = pastFlags.filter(Boolean).length;
 
   const canConfirm = useMemo(() => {
-    if (!posts.length) return false;
+    if (!units.length) return false;
     if (mode === "weekly" && weekdays.length === 0) return false;
-    if (slots.length !== posts.length) return false;
+    if (slots.length !== units.length) return false;
     // Block any past slot — we don't want to write a "scheduled" post
     // whose time has already gone by; it would either fire immediately
     // (bad) or rot in the queue forever (also bad).
     if (pastCount > 0) return false;
     return true;
-  }, [posts.length, mode, weekdays.length, slots.length, pastCount]);
+  }, [units.length, mode, weekdays.length, slots.length, pastCount]);
 
   const handleConfirm = async () => {
     if (!canConfirm) return;
@@ -287,45 +305,48 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     // they can fetch from the public internet (Cloudinary URLs work,
     // localhost blob URLs DON'T). So we use `cover.url` for both
     // `url` (publish target) and `thumbnail` (UI preview).
-    // One entry per (source post × selected post type). If the user picked
-    // both feed + story, each post yields TWO scheduled entries.
-    const payload = orderedPosts.flatMap((p, i) => {
+    // One scheduling UNIT (topic group) shares ONE date/time slot — so a topic's
+    // feed post and its story go out on the SAME day. Within a unit we emit one
+    // entry per (image × its type), all on that unit's slot.
+    const payload = orderedUnits.flatMap((u, i) => {
       const slot = slots[i];
-      const cover = p.items?.[0];
-      const captionParts = [];
-      if (p.caption_title) captionParts.push(p.caption_title);
-      if (p.caption_text)  captionParts.push(p.caption_text);
-      const caption = captionParts.join("\n\n");
-      const basePlatforms = pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []);
-      const base = {
-        status: "scheduled",
-        caption,
-        scheduleDate: slot.date,
-        scheduleTime: slot.time,
-        scheduledAt:  `${slot.date}T${slot.time}`,
-        media: cover ? {
-          type: cover.type || "image",
-          id: cover.id,
-          name: cover.name,
-          url: cover.url,          // ← what the backend hands to platform APIs
-          thumbnail: cover.url,    // ← UI preview
-        } : null,
-        designId: p.post_id,        // backend column is `design_id`
-        sourcePostId: p.post_id,
-        sourcePostItemCount: p.items?.length || 1,
-      };
-      // Which type(s) this post becomes.
-      const types = typeMode === "auto" ? [typeForPost(p)]
-        : typeMode === "both" ? ["feed", "story"]
-        : [typeMode];
-      return types.map((pt) => {
-        // Stories only run on IG/FB — filter the platform list for story entries.
-        let platforms = basePlatforms;
-        if (pt === "story") {
-          const s = basePlatforms.filter((x) => STORY_CAPABLE.includes(x));
-          platforms = s.length ? s : basePlatforms;
-        }
-        return { ...base, platforms, postType: pt };
+      return u.posts.flatMap((p) => {
+        const cover = p.items?.[0];
+        const captionParts = [];
+        if (p.caption_title) captionParts.push(p.caption_title);
+        if (p.caption_text)  captionParts.push(p.caption_text);
+        const caption = captionParts.join("\n\n");
+        const basePlatforms = pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []);
+        const base = {
+          status: "scheduled",
+          caption,
+          scheduleDate: slot.date,
+          scheduleTime: slot.time,
+          scheduledAt:  `${slot.date}T${slot.time}`,
+          media: cover ? {
+            type: cover.type || "image",
+            id: cover.id,
+            name: cover.name,
+            url: cover.url,          // ← what the backend hands to platform APIs
+            thumbnail: cover.url,    // ← UI preview
+          } : null,
+          designId: p.post_id,        // backend column is `design_id`
+          sourcePostId: p.post_id,
+          sourcePostItemCount: p.items?.length || 1,
+        };
+        // Which type(s) this image becomes.
+        const types = typeMode === "auto" ? [typeForPost(p)]
+          : typeMode === "both" ? ["feed", "story"]
+          : [typeMode];
+        return types.map((pt) => {
+          // Stories only run on IG/FB — filter the platform list for story entries.
+          let platforms = basePlatforms;
+          if (pt === "story") {
+            const s = basePlatforms.filter((x) => STORY_CAPABLE.includes(x));
+            platforms = s.length ? s : basePlatforms;
+          }
+          return { ...base, platforms, postType: pt };
+        });
       });
     });
 
@@ -386,8 +407,8 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
             </h2>
             <p className="text-[11px] text-slate-400 mt-0.5">
               {isRtl
-                ? `${posts.length} منشور جاهز للجدولة`
-                : `${posts.length} post${posts.length === 1 ? "" : "s"} ready to schedule`}
+                ? `${posts.length} صورة · ${units.length} ${units.length === 1 ? "موضوع" : "مواضيع"} جاهزة للجدولة`
+                : `${posts.length} image${posts.length === 1 ? "" : "s"} · ${units.length} topic${units.length === 1 ? "" : "s"} ready`}
             </p>
           </div>
           {/* Backend status pill — green when reachable, amber otherwise.
@@ -503,6 +524,19 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                   : "✨ Auto: each image is scheduled by its size — tall (9:16) as a story, the rest as feed. Stories are Instagram & Facebook only."}
               </p>
             </div>
+
+            {/* Group same topic together (post + its story on the SAME day) */}
+            <label className="flex items-start gap-2 bg-fuchsia-900/15 border border-fuchsia-500/30 rounded-lg p-2.5 cursor-pointer">
+              <input type="checkbox" checked={groupTopics} onChange={(e) => setGroupTopics(e.target.checked)} className="mt-0.5" />
+              <span className="text-[11px] text-slate-100 leading-relaxed">
+                {isRtl ? "اجمع صور نفس الموضوع في يوم واحد" : "Group same-topic images on the same day"}
+                <span className="block text-[10px] text-slate-400">
+                  {isRtl
+                    ? "البوست والستوري لنفس الفكرة (نفس الهوك/الكابشن) يُنشران بنفس اليوم والوقت — فموضوع بوست اليوم = موضوع ستوري اليوم."
+                    : "A topic's feed post and its story go out together — today's post matches today's story."}
+                </span>
+              </span>
+            </label>
 
             {/* Mode tabs */}
             <div className="grid grid-cols-3 gap-1 bg-slate-800/60 rounded-lg p-1">
@@ -675,8 +709,8 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                 </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
                   {isRtl
-                    ? `💡 ${perDay} ${perDay == 1 ? "بوست" : "بوست"} كل يوم في الأوقات أعلاه، بدءاً من ${startISO}، حتى تنتهي الـ ${posts.length} منشور.`
-                    : `💡 ${perDay} post(s) per day at the times above, starting ${startISO}, until all ${posts.length} are scheduled.`}
+                    ? `💡 ${perDay} موضوع كل يوم في الأوقات أعلاه، بدءاً من ${startISO}، حتى تنتهي الـ ${units.length} موضوع.`
+                    : `💡 ${perDay} topic(s) per day at the times above, starting ${startISO}, until all ${units.length} are scheduled.`}
                 </p>
               </div>
             )}
@@ -688,13 +722,11 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                   {isRtl ? "اختر تاريخاً ووقتاً لكل منشور:" : "Pick a date and time for each post:"}
                 </p>
                 <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                  {orderedPosts.map((p, i) => {
+                  {orderedUnits.map((u, i) => {
                     const slot = manualSlots[i] || { date: todayISO(), time: "19:00" };
-                    const cover = p.items?.[0];
+                    const cover = unitCover(u);
                     return (
-                      <div key={p.post_id} className="bg-slate-800/60 rounded-lg p-2 flex items-center gap-2">
-                        {/* Reorder controls — change which post lands in
-                            which slot before scheduling. */}
+                      <div key={u.key} className="bg-slate-800/60 rounded-lg p-2 flex items-center gap-2">
                         <div className="flex flex-col gap-0.5 flex-shrink-0">
                           <button
                             onClick={() => moveItem(i, i - 1)}
@@ -704,17 +736,21 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           >▲</button>
                           <button
                             onClick={() => moveItem(i, i + 1)}
-                            disabled={i === orderedPosts.length - 1}
+                            disabled={i === orderedUnits.length - 1}
                             className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] leading-none disabled:opacity-30 flex items-center justify-center"
                             title={isRtl ? "أسفل" : "Down"}
                           >▼</button>
                         </div>
-                        {cover && (
-                          <img src={cover.url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                        )}
+                        {/* Show every image in this topic group. */}
+                        <div className="flex -space-s-2 flex-shrink-0">
+                          {u.posts.slice(0, 3).map((pp, k) => (
+                            <img key={k} src={pp.items?.[0]?.url} alt="" className="w-9 h-9 rounded object-cover border border-slate-900" />
+                          ))}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] text-white truncate font-semibold">
-                            {p.caption_title || cover?.name || `#${i + 1}`}
+                            {unitTitle(u) || `#${i + 1}`}
+                            {u.posts.length > 1 && <span className="text-[9px] text-slate-400 font-normal"> ({u.posts.length} {isRtl ? "صور" : "imgs"})</span>}
                           </p>
                           <div className="flex gap-1 mt-1">
                             <input
@@ -753,83 +789,53 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </div>
             ) : (
               <div className="space-y-1.5">
-                {orderedPosts.map((p, i) => {
+                {orderedUnits.map((u, i) => {
                   const slot = slots[i];
-                  const cover = p.items?.[0];
                   if (!slot) return null;
                   const isPast = pastFlags[i];
                   return (
                     <div
-                      key={p.post_id}
-                      className={`rounded-lg p-2 flex items-center gap-2 border ${
-                        isPast
-                          ? "bg-red-900/20 border-red-500/40"
-                          : "bg-slate-800/60 border-transparent"
+                      key={u.key}
+                      className={`rounded-lg p-2 border ${
+                        isPast ? "bg-red-900/20 border-red-500/40" : "bg-slate-800/60 border-slate-700/40"
                       }`}
                     >
-                      {/* Order index + reorder arrows — drag-free way to
-                          change which post takes which date/time slot. */}
-                      <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                        <button
-                          onClick={() => moveItem(i, i - 1)}
-                          disabled={i === 0}
-                          className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center"
-                          title={isRtl ? "أعلى" : "Up"}
-                        >▲</button>
-                        <span className="text-[10px] text-slate-500 font-bold">{i + 1}</span>
-                        <button
-                          onClick={() => moveItem(i, i + 1)}
-                          disabled={i === orderedPosts.length - 1}
-                          className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center"
-                          title={isRtl ? "أسفل" : "Down"}
-                        >▼</button>
-                      </div>
-                      {cover && (
-                        <img src={cover.url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-white truncate font-semibold">
-                          {p.caption_title || cover?.name || `#${i + 1}`}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className={`text-[10px] font-semibold ${
-                            isPast ? "text-red-300 line-through" : "text-indigo-300"
-                          }`}>
-                            📅 {formatDateLabel(slot.date, isRtl)}
-                          </span>
-                          <span className={`text-[10px] font-semibold ${
-                            isPast ? "text-red-300 line-through" : "text-emerald-300"
-                          }`} dir="ltr">
-                            🕐 {slot.time}
-                          </span>
-                          {isPast && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/30 text-red-200 font-bold">
-                              {isRtl ? "⚠️ تاريخ ماضي" : "⚠️ Past"}
-                            </span>
-                          )}
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                          <button onClick={() => moveItem(i, i - 1)} disabled={i === 0}
+                            className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center" title={isRtl ? "أعلى" : "Up"}>▲</button>
+                          <span className="text-[10px] text-slate-500 font-bold">{i + 1}</span>
+                          <button onClick={() => moveItem(i, i + 1)} disabled={i === orderedUnits.length - 1}
+                            className="w-4 h-4 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] leading-none disabled:opacity-30 flex items-center justify-center" title={isRtl ? "أسفل" : "Down"}>▼</button>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-white truncate font-semibold">{unitTitle(u) || `#${i + 1}`}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className={`text-[10px] font-semibold ${isPast ? "text-red-300 line-through" : "text-indigo-300"}`}>📅 {formatDateLabel(slot.date, isRtl)}</span>
+                            <span className={`text-[10px] font-semibold ${isPast ? "text-red-300 line-through" : "text-emerald-300"}`} dir="ltr">🕐 {slot.time}</span>
+                            {isPast && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/30 text-red-200 font-bold">{isRtl ? "⚠️ ماضي" : "⚠️ Past"}</span>}
+                          </div>
                         </div>
                       </div>
-                      {/* Type pill — shows where THIS image lands (story vs feed). */}
-                      {(() => {
-                        const t = typeForPost(p);
-                        const isStory = typeMode === "both" ? null : t === "story";
-                        const label = typeMode === "both"
-                          ? (isRtl ? "بوست+ستوري" : "Feed+Story")
-                          : isStory ? (isRtl ? "ستوري" : "Story") : (isRtl ? "بوست" : "Feed");
-                        return (
-                          <span className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200" : "bg-indigo-600/30 text-indigo-200"}`}>
-                            {typeMode === "both" ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}
-                          </span>
-                        );
-                      })()}
-                      {p.platform && (
-                        <span
-                          className="text-[10px] inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-700/60 text-slate-200 flex-shrink-0"
-                          title={platformLabel(p.platform, isRtl)}
-                        >
-                          {platformEmoji(p.platform)}
-                        </span>
-                      )}
+                      {/* Each image in this topic — same day, with its own type. */}
+                      <div className="mt-1.5 ms-6 space-y-1">
+                        {u.posts.map((p, k) => {
+                          const cover = p.items?.[0];
+                          const t = typeForPost(p);
+                          const isStory = typeMode === "both" ? null : t === "story";
+                          const label = typeMode === "both" ? (isRtl ? "بوست+ستوري" : "Feed+Story")
+                            : isStory ? (isRtl ? "ستوري" : "Story") : (isRtl ? "بوست" : "Feed");
+                          return (
+                            <div key={k} className="flex items-center gap-2">
+                              {cover && <img src={cover.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />}
+                              <span className="text-[10px] text-slate-300 truncate flex-1">{cover?.name || ""}</span>
+                              <span className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200" : "bg-indigo-600/30 text-indigo-200"}`}>
+                                {typeMode === "both" ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
@@ -892,7 +898,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               ? <CheckCircle2 className="w-4 h-4" />
               : <Calendar className="w-4 h-4" />}
             {isRtl
-              ? (saving ? "جارٍ الحفظ…" : success > 0 ? "تم!" : `جدولة ${posts.length} منشور`)
+              ? (saving ? "جارٍ الحفظ…" : success > 0 ? "تم!" : `جدولة ${posts.length} صورة`)
               : (saving ? "Saving…" : success > 0 ? "Done!" : `Schedule ${posts.length}`)}
           </button>
         </div>
