@@ -15,6 +15,18 @@ function parseJson(val, fallback) {
   return val;
 }
 
+// Multi-platform tags per media id, kept in localStorage because the backend
+// `media` table only has a single `platform` column (sending an array there
+// fails the SQL update). This side-map overlays platforms onto BOTH backend and
+// local rows so a design can target several platforms.
+const PLATFORMS_MAP_KEY = "media_platforms_v1";
+function readPlatformsMap() {
+  try { return JSON.parse(localStorage.getItem(PLATFORMS_MAP_KEY) || "{}") || {}; } catch { return {}; }
+}
+function writePlatformsForMedia(id, platforms) {
+  try { const m = readPlatformsMap(); m[id] = platforms; localStorage.setItem(PLATFORMS_MAP_KEY, JSON.stringify(m)); } catch { /* quota */ }
+}
+
 // SQLite's `datetime('now')` returns "YYYY-MM-DD HH:MM:SS" with no
 // timezone marker; Chrome parses that as local time and Safari returns
 // "Invalid Date". Normalize to ISO-8601 UTC ("…T…Z") so `new Date(...)`
@@ -348,8 +360,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   });
 
   const updateMediaMutation = useMutation({
-    mutationFn: ({ id, name, platform, platforms }) =>
-      localApi.entities.Media.update(id, { name, platform, platforms }),
+    // Only existing columns go to the backend (the media table has no
+    // `platforms` column). Multi-platform tags live in the side-map.
+    mutationFn: ({ id, name, platform }) =>
+      localApi.entities.Media.update(id, { name, platform }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["media"] });
       setEditingMedia(null);
@@ -391,28 +405,42 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
   const handleEditMedia = (media) => {
     setEditingMedia(media);
-    // Seed from the existing platforms array (multi) or the legacy single field.
-    const initial = (Array.isArray(media.platforms) && media.platforms.length)
-      ? media.platforms
-      : (media.platform ? [media.platform] : []);
+    // Seed from the side-map first, then the platforms array, then the legacy
+    // single field.
+    const map = readPlatformsMap();
+    const initial = (Array.isArray(map[media.id]) && map[media.id].length)
+      ? map[media.id]
+      : (Array.isArray(media.platforms) && media.platforms.length)
+        ? media.platforms
+        : (media.platform ? [media.platform] : []);
     setEditingData({ name: media.name, platforms: initial });
   };
 
   const handleSaveEdit = async () => {
-    if (!editingData.name.trim()) return;
+    if (!editingData.name.trim() || !editingMedia) return;
+    const id = editingMedia.id;
     const platforms = editingData.platforms || [];
-    const payload = {
-      name: editingData.name.trim(),
-      platforms,
-      platform: platforms[0] || "", // back-compat single field
-    };
-    // Local-only records never went to the backend — update them in place.
-    if (isLocalId(editingMedia.id)) {
-      updateLocalMedia(editingMedia.id, payload);
+    const name = editingData.name.trim();
+    const platform = platforms[0] || ""; // back-compat single field
+
+    // Persist the multi-platform tags locally (works for backend + local rows).
+    writePlatformsForMedia(id, platforms);
+
+    if (isLocalId(id)) {
+      updateLocalMedia(id, { name, platform, platforms });
       setLocalMediaVersion((v) => v + 1);
       setEditingMedia(null);
-    } else {
-      await updateMediaMutation.mutateAsync({ id: editingMedia.id, ...payload });
+      return;
+    }
+    // Backend row: update the existing columns. ALWAYS close, even if the
+    // backend update fails — the platforms are already saved in the side-map.
+    try {
+      await updateMediaMutation.mutateAsync({ id, name, platform });
+    } catch {
+      qc.invalidateQueries({ queryKey: ["media"] });
+    } finally {
+      setLocalMediaVersion((v) => v + 1);
+      setEditingMedia(null);
     }
   };
 
@@ -679,12 +707,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           // carry their captions inline, so the captions-map lookup
           // only runs on backend rows.
           const localRows = listLocalMedia();
+          const platMap = readPlatformsMap();
+          const withPlatforms = (m) => { const pf = platMap[m.id]; return (Array.isArray(pf) && pf.length) ? { ...m, platforms: pf } : m; };
           const merged = [
             ...mediaList.map((m) => {
               const cap = captions[m.id];
-              return cap ? { ...m, ...cap } : m;
+              return withPlatforms(cap ? { ...m, ...cap } : m);
             }),
-            ...localRows,
+            ...localRows.map(withPlatforms),
           ];
           const enriched = merged;
           if (merged.length === 0) {
