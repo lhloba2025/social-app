@@ -27,6 +27,18 @@ function writePlatformsForMedia(id, platforms) {
   try { const m = readPlatformsMap(); m[id] = platforms; localStorage.setItem(PLATFORMS_MAP_KEY, JSON.stringify(m)); } catch { /* quota */ }
 }
 
+// The TITLE (caption_title) is the topic identifier used to group a topic's
+// images for scheduling. For backend rows we overlay it from the captions map
+// (the media table predates these columns); local rows store it inline.
+const CAPTIONS_MAP_KEY = "bulk_media_captions_v1";
+function writeCaptionTitleForMedia(id, title) {
+  try {
+    const m = JSON.parse(localStorage.getItem(CAPTIONS_MAP_KEY) || "{}");
+    m[id] = { ...(m[id] || {}), caption_title: title };
+    localStorage.setItem(CAPTIONS_MAP_KEY, JSON.stringify(m));
+  } catch { /* quota */ }
+}
+
 // SQLite's `datetime('now')` returns "YYYY-MM-DD HH:MM:SS" with no
 // timezone marker; Chrome parses that as local time and Safari returns
 // "Invalid Date". Normalize to ISO-8601 UTC ("…T…Z") so `new Date(...)`
@@ -413,27 +425,30 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
       : (Array.isArray(media.platforms) && media.platforms.length)
         ? media.platforms
         : (media.platform ? [media.platform] : []);
-    setEditingData({ name: media.name, platforms: initial });
+    setEditingData({ name: media.name, title: media.caption_title || "", platforms: initial });
   };
 
   const handleSaveEdit = async () => {
-    if (!editingData.name.trim() || !editingMedia) return;
+    if (!editingMedia) return;
+    const title = (editingData.title || "").trim();
+    if (!title) return; // title is the mandatory topic identifier
     const id = editingMedia.id;
     const platforms = editingData.platforms || [];
-    const name = editingData.name.trim();
+    const name = (editingData.name || title).trim();
     const platform = platforms[0] || ""; // back-compat single field
 
-    // Persist the multi-platform tags locally (works for backend + local rows).
+    // Persist multi-platform tags + the topic title (group key) locally.
     writePlatformsForMedia(id, platforms);
+    writeCaptionTitleForMedia(id, title);
 
     if (isLocalId(id)) {
-      updateLocalMedia(id, { name, platform, platforms });
+      updateLocalMedia(id, { name, platform, platforms, caption_title: title });
       setLocalMediaVersion((v) => v + 1);
       setEditingMedia(null);
       return;
     }
     // Backend row: update the existing columns. ALWAYS close, even if the
-    // backend update fails — the platforms are already saved in the side-map.
+    // backend update fails — the platforms/title are already saved locally.
     try {
       await updateMediaMutation.mutateAsync({ id, name, platform });
     } catch {
@@ -1738,13 +1753,30 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             </h3>
 
             <div className="space-y-4">
+              {/* Title = the topic identifier. Images that share a title are
+                  treated as the SAME topic and scheduled together. Required. */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  {isRtl ? "اسم الملف" : "File Name"}
+                <label className="block text-sm font-semibold text-slate-300 mb-1">
+                  {isRtl ? "العنوان (مُعرّف الموضوع) *" : "Title (topic id) *"}
                 </label>
                 <input
                   type="text"
-                  value={editingData.name}
+                  value={editingData.title || ""}
+                  onChange={(e) => setEditingData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder={isRtl ? "مثال: إجازة الصيف" : "e.g. Summer sale"}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {isRtl ? "الصور بنفس العنوان = موضوع واحد، تتجدول مع بعض (البوست والستوري سوا)." : "Same title = one topic, scheduled together."}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  {isRtl ? "اسم الملف (اختياري)" : "File Name (optional)"}
+                </label>
+                <input
+                  type="text"
+                  value={editingData.name || ""}
                   onChange={(e) =>
                     setEditingData((prev) => ({
                       ...prev,
@@ -1791,7 +1823,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={updateMediaMutation.isPending}
+                disabled={updateMediaMutation.isPending || !(editingData.title || "").trim()}
+                title={!(editingData.title || "").trim() ? (isRtl ? "اكتب عنواناً أولاً" : "Enter a title first") : ""}
                 className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {updateMediaMutation.isPending && (

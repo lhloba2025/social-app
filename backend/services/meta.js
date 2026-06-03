@@ -24,8 +24,14 @@ export async function publishToInstagram(account, post, opts = {}) {
   const { igUserId, accessToken } = account;
   const { caption, mediaUrl } = post;
 
-  if (!mediaUrl) throw new Error("انستقرام يحتاج رابط صورة أو فيديو");
   if (!igUserId) throw new Error("لم يتم ربط حساب انستقرام");
+
+  // ألبوم (Carousel): عدة صور في منشور واحد على الفيد.
+  if (!opts.story && Array.isArray(opts.mediaUrls) && opts.mediaUrls.length > 1) {
+    return await publishInstagramCarousel({ igUserId, accessToken }, caption, opts.mediaUrls);
+  }
+
+  if (!mediaUrl) throw new Error("انستقرام يحتاج رابط صورة أو فيديو");
 
   // الخطوة 1: إنشاء حاوية الميديا. الستوري لا يأخذ caption ويحتاج media_type=STORIES.
   const containerParams = { image_url: mediaUrl, access_token: accessToken };
@@ -92,6 +98,52 @@ function metaErr(e) {
   return e?.response?.data?.error?.message || e?.message || "خطأ غير معروف";
 }
 
+// ينشر حاوية جاهزة مع إعادة محاولة للأخطاء العابرة.
+async function publishCreation(igUserId, creationId, accessToken) {
+  let lastErr;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await axios.post(`${GRAPH}/${igUserId}/media_publish`, null, {
+        params: { creation_id: creationId, access_token: accessToken },
+      });
+      return { success: true, postId: r.data.id };
+    } catch (e) {
+      lastErr = e;
+      const msg = metaErr(e);
+      if (/not available|not ready|9007|media id|try again/i.test(msg)) { await sleep(4000); continue; }
+      throw new Error("فشل نشر انستقرام: " + msg);
+    }
+  }
+  throw new Error("فشل نشر انستقرام بعد عدة محاولات: " + metaErr(lastErr));
+}
+
+// ينشر ألبوم صور (Carousel) على انستقرام: حاوية لكل صورة ثم حاوية ألبوم تجمعها.
+async function publishInstagramCarousel(account, caption, urls) {
+  const { igUserId, accessToken } = account;
+  const childIds = [];
+  for (const url of urls.slice(0, 10)) { // انستقرام يسمح حتى 10 صور
+    try {
+      const r = await axios.post(`${GRAPH}/${igUserId}/media`, null, {
+        params: { image_url: url, is_carousel_item: true, access_token: accessToken },
+      });
+      if (r.data.id) childIds.push(r.data.id);
+    } catch (e) { throw new Error("فشل تجهيز إحدى صور الألبوم: " + metaErr(e)); }
+  }
+  if (childIds.length < 2) throw new Error("الألبوم يحتاج صورتين على الأقل صالحتين");
+  for (const id of childIds) await waitForContainerReady(id, accessToken);
+
+  let carouselRes;
+  try {
+    carouselRes = await axios.post(`${GRAPH}/${igUserId}/media`, null, {
+      params: { media_type: "CAROUSEL", caption: caption || "", children: childIds.join(","), access_token: accessToken },
+    });
+  } catch (e) { throw new Error("فشل تجهيز الألبوم: " + metaErr(e)); }
+  const creationId = carouselRes.data.id;
+  if (!creationId) throw new Error("فشل إنشاء حاوية الألبوم");
+  await waitForContainerReady(creationId, accessToken);
+  return await publishCreation(igUserId, creationId, accessToken);
+}
+
 // ─── فيسبوك ───────────────────────────────────────────────────────────────────
 
 /**
@@ -117,6 +169,26 @@ export async function publishToFacebook(account, post, opts = {}) {
       params: { photo_id: photoId, access_token: pageAccessToken },
     });
     return { success: true, postId: st.data.post_id || st.data.id || photoId };
+  }
+
+  // ألبوم فيسبوك: ارفع كل صورة كغير منشورة ثم انشرها مرفقة في منشور واحد.
+  if (Array.isArray(opts.mediaUrls) && opts.mediaUrls.length > 1) {
+    const attached = [];
+    for (const url of opts.mediaUrls.slice(0, 10)) {
+      const up = await axios.post(`${GRAPH}/${pageId}/photos`, null, {
+        params: { url, published: false, access_token: pageAccessToken },
+      });
+      if (up.data.id) attached.push({ media_fbid: up.data.id });
+    }
+    if (attached.length < 2) throw new Error("ألبوم فيسبوك يحتاج صورتين على الأقل");
+    const fb = await axios.post(`${GRAPH}/${pageId}/feed`, null, {
+      params: {
+        message: caption || "",
+        attached_media: JSON.stringify(attached),
+        access_token: pageAccessToken,
+      },
+    });
+    return { success: true, postId: fb.data.id };
   }
 
   let result;

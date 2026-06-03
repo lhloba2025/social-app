@@ -78,11 +78,14 @@ async function publishPost(db, post) {
         continue;
       }
 
+      const mediaItems = parseJSON(post.media_items, []);
       const postData = {
         caption:  post.caption || "",
         mediaUrl: post.media_url || post.media_thumbnail || null,
       };
       const isStory = post.post_type === "story";
+      // Carousel only when there are 2+ images AND it's a feed post.
+      const carousel = Array.isArray(mediaItems) && mediaItems.length > 1 && !isStory ? mediaItems : null;
 
       let result;
 
@@ -90,13 +93,13 @@ async function publishPost(db, post) {
         result = await publishToInstagram(
           { igUserId: account.ig_user_id, accessToken: account.access_token },
           postData,
-          { story: isStory }
+          { story: isStory, mediaUrls: carousel }
         );
       } else if (platform === "facebook") {
         result = await publishToFacebook(
           { pageId: account.page_id, pageAccessToken: account.access_token },
           postData,
-          { story: isStory }
+          { story: isStory, mediaUrls: carousel }
         );
       } else if (platform === "tiktok") {
         result = await publishToTikTok(

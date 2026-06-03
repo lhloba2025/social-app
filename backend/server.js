@@ -195,6 +195,8 @@ const alterCols = [
   `ALTER TABLE media ADD COLUMN post_id       TEXT`,
   `ALTER TABLE media ADD COLUMN position      INTEGER DEFAULT 0`,
   `ALTER TABLE scheduled_posts ADD COLUMN post_type TEXT DEFAULT 'feed'`,
+  // Carousel/album: JSON array of image URLs when a post has more than one image.
+  `ALTER TABLE scheduled_posts ADD COLUMN media_items TEXT`,
   // Multi-tenant: every row belongs to a salon (tenant). "default" = standalone.
   `ALTER TABLE designs ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
   `ALTER TABLE media ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
@@ -363,6 +365,7 @@ postsRouter.post('/', (req, res) => {
     media_url:      req.body.media?.url || req.body.media_url || '',
     media_thumbnail:req.body.media?.thumbnail || req.body.media_thumbnail || '',
     media_type:     req.body.media?.type || req.body.media_type || 'image',
+    media_items:    JSON.stringify(req.body.media?.items || req.body.media_items || []),
     post_type:      req.body.postType || req.body.post_type || 'feed',
     design_id:      req.body.designId || req.body.design_id || '',
     publish_results:'{}',

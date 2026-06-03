@@ -99,53 +99,96 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const togglePub = (id) =>
     setPubPlatforms((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
-  // Post type. DEFAULT = "auto": each image's type is detected from its aspect
-  // ratio (tall 9:16 → story, else feed) so a mixed batch schedules each image
-  // to its correct slot WITHOUT manual matching. The user can still force a
-  // single type (feed / story) or both.
-  const [typeMode, setTypeMode] = useState("auto"); // "auto" | "feed" | "story" | "both"
-
-  // Detected type per post (post_id → "story" | "feed"), measured from the cover
-  // image's real dimensions when the modal opens.
-  const [typeByPost, setTypeByPost] = useState({});
+  // Real aspect ratio per image (post_id → aspect id), measured from the cover
+  // image when the modal opens. Drives which platform each image is sent to.
+  const ASPECT_RATIO = { "1:1": 1, "4:5": 0.8, "9:16": 0.5625, "16:9": 1.7778, "3:4": 0.75, "4:3": 1.3333 };
+  const nearestAspectId = (wOverH) => {
+    let best = "1:1", diff = Infinity;
+    for (const id of Object.keys(ASPECT_RATIO)) { const d = Math.abs(ASPECT_RATIO[id] - wOverH); if (d < diff) { diff = d; best = id; } }
+    return best;
+  };
+  const [aspectByPost, setAspectByPost] = useState({});
   React.useEffect(() => {
-    if (!isOpen || !posts.length) { setTypeByPost({}); return; }
+    if (!isOpen || !posts.length) { setAspectByPost({}); return; }
     let cancelled = false;
     const next = {};
     let pending = posts.length;
-    const done = () => { if (--pending === 0 && !cancelled) setTypeByPost({ ...next }); };
+    const done = () => { if (--pending === 0 && !cancelled) setAspectByPost({ ...next }); };
     posts.forEach((p) => {
       const url = p.items?.[0]?.url;
-      if (!url) { next[p.post_id] = "feed"; done(); return; }
+      if (!url) { next[p.post_id] = "4:5"; done(); return; }
       const img = new Image();
-      img.onload = () => {
-        const r = (img.naturalHeight || 1) / (img.naturalWidth || 1);
-        next[p.post_id] = r >= 1.5 ? "story" : "feed"; // 9:16≈1.78 → story; 4:5≈1.25 → feed
-        done();
-      };
-      img.onerror = () => { next[p.post_id] = "feed"; done(); };
+      img.onload = () => { next[p.post_id] = nearestAspectId((img.naturalWidth || 1) / (img.naturalHeight || 1)); done(); };
+      img.onerror = () => { next[p.post_id] = "4:5"; done(); };
       img.src = url;
     });
     return () => { cancelled = true; };
   }, [isOpen, posts]);
 
-  // Per-image type OVERRIDE (post_id → "story"|"feed"). Lets the user force a
-  // specific image to be a story (or feed) regardless of its size — e.g. publish
-  // a post-sized image as a story with the size they already have.
+  // Per-image OVERRIDE (post_id → "story"|"feed") — force a specific image to be
+  // a story (vertical) or feed regardless of its size.
   const [typeOverride, setTypeOverride] = useState({});
   React.useEffect(() => { if (isOpen) setTypeOverride({}); }, [isOpen, posts]);
   const toggleTypeFor = (postId, current) =>
     setTypeOverride((prev) => ({ ...prev, [postId]: current === "story" ? "feed" : "story" }));
 
-  // Stories are only supported on Instagram & Facebook.
-  const STORY_CAPABLE = ["instagram", "facebook"];
-  // The type a given post will be scheduled as (override → mode → auto).
-  const typeForPost = (p) => (
-    typeOverride[p.post_id] ||
-    (typeMode === "auto" ? (typeByPost[p.post_id] || "feed")
-      : typeMode === "both" ? "feed"
-      : typeMode)
-  );
+  // Classify an image: "vertical" (9:16-like → stories/TikTok/Snap),
+  // "wide" (16:9-like) or "feed" (4:5/1:1/3:4). Override wins.
+  const kindForPost = (p) => {
+    const ov = typeOverride[p.post_id];
+    if (ov === "story") return "vertical";
+    if (ov === "feed") return "feed";
+    const a = aspectByPost[p.post_id] || "4:5";
+    if (a === "9:16") return "vertical";
+    if (a === "16:9" || a === "4:3") return "wide";
+    return "feed";
+  };
+
+  // What each platform wants. IG/FB have TWO slots (feed + story); others one.
+  const PLATFORM_DEF = {
+    instagram: ["feed", "story"], facebook: ["feed", "story"],
+    tiktok: ["story"], snapchat: ["story"],
+    twitter: ["feed"], linkedin: ["feed"], youtube: ["feed"],
+  };
+  const idealAspectFor = (platform, slot) =>
+    slot === "story" ? "9:16" : (platform === "twitter" || platform === "youtube") ? "16:9" : "4:5";
+  const pickClosest = (postsArr, idealAspect) => {
+    const target = ASPECT_RATIO[idealAspect] || 0.8;
+    let best = null, diff = Infinity;
+    for (const p of postsArr) {
+      const a = ASPECT_RATIO[aspectByPost[p.post_id] || "4:5"];
+      const d = Math.abs(a - target);
+      if (d < diff) { diff = d; best = p; }
+    }
+    return best;
+  };
+
+  // Distribute a topic's images across the SELECTED platforms by size. Returns
+  // entries: { platform, type, posts[], substituted, ideal, got }.
+  const distributionForUnit = (u) => {
+    const entries = [];
+    for (const platform of pubPlatforms) {
+      const slots = PLATFORM_DEF[platform];
+      if (!slots) continue;
+      const platEntries = [];
+      for (const slot of slots) {
+        const want = slot === "story" ? ["vertical"] : ["feed", "wide"];
+        const imgs = u.posts.filter((p) => want.includes(kindForPost(p)));
+        if (!imgs.length) continue;
+        const carousel = (platform === "instagram" || platform === "facebook") && slot === "feed" && imgs.length > 1;
+        platEntries.push({ platform, type: slot, posts: carousel ? imgs : [imgs[0]], substituted: false });
+      }
+      if (platEntries.length === 0) {
+        // Nothing fit any slot → substitute the closest image into the primary slot.
+        const primary = slots[0];
+        const ideal = idealAspectFor(platform, primary);
+        const closest = pickClosest(u.posts, ideal);
+        if (closest) platEntries.push({ platform, type: primary, posts: [closest], substituted: true, ideal, got: aspectByPost[closest.post_id] });
+      }
+      entries.push(...platEntries);
+    }
+    return entries;
+  };
 
   // ── Group same-topic images into ONE scheduling unit ─────────────────
   // A topic's feed post and its story are separate library rows but share the
@@ -295,6 +338,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
 
   const canConfirm = useMemo(() => {
     if (!units.length) return false;
+    if (!pubPlatforms.length) return false;
     if (mode === "weekly" && weekdays.length === 0) return false;
     if (slots.length !== units.length) return false;
     // Block any past slot — we don't want to write a "scheduled" post
@@ -302,72 +346,61 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     // (bad) or rot in the queue forever (also bad).
     if (pastCount > 0) return false;
     return true;
-  }, [units.length, mode, weekdays.length, slots.length, pastCount]);
+  }, [units.length, pubPlatforms.length, mode, weekdays.length, slots.length, pastCount]);
 
-  const handleConfirm = async () => {
-    if (!canConfirm) return;
-    setSaving(true);
-    setResultDetail(null);
-
-    // One scheduled-post entry per source post. We use the post's cover
-    // image as the media thumbnail, the caption (title + text) as the
-    // post body, and the platform from the source post.
-    //
-    // Important: `media.url` is what the BACKEND scheduler hands to
-    // Meta/TikTok APIs as the public image URL — those APIs need a URL
-    // they can fetch from the public internet (Cloudinary URLs work,
-    // localhost blob URLs DON'T). So we use `cover.url` for both
-    // `url` (publish target) and `thumbnail` (UI preview).
-    // One scheduling UNIT (topic group) shares ONE date/time slot — so a topic's
-    // feed post and its story go out on the SAME day. Within a unit we emit one
-    // entry per (image × its type), all on that unit's slot.
+  // Build the schedule payload by distributing each topic's images to the
+  // selected platforms by size. Each entry → one scheduled post (carousel when
+  // a slot has 2+ same-size images on IG/FB). Also returns the substitutions
+  // (a platform got a non-ideal size) so we can confirm them first.
+  const buildPayload = () => {
+    const subs = [];
     const payload = orderedUnits.flatMap((u, i) => {
       const slot = slots[i];
-      return u.posts.flatMap((p) => {
-        const cover = p.items?.[0];
-        const captionParts = [];
-        if (p.caption_title) captionParts.push(p.caption_title);
-        if (p.caption_text)  captionParts.push(p.caption_text);
-        const caption = captionParts.join("\n\n");
-        const basePlatforms = pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []);
-        const base = {
+      const dist = distributionForUnit(u);
+      return dist.map((e) => {
+        const lead = e.posts[0];
+        const cover = lead.items?.[0];
+        const caption = [lead.caption_title, lead.caption_text].filter(Boolean).join("\n\n");
+        const urls = e.posts.map((p) => p.items?.[0]?.url).filter(Boolean);
+        if (e.substituted) subs.push({ title: unitTitle(u), platform: e.platform, ideal: e.ideal, got: e.got, type: e.type });
+        return {
           status: "scheduled",
+          platforms: [e.platform],
+          postType: e.type,
           caption,
           scheduleDate: slot.date,
           scheduleTime: slot.time,
-          scheduledAt:  `${slot.date}T${slot.time}`,
+          scheduledAt: `${slot.date}T${slot.time}`,
           media: cover ? {
-            type: cover.type || "image",
-            id: cover.id,
-            name: cover.name,
-            url: cover.url,          // ← what the backend hands to platform APIs
-            thumbnail: cover.url,    // ← UI preview
+            type: cover.type || "image", id: cover.id, name: cover.name,
+            url: cover.url, thumbnail: cover.url,
+            ...(urls.length > 1 ? { items: urls } : {}), // carousel
           } : null,
-          designId: p.post_id,        // backend column is `design_id`
-          sourcePostId: p.post_id,
-          sourcePostItemCount: p.items?.length || 1,
+          designId: lead.post_id,
+          sourcePostId: lead.post_id,
+          sourcePostItemCount: e.posts.length,
         };
-        // Which type(s) this image becomes. A per-image override always wins
-        // (even over "both"); otherwise follow the mode.
-        const types = typeOverride[p.post_id] ? [typeOverride[p.post_id]]
-          : typeMode === "auto" ? [typeForPost(p)]
-          : typeMode === "both" ? ["feed", "story"]
-          : [typeMode];
-        return types.map((pt) => {
-          // Stories only run on IG/FB — filter the platform list for story entries.
-          let platforms = basePlatforms;
-          if (pt === "story") {
-            const s = basePlatforms.filter((x) => STORY_CAPABLE.includes(x));
-            platforms = s.length ? s : basePlatforms;
-          }
-          return { ...base, platforms, postType: pt };
-        });
       });
     });
+    return { payload, subs };
+  };
 
-    // Goes through publishingService: tries backend first, falls back
-    // to localStorage per-post. The envelope tells us which path each
-    // post took so we can show a useful summary.
+  // Pending confirmation when there are size substitutions to acknowledge.
+  const [confirmSubs, setConfirmSubs] = useState(null);
+
+  const handleConfirm = async () => {
+    if (!canConfirm) return;
+    const built = buildPayload();
+    if (!built.payload.length) return;
+    // If a platform got a non-ideal size, ask before proceeding.
+    if (built.subs.length && !confirmSubs) { setConfirmSubs(built); return; }
+    await doSchedule((confirmSubs || built).payload);
+  };
+
+  const doSchedule = async (payload) => {
+    setConfirmSubs(null);
+    setSaving(true);
+    setResultDetail(null);
     const result = await createScheduledPosts(payload);
     setSuccess(result.persisted.length);
     setResultDetail({
@@ -377,8 +410,6 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     });
     setSaving(false);
     if (onSuccess) onSuccess(result.persisted);
-    // Hold the success view a bit longer when there's a mixed result
-    // so the user can read the "saved locally, backend down" warning.
     const closeDelay = result.backendCount < result.persisted.length ? 2400 : 1200;
     setTimeout(() => {
       setSuccess(0);
@@ -410,7 +441,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div
-        className="bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-700"
+        className="relative bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -502,41 +533,10 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                   );
                 })}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                {isRtl ? "اختر منصة أو أكثر — نفس المحتوى يُنشر على كل اللي تختاره." : "Pick one or more — the same content posts to all selected."}
-              </p>
-            </div>
-
-            {/* Post type: AUTO by size (default) or force one/both */}
-            <div>
-              <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
-                {isRtl ? "نوع المنشور:" : "Post type:"}
-              </label>
-              <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded-lg p-1">
-                {[
-                  { id: "auto",  ar: "✨ تلقائي حسب المقاس", en: "✨ Auto by size" },
-                  { id: "feed",  ar: "📷 الكل بوست", en: "📷 All feed" },
-                  { id: "story", ar: "⭕ الكل ستوري", en: "⭕ All story" },
-                  { id: "both",  ar: "📷+⭕ بوست وستوري", en: "📷+⭕ Both" },
-                ].map((t) => {
-                  const active = typeMode === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setTypeMode(t.id)}
-                      className={`py-2 rounded text-[11px] font-bold transition inline-flex items-center justify-center gap-1 ${
-                        active ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
-                      }`}
-                    >
-                      {isRtl ? t.ar : t.en}{active && " ✓"}
-                    </button>
-                  );
-                })}
-              </div>
               <p className="text-[10px] text-emerald-300/90 mt-1 leading-relaxed">
                 {isRtl
-                  ? "✨ «تلقائي»: كل صورة تُجدول حسب مقاسها — الطويلة (9:16) ستوري، والباقي بوست. 💡 وتقدر تبدّل نوع أي صورة يدوياً بالضغط على شارتها (⇄) في المعاينة — حتى لو مقاسها بوست تخليها ستوري. الستوري لانستقرام وفيسبوك فقط."
-                  : "✨ Auto: each image is scheduled by its size. 💡 Click any image's badge (⇄) in the preview to switch it between feed/story — even a post-sized image can be a story. Stories are Instagram & Facebook only."}
+                  ? "اختر المنصات اللي تبي تنشر عليها. النظام يوزّع صور كل موضوع تلقائياً: الطويلة (9:16) ستوري/تيك توك، والعريضة بوست — كل صورة لمنصتها المناسبة. 💡 تقدر تبدّل نوع أي صورة (بوست/ستوري) بالضغط على شارتها (⇄) في المعاينة."
+                  : "Pick the platforms. Each topic's images are auto-distributed by size — tall (9:16) → story/TikTok, wide → feed. 💡 Click an image's badge (⇄) to switch its type."}
               </p>
             </div>
 
@@ -832,29 +832,35 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           </div>
                         </div>
                       </div>
-                      {/* Each image in this topic — same day, with its own type. */}
-                      <div className="mt-1.5 ms-6 space-y-1">
+                      {/* This topic's images — click a badge to flip story/feed (re-routes it). */}
+                      <div className="mt-1.5 ms-6 flex flex-wrap gap-1.5">
                         {u.posts.map((p, k) => {
                           const cover = p.items?.[0];
-                          const t = typeForPost(p);
-                          // In "both" mode (no override) the image is posted as BOTH.
-                          const isBoth = typeMode === "both" && !typeOverride[p.post_id];
-                          const isStory = isBoth ? null : t === "story";
-                          const label = isBoth ? (isRtl ? "بوست+ستوري" : "Feed+Story")
-                            : isStory ? (isRtl ? "ستوري" : "Story") : (isRtl ? "بوست" : "Feed");
+                          const kind = kindForPost(p);
+                          const isStory = kind === "vertical";
                           return (
-                            <div key={k} className="flex items-center gap-2">
-                              {cover && <img src={cover.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />}
-                              <span className="text-[10px] text-slate-300 truncate flex-1">{cover?.name || ""}</span>
-                              <button
-                                type="button"
-                                onClick={() => !isBoth && toggleTypeFor(p.post_id, t)}
-                                disabled={isBoth}
-                                title={isBoth ? "" : (isRtl ? "اضغط لتبديل بوست/ستوري" : "Click to switch feed/story")}
-                                className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 transition ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200 hover:bg-fuchsia-600/50" : "bg-indigo-600/30 text-indigo-200 hover:bg-indigo-600/50"} ${isBoth ? "cursor-default" : "cursor-pointer"}`}
-                              >
-                                {isBoth ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}{!isBoth && " ⇄"}
-                              </button>
+                            <button key={k} type="button"
+                              onClick={() => toggleTypeFor(p.post_id, isStory ? "story" : "feed")}
+                              title={isRtl ? "اضغط لتبديل بوست/ستوري" : "Click to switch feed/story"}
+                              className="inline-flex items-center gap-1 bg-slate-900/60 rounded px-1 py-0.5 hover:bg-slate-700 transition">
+                              {cover && <img src={cover.url} alt="" className="w-6 h-6 rounded object-cover" />}
+                              <span className={`text-[9px] font-bold ${isStory ? "text-fuchsia-300" : "text-indigo-300"}`}>
+                                {isStory ? "⭕" : "📷"} {aspectByPost[p.post_id] || ""} ⇄
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Where each image lands — platform → type (with substitution note). */}
+                      <div className="mt-1.5 ms-6 space-y-0.5">
+                        {distributionForUnit(u).map((e, k) => {
+                          const isStory = e.type === "story";
+                          return (
+                            <div key={k} className="flex items-center gap-1.5 text-[10px]">
+                              <span className="text-slate-200">{platformEmoji(e.platform)} {platformLabel(e.platform, isRtl)}</span>
+                              <span className={isStory ? "text-fuchsia-300" : "text-indigo-300"}>← {isStory ? (isRtl ? "ستوري" : "story") : (isRtl ? "بوست" : "feed")}</span>
+                              {e.posts.length > 1 && <span className="text-amber-300">{isRtl ? `ألبوم ${e.posts.length}` : `album ${e.posts.length}`}</span>}
+                              {e.substituted && <span className="text-amber-300" title={isRtl ? `لا يوجد ${e.ideal}؛ استخدمنا ${e.got}` : ""}>⚠️ {e.got}→{e.ideal}</span>}
                             </div>
                           );
                         })}
@@ -925,6 +931,32 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               : (saving ? "Saving…" : success > 0 ? "Done!" : `Schedule ${posts.length}`)}
           </button>
         </div>
+
+        {/* Substitution confirmation — a platform got a non-ideal size. */}
+        {confirmSubs && (
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmSubs(null)}>
+            <div className="bg-slate-900 rounded-xl border border-amber-500/40 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-slate-800">
+                <p className="font-bold text-amber-300 text-sm">⚠️ {isRtl ? "تنبيه مقاسات" : "Size notice"}</p>
+                <p className="text-[11px] text-slate-400 mt-1">{isRtl ? "بعض المنصات ما لها مقاس مناسب في موضوعها، فاخترنا أقرب مقاس متوفّر:" : "Some platforms had no ideal size; closest was used:"}</p>
+              </div>
+              <div className="p-4 space-y-1.5">
+                {confirmSubs.subs.map((s, k) => (
+                  <div key={k} className="text-[12px] text-slate-200 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold">{s.title || "—"}</span>
+                    <span className="text-slate-400">←</span>
+                    <span>{platformEmoji(s.platform)} {platformLabel(s.platform, isRtl)}</span>
+                    <span className="text-amber-300">{isRtl ? `استخدمنا ${s.got} بدل ${s.ideal}` : `used ${s.got} instead of ${s.ideal}`}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-slate-800 flex gap-2">
+                <button onClick={() => setConfirmSubs(null)} className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold">{isRtl ? "رجوع" : "Back"}</button>
+                <button onClick={() => doSchedule(confirmSubs.payload)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">{isRtl ? "نعم، أكمل الجدولة" : "Yes, continue"}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
