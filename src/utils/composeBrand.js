@@ -206,13 +206,21 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout = {}) {
 }
 
 // Main entry. Returns a PNG data URL of the composed image.
-export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, contacts, layout = {} }) {
+// When targetW/targetH are given (the REAL platform pixel size), the canvas is
+// forced to that exact size and the AI background is drawn "cover" (scaled to
+// fill, center-cropped). This guarantees the output truly matches the platform
+// aspect/size so publishing never crops the logo or text.
+export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, contacts, layout = {}, targetW, targetH }) {
   const bg = await loadImg(bgUrl);
-  const W = bg.naturalWidth || bg.width, H = bg.naturalHeight || bg.height;
+  const bw = bg.naturalWidth || bg.width, bh = bg.naturalHeight || bg.height;
+  const W = targetW || bw, H = targetH || bh;
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  ctx.drawImage(bg, 0, 0, W, H);
+  // Cover-fit: scale the background to fully cover the exact target, centered.
+  const scale = Math.max(W / bw, H / bh);
+  const dw = bw * scale, dh = bh * scale;
+  ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
   const font = kit.font || "Tajawal";
   try {

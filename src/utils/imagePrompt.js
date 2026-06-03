@@ -29,6 +29,21 @@ export const FONTS = [
 ];
 export const fontStyle = (v) => (FONTS.find((f) => f.v === v)?.s) || "a modern geometric Arabic sans-serif";
 
+// REAL platform pixel sizes for each aspect. The AI returns only an APPROXIMATE
+// aspect (e.g. 9:16 → 768×1344, which is actually 0.571, not 0.5625), so when a
+// post is published the platform crops it and brand elements at the edges get
+// cut. We therefore composite the final image at these EXACT sizes so the
+// output truly matches the platform and nothing is cropped.
+export const SIZE_PX = {
+  "1:1":  { w: 1080, h: 1080 }, // Instagram square
+  "4:5":  { w: 1080, h: 1350 }, // Instagram/Facebook portrait post
+  "9:16": { w: 1080, h: 1920 }, // Story / Reels / TikTok / Snapchat
+  "16:9": { w: 1920, h: 1080 }, // YouTube / wide
+  "3:4":  { w: 1080, h: 1440 }, // portrait
+  "4:3":  { w: 1440, h: 1080 }, // landscape
+};
+export const pxForAspect = (aspect) => SIZE_PX[aspect] || null;
+
 export const DEFAULT_KIT = {
   mainColor: "#09007C",
   highlightColor: "#EF43DC",

@@ -4,7 +4,7 @@ import { Download, Upload, Loader2, Sparkles, ImagePlus, Check, AlertCircle, Cal
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
-import { buildPrompt, generateImage, loadKit, loadLogo, kitContacts } from "@/utils/imagePrompt";
+import { buildPrompt, generateImage, loadKit, loadLogo, kitContacts, pxForAspect } from "@/utils/imagePrompt";
 import { composeBranded } from "@/utils/composeBrand";
 import { createScheduledPosts } from "@/utils/publishingService";
 import { todayISO, toISODate } from "@/utils/localScheduleStore";
@@ -165,7 +165,8 @@ export default function BulkImageGen({ ar }) {
     if (autoCompose) {
       const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit, bgOnly: true });
       const bgUrl = await generateImage({ prompt, aspectRatio: aspect });
-      const dataUrl = await composeBranded({ bgUrl, logoUrl: logo || "", hook: row.hook, highlight: row.highlight, kit, contacts: kitContacts(kit), layout: DEFAULT_LAYOUT });
+      const px = pxForAspect(aspect);
+      const dataUrl = await composeBranded({ bgUrl, logoUrl: logo || "", hook: row.hook, highlight: row.highlight, kit, contacts: kitContacts(kit), layout: DEFAULT_LAYOUT, targetW: px?.w, targetH: px?.h });
       return { dataUrl, bgUrl };
     }
     const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit });
@@ -179,7 +180,8 @@ export default function BulkImageGen({ ar }) {
     if (!job || !cur?.bgUrl) return;
     try {
       const pk = kitFor(ov);
-      const dataUrl = await composeBranded({ bgUrl: cur.bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: lay });
+      const px = pxForAspect(job.aspect);
+      const dataUrl = await composeBranded({ bgUrl: cur.bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: lay, targetW: px?.w, targetH: px?.h });
       setResults((prev) => { const n = [...prev]; if (n[j]) n[j] = { ...n[j], dataUrl, layout: lay, ov, edited: true }; return n; });
     } catch { /* keep previous */ }
   };
@@ -200,8 +202,9 @@ export default function BulkImageGen({ ar }) {
       if (out[j]?.status === "done" && out[j].bgUrl) {
         const ov = out[j].edited ? out[j].ov : defaultOv(job.row);
         const pk = kitFor(ov);
+        const px = pxForAspect(job.aspect);
         try {
-          out[j] = { ...out[j], ov, dataUrl: await composeBranded({ bgUrl: out[j].bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: out[j].layout || DEFAULT_LAYOUT }) };
+          out[j] = { ...out[j], ov, dataUrl: await composeBranded({ bgUrl: out[j].bgUrl, logoUrl: ov.showLogo ? (logo || "") : "", hook: ov.hook, highlight: ov.highlight, kit: pk, contacts: kitContacts(pk), layout: out[j].layout || DEFAULT_LAYOUT, targetW: px?.w, targetH: px?.h }) };
         } catch { /* keep previous */ }
       }
     }));

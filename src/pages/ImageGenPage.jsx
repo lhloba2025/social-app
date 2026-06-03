@@ -4,7 +4,7 @@ import { Sparkles, Loader2, ImagePlus, Download, Check, RefreshCw, Palette, Laye
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
-import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo, kitContacts } from "@/utils/imagePrompt";
+import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo, kitContacts, pxForAspect } from "@/utils/imagePrompt";
 import { composeBranded } from "@/utils/composeBrand";
 import BrandKitControls from "@/components/BrandKitControls";
 // Lazy-load the bulk tab so the heavy Excel library only loads when used.
@@ -49,7 +49,8 @@ function CustomGen({ ar }) {
     if (!bgUrl) return;
     let cancelled = false;
     const t = setTimeout(() => {
-      composeBranded({ bgUrl, logoUrl: logo || "", hook, highlight, kit, contacts: kitContacts(kit), layout })
+      const px = pxForAspect(aspect);
+      composeBranded({ bgUrl, logoUrl: logo || "", hook, highlight, kit, contacts: kitContacts(kit), layout, targetW: px?.w, targetH: px?.h })
         .then((img) => { if (!cancelled) { setResult(img); setSaved(false); } })
         .catch(() => {});
     }, 200);
@@ -66,7 +67,8 @@ function CustomGen({ ar }) {
         const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly: true });
         const sceneUrl = await generateImage({ prompt, aspectRatio: aspect });
         setBgUrl(sceneUrl);
-        const composed = await composeBranded({ bgUrl: sceneUrl, logoUrl: logo || "", hook, highlight, kit, contacts: kitContacts(kit), layout });
+        const px = pxForAspect(aspect);
+        const composed = await composeBranded({ bgUrl: sceneUrl, logoUrl: logo || "", hook, highlight, kit, contacts: kitContacts(kit), layout, targetW: px?.w, targetH: px?.h });
         setResult(composed);
       } else {
         setBgUrl("");
