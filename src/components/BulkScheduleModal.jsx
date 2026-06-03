@@ -125,34 +125,34 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     return () => { cancelled = true; };
   }, [isOpen, posts]);
 
-  // Per-image OVERRIDE (post_id → "feed"|"story"|"both") — force a specific
-  // image to be published as a feed post, a story, or BOTH at once (same image
-  // sent to both placements). Without an override the image follows its size.
-  const [typeOverride, setTypeOverride] = useState({});
-  React.useEffect(() => { if (isOpen) setTypeOverride({}); }, [isOpen, posts]);
+  // GLOBAL placement mode for Instagram/Facebook (which support both a feed
+  // post and a story). Chosen ONCE at the top — no per-image clicking. The
+  // user picked "both" as their default. Single-slot platforms (TikTok=story,
+  // Twitter/LinkedIn/YouTube=feed) ignore this and just get their one slot.
+  const [igFbMode, setIgFbMode] = useState("both"); // "both" | "feed" | "story"
+  React.useEffect(() => { if (isOpen) setIgFbMode("both"); }, [isOpen]);
 
-  // The type an image takes purely from its size: 9:16 → story, anything else
-  // (1:1, 4:5, 16:9…) → feed.
-  const autoTypeOf = (p) => ((aspectByPost[p.post_id] || "4:5") === "9:16" ? "story" : "feed");
-  // Effective type = override if set, else the size-based default.
-  const effectiveType = (p) => typeOverride[p.post_id] || autoTypeOf(p); // "feed"|"story"|"both"
-  // Which placement slots this image wants. "both" → feed AND story.
-  const desiredSlots = (p) => { const t = effectiveType(p); return t === "both" ? ["feed", "story"] : [t]; };
-  // Click cycles: feed → story → both → feed.
-  const cycleTypeFor = (p) => {
-    const order = { feed: "story", story: "both", both: "feed" };
-    const eff = effectiveType(p);
-    setTypeOverride((prev) => ({ ...prev, [p.post_id]: order[eff] || "story" }));
-  };
+  // Per-topic EXCLUSIONS — the exception path. A key is `${unitKey}|${platform}|${slot}`.
+  // The global mode decides the default placements; the user drops a single
+  // line (e.g. "this topic's IG story") with the ✕ button in the preview.
+  const [excluded, setExcluded] = useState(() => new Set());
+  React.useEffect(() => { if (isOpen) setExcluded(new Set()); }, [isOpen, posts]);
+  const toggleExcluded = (key) =>
+    setExcluded((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
-  // What each platform wants. IG/FB have TWO slots (feed + story); others one.
+  // Single-slot platforms — their only placement. IG/FB are handled by the
+  // global igFbMode instead (they support both feed + story).
   const PLATFORM_DEF = {
-    instagram: ["feed", "story"], facebook: ["feed", "story"],
     tiktok: ["story"], snapchat: ["story"],
     twitter: ["feed"], linkedin: ["feed"], youtube: ["feed"],
   };
-  const idealAspectFor = (platform, slot) =>
-    slot === "story" ? "9:16" : (platform === "twitter" || platform === "youtube") ? "16:9" : "4:5";
+  // Which slots a platform publishes to. IG/FB follow the global mode.
+  const slotsForPlatform = (platform) => {
+    if (platform === "instagram" || platform === "facebook") {
+      return igFbMode === "both" ? ["feed", "story"] : [igFbMode];
+    }
+    return PLATFORM_DEF[platform] || [];
+  };
   const pickClosest = (postsArr, idealAspect) => {
     const target = ASPECT_RATIO[idealAspect] || 0.8;
     let best = null, diff = Infinity;
@@ -164,28 +164,42 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     return best;
   };
 
-  // Distribute a topic's images across the SELECTED platforms by size. Returns
-  // entries: { platform, type, posts[], substituted, ideal, got }.
+  // Pick the image(s) for a slot inside a topic, by size. Story → prefer 9:16;
+  // feed → prefer non-9:16 (1:1/4:5/16:9). If the topic has no matching size we
+  // substitute the closest one (flagged so we can confirm before scheduling).
+  const imagesForSlot = (u, slot) => {
+    const isStory = slot === "story";
+    const preferred = u.posts.filter((p) => {
+      const a = aspectByPost[p.post_id] || "4:5";
+      return isStory ? a === "9:16" : a !== "9:16";
+    });
+    if (preferred.length) return { posts: preferred, substituted: false };
+    if (!u.posts.length) return null;
+    const ideal = isStory ? "9:16" : "4:5";
+    const closest = pickClosest(u.posts, ideal);
+    return closest ? { posts: [closest], substituted: true, ideal, got: aspectByPost[closest.post_id] } : null;
+  };
+
+  // Distribute a topic's images across the SELECTED platforms by the global
+  // mode. Returns ALL candidate entries (including ones the user excluded via ✕,
+  // flagged with `excluded`) so the preview can show them struck-through with an
+  // undo. buildPayload drops the excluded ones. Each entry:
+  //   { platform, type, posts[], substituted, ideal, got, key, excluded }
   const distributionForUnit = (u) => {
     const entries = [];
     for (const platform of pubPlatforms) {
-      const slots = PLATFORM_DEF[platform];
-      if (!slots) continue;
-      const platEntries = [];
-      for (const slot of slots) {
-        const imgs = u.posts.filter((p) => desiredSlots(p).includes(slot));
-        if (!imgs.length) continue;
-        const carousel = (platform === "instagram" || platform === "facebook") && slot === "feed" && imgs.length > 1;
-        platEntries.push({ platform, type: slot, posts: carousel ? imgs : [imgs[0]], substituted: false });
+      for (const slot of slotsForPlatform(platform)) {
+        const res = imagesForSlot(u, slot);
+        if (!res) continue;
+        const carousel = (platform === "instagram" || platform === "facebook") && slot === "feed" && res.posts.length > 1;
+        const key = `${u.key}|${platform}|${slot}`;
+        entries.push({
+          platform, type: slot,
+          posts: carousel ? res.posts : [res.posts[0]],
+          substituted: !!res.substituted, ideal: res.ideal, got: res.got,
+          key, excluded: excluded.has(key),
+        });
       }
-      if (platEntries.length === 0) {
-        // Nothing fit any slot → substitute the closest image into the primary slot.
-        const primary = slots[0];
-        const ideal = idealAspectFor(platform, primary);
-        const closest = pickClosest(u.posts, ideal);
-        if (closest) platEntries.push({ platform, type: primary, posts: [closest], substituted: true, ideal, got: aspectByPost[closest.post_id] });
-      }
-      entries.push(...platEntries);
     }
     return entries;
   };
@@ -356,7 +370,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     const subs = [];
     const payload = orderedUnits.flatMap((u, i) => {
       const slot = slots[i];
-      const dist = distributionForUnit(u);
+      const dist = distributionForUnit(u).filter((e) => !e.excluded);
       return dist.map((e) => {
         const lead = e.posts[0];
         const cover = lead.items?.[0];
@@ -535,10 +549,47 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </div>
               <p className="text-[10px] text-emerald-300/90 mt-1 leading-relaxed">
                 {isRtl
-                  ? "اختر المنصات. النظام يوزّع صور كل موضوع تلقائياً حسب المقاس: الطويلة (9:16) ستوري، والمربعة/العمودية (1:1, 4:5) بوست. 💡 تبي تنشر نفس الصورة بوست وستوري معاً؟ اضغط على شارة الصورة في المعاينة لين توصل «بوست+ستوري»."
-                  : "Pick the platforms. Each topic's images are auto-distributed by size — tall (9:16) → story, square/portrait → feed. 💡 Want the same image as BOTH a post and a story? Click its badge in the preview until it shows «feed+story»."}
+                  ? "اختر المنصات اللي تنشر عليها. النظام يوزّع صور كل موضوع تلقائياً حسب المقاس."
+                  : "Pick the platforms. Each topic's images are auto-distributed by size."}
               </p>
             </div>
+
+            {/* GLOBAL placement mode for IG/FB — chosen once, applies to ALL
+                topics. Only shown when IG or FB is selected (others have a
+                single placement). The ✕ in the preview is the per-topic
+                exception. */}
+            {(pubPlatforms.includes("instagram") || pubPlatforms.includes("facebook")) && (
+              <div>
+                <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
+                  {isRtl ? "على انستقرام/فيسبوك، انشر كل موضوع كـ:" : "On Instagram/Facebook, publish each topic as:"}
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-800/60 rounded-lg p-1">
+                  {[
+                    { id: "both",  ar: "بوست + ستوري", en: "Post + Story" },
+                    { id: "feed",  ar: "بوست فقط",     en: "Post only" },
+                    { id: "story", ar: "ستوري فقط",    en: "Story only" },
+                  ].map((m) => {
+                    const isActive = igFbMode === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => setIgFbMode(m.id)}
+                        className={`py-2 rounded text-[11px] font-bold transition ${
+                          isActive ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
+                        }`}
+                      >
+                        {isRtl ? m.ar : m.en}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                  {isRtl
+                    ? "💡 يطبّق على كل المواضيع. لإلغاء ستوري (أو بوست) لموضوع واحد فقط، اضغط ✕ بجنب سطره في المعاينة."
+                    : "💡 Applies to all topics. To drop a story (or post) for just one topic, click the ✕ next to its line in the preview."}
+                </p>
+              </div>
+            )}
 
             {/* Group same topic together (post + its story on the SAME day) */}
             <label className="flex items-start gap-2 bg-fuchsia-900/15 border border-fuchsia-500/30 rounded-lg p-2.5 cursor-pointer">
@@ -832,40 +883,41 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           </div>
                         </div>
                       </div>
-                      {/* This topic's images — click a badge to cycle
-                          feed → story → both (re-routes the image). */}
+                      {/* This topic's images — read-only thumbnails + size. */}
                       <div className="mt-1.5 ms-6 flex flex-wrap gap-1.5">
                         {u.posts.map((p, k) => {
                           const cover = p.items?.[0];
-                          const t = effectiveType(p);
-                          const label = t === "both" ? (isRtl ? "بوست+ستوري" : "feed+story")
-                            : t === "story" ? (isRtl ? "ستوري" : "story")
-                            : (isRtl ? "بوست" : "feed");
-                          const icon = t === "both" ? "📷⭕" : t === "story" ? "⭕" : "📷";
-                          const color = t === "story" ? "text-fuchsia-300" : t === "both" ? "text-amber-300" : "text-indigo-300";
                           return (
-                            <button key={k} type="button"
-                              onClick={() => cycleTypeFor(p)}
-                              title={isRtl ? "اضغط للتبديل: بوست → ستوري → بوست+ستوري" : "Click to cycle: feed → story → both"}
-                              className="inline-flex items-center gap-1 bg-slate-900/60 rounded px-1 py-0.5 hover:bg-slate-700 transition">
+                            <span key={k} className="inline-flex items-center gap-1 bg-slate-900/60 rounded px-1 py-0.5">
                               {cover && <img src={cover.url} alt="" className="w-6 h-6 rounded object-cover" />}
-                              <span className={`text-[9px] font-bold ${color}`}>
-                                {icon} {label} <span className="text-slate-500">{aspectByPost[p.post_id] || ""}</span> ⇄
-                              </span>
-                            </button>
+                              <span className="text-[9px] font-bold text-slate-400">{aspectByPost[p.post_id] || ""}</span>
+                            </span>
                           );
                         })}
                       </div>
-                      {/* Where each image lands — platform → type (with substitution note). */}
+                      {/* Where each image lands — platform → type. The ✕ drops
+                          that single line for THIS topic (the exception path);
+                          excluded lines show struck-through with an undo (↩). */}
                       <div className="mt-1.5 ms-6 space-y-0.5">
                         {distributionForUnit(u).map((e, k) => {
                           const isStory = e.type === "story";
+                          const off = e.excluded;
                           return (
                             <div key={k} className="flex items-center gap-1.5 text-[10px]">
-                              <span className="text-slate-200">{platformEmoji(e.platform)} {platformLabel(e.platform, isRtl)}</span>
-                              <span className={isStory ? "text-fuchsia-300" : "text-indigo-300"}>← {isStory ? (isRtl ? "ستوري" : "story") : (isRtl ? "بوست" : "feed")}</span>
-                              {e.posts.length > 1 && <span className="text-amber-300">{isRtl ? `ألبوم ${e.posts.length}` : `album ${e.posts.length}`}</span>}
-                              {e.substituted && <span className="text-amber-300" title={isRtl ? `لا يوجد ${e.ideal}؛ استخدمنا ${e.got}` : ""}>⚠️ {e.got}→{e.ideal}</span>}
+                              <button
+                                type="button"
+                                onClick={() => toggleExcluded(e.key)}
+                                title={off ? (isRtl ? "إرجاع" : "Restore") : (isRtl ? "إلغاء لهذا الموضوع" : "Drop for this topic")}
+                                className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold transition ${
+                                  off ? "bg-emerald-700/60 hover:bg-emerald-600 text-white" : "bg-slate-700 hover:bg-red-600 text-slate-200"
+                                }`}
+                              >
+                                {off ? "↩" : "✕"}
+                              </button>
+                              <span className={off ? "text-slate-600 line-through" : "text-slate-200"}>{platformEmoji(e.platform)} {platformLabel(e.platform, isRtl)}</span>
+                              <span className={off ? "text-slate-600 line-through" : isStory ? "text-fuchsia-300" : "text-indigo-300"}>← {isStory ? (isRtl ? "ستوري" : "story") : (isRtl ? "بوست" : "feed")}</span>
+                              {e.posts.length > 1 && !off && <span className="text-amber-300">{isRtl ? `ألبوم ${e.posts.length}` : `album ${e.posts.length}`}</span>}
+                              {e.substituted && !off && <span className="text-amber-300" title={isRtl ? `لا يوجد ${e.ideal}؛ استخدمنا ${e.got}` : ""}>⚠️ {e.got}→{e.ideal}</span>}
                             </div>
                           );
                         })}
