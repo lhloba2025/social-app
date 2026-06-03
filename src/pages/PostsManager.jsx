@@ -269,7 +269,7 @@ export default function PostsManager({ language }) {
   const counts = posts.reduce((acc, p) => { acc[p.status] = (acc[p.status] || 0) + 1; return acc; }, {});
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="min-h-screen bg-slate-950 text-white">
+    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900 px-6 py-4">
         <div className="flex items-center justify-between">

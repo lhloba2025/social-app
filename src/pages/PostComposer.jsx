@@ -336,7 +336,7 @@ export default function PostComposer({ language }) {
   }, [platforms]);
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="min-h-screen bg-slate-950 text-white">
+    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
       {/* Top bar */}
       <div className="h-14 border-b border-slate-800 flex items-center px-6 gap-3 bg-slate-900">
         <button onClick={() => navigate("/")} className="text-slate-400 hover:text-white transition">
