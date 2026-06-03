@@ -32,31 +32,64 @@ export async function publishToInstagram(account, post, opts = {}) {
   if (opts.story) containerParams.media_type = "STORIES";
   else containerParams.caption = caption || "";
 
-  const containerRes = await axios.post(
-    `${GRAPH}/${igUserId}/media`,
-    null,
-    { params: containerParams }
-  );
+  let containerRes;
+  try {
+    containerRes = await axios.post(`${GRAPH}/${igUserId}/media`, null, { params: containerParams });
+  } catch (e) {
+    throw new Error("فشل تجهيز صورة انستقرام: " + metaErr(e));
+  }
 
   const creationId = containerRes.data.id;
   if (!creationId) throw new Error("فشل إنشاء حاوية الميديا على انستقرام");
 
-  // انتظار ثانيتين لتجهيز الحاوية
-  await sleep(2000);
+  // الخطوة 2: انتظر حتى تُجهَّز الحاوية فعلاً (status_code=FINISHED) بدل انتظار
+  // ثابت قصير. هذا هو سبب فشل بوست الفيد أحياناً: الستوري تجهز بسرعة لكن بوست
+  // الفيد يحتاج وقت معالجة أطول، فالنشر بعد ثانيتين فقط كان يفشل.
+  await waitForContainerReady(creationId, accessToken);
 
-  // الخطوة 2: نشر الحاوية
-  const publishRes = await axios.post(
-    `${GRAPH}/${igUserId}/media_publish`,
-    null,
-    {
-      params: {
-        creation_id: creationId,
-        access_token: accessToken,
-      },
+  // الخطوة 3: نشر الحاوية، مع إعادة محاولة للأخطاء العابرة (لم تجهز بعد).
+  let lastErr;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const publishRes = await axios.post(`${GRAPH}/${igUserId}/media_publish`, null, {
+        params: { creation_id: creationId, access_token: accessToken },
+      });
+      return { success: true, postId: publishRes.data.id };
+    } catch (e) {
+      lastErr = e;
+      const msg = metaErr(e);
+      if (/not available|not ready|9007|media id|try again/i.test(msg)) { await sleep(4000); continue; }
+      throw new Error("فشل نشر انستقرام: " + msg);
     }
-  );
+  }
+  throw new Error("فشل نشر انستقرام بعد عدة محاولات: " + metaErr(lastErr));
+}
 
-  return { success: true, postId: publishRes.data.id };
+// يستعلم عن حالة حاوية الميديا حتى تصبح FINISHED (أو ERROR) — حتى ~40 ثانية.
+async function waitForContainerReady(creationId, accessToken, maxMs = 40000) {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    try {
+      const r = await axios.get(`${GRAPH}/${creationId}`, {
+        params: { fields: "status_code,status", access_token: accessToken },
+      });
+      const code = r.data.status_code;
+      if (code === "FINISHED") return;
+      if (code === "ERROR") {
+        throw new Error("الصورة مرفوضة من انستقرام — تأكد من المقاس (بوست الفيد بين 4:5 و1.91:1) ومن صحة الرابط. " + (r.data.status || ""));
+      }
+    } catch (e) {
+      if (e?.message?.includes("مرفوضة")) throw e; // خطأ حقيقي من الحالة
+      // غير ذلك (تأخر مؤقت) — تجاهل وأعد المحاولة
+    }
+    await sleep(2500);
+  }
+  // انتهت المهلة — استمر بمحاولة النشر على أي حال (قد تكون جهزت).
+}
+
+// يستخرج رسالة خطأ Meta المقروءة من استجابة axios.
+function metaErr(e) {
+  return e?.response?.data?.error?.message || e?.message || "خطأ غير معروف";
 }
 
 // ─── فيسبوك ───────────────────────────────────────────────────────────────────
