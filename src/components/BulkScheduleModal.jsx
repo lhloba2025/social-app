@@ -99,14 +99,40 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   const togglePub = (id) =>
     setPubPlatforms((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
-  // Post type(s) for the whole batch — can be BOTH feed and story at once.
-  const [postTypes, setPostTypes] = useState(["feed"]);
-  const togglePostType = (id) =>
-    setPostTypes((arr) =>
-      arr.includes(id)
-        ? (arr.length > 1 ? arr.filter((x) => x !== id) : arr) // keep at least one
-        : [...arr, id]
-    );
+  // Post type. DEFAULT = "auto": each image's type is detected from its aspect
+  // ratio (tall 9:16 → story, else feed) so a mixed batch schedules each image
+  // to its correct slot WITHOUT manual matching. The user can still force a
+  // single type (feed / story) or both.
+  const [typeMode, setTypeMode] = useState("auto"); // "auto" | "feed" | "story" | "both"
+
+  // Detected type per post (post_id → "story" | "feed"), measured from the cover
+  // image's real dimensions when the modal opens.
+  const [typeByPost, setTypeByPost] = useState({});
+  React.useEffect(() => {
+    if (!isOpen || !posts.length) { setTypeByPost({}); return; }
+    let cancelled = false;
+    const next = {};
+    let pending = posts.length;
+    const done = () => { if (--pending === 0 && !cancelled) setTypeByPost({ ...next }); };
+    posts.forEach((p) => {
+      const url = p.items?.[0]?.url;
+      if (!url) { next[p.post_id] = "feed"; done(); return; }
+      const img = new Image();
+      img.onload = () => {
+        const r = (img.naturalHeight || 1) / (img.naturalWidth || 1);
+        next[p.post_id] = r >= 1.5 ? "story" : "feed"; // 9:16≈1.78 → story; 4:5≈1.25 → feed
+        done();
+      };
+      img.onerror = () => { next[p.post_id] = "feed"; done(); };
+      img.src = url;
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, posts]);
+
+  // Stories are only supported on Instagram & Facebook.
+  const STORY_CAPABLE = ["instagram", "facebook"];
+  // The type a given post will be scheduled as (respecting the chosen mode).
+  const typeForPost = (p) => (typeMode === "auto" ? (typeByPost[p.post_id] || "feed") : typeMode);
 
   // ── Mode + form state ───────────────────────────────────────────────
   // weekly: pick days + per-day times + start date
@@ -270,9 +296,9 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       if (p.caption_title) captionParts.push(p.caption_title);
       if (p.caption_text)  captionParts.push(p.caption_text);
       const caption = captionParts.join("\n\n");
+      const basePlatforms = pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []);
       const base = {
         status: "scheduled",
-        platforms: pubPlatforms.length ? pubPlatforms : (p.platform ? [p.platform] : []),
         caption,
         scheduleDate: slot.date,
         scheduleTime: slot.time,
@@ -288,7 +314,19 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
         sourcePostId: p.post_id,
         sourcePostItemCount: p.items?.length || 1,
       };
-      return postTypes.map((pt) => ({ ...base, postType: pt }));
+      // Which type(s) this post becomes.
+      const types = typeMode === "auto" ? [typeForPost(p)]
+        : typeMode === "both" ? ["feed", "story"]
+        : [typeMode];
+      return types.map((pt) => {
+        // Stories only run on IG/FB — filter the platform list for story entries.
+        let platforms = basePlatforms;
+        if (pt === "story") {
+          const s = basePlatforms.filter((x) => STORY_CAPABLE.includes(x));
+          platforms = s.length ? s : basePlatforms;
+        }
+        return { ...base, platforms, postType: pt };
+      });
     });
 
     // Goes through publishingService: tries backend first, falls back
@@ -433,22 +471,24 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </p>
             </div>
 
-            {/* Post type: feed and/or story (multi-select) */}
+            {/* Post type: AUTO by size (default) or force one/both */}
             <div>
               <label className="text-slate-300 text-[12px] font-bold block mb-1.5">
-                {isRtl ? "نوع المنشور (تقدر تختار الاثنين):" : "Post type (pick both if you like):"}
+                {isRtl ? "نوع المنشور:" : "Post type:"}
               </label>
               <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded-lg p-1">
                 {[
-                  { id: "feed",  ar: "📷 بوست", en: "📷 Feed" },
-                  { id: "story", ar: "⭕ ستوري (الحالة)", en: "⭕ Story" },
+                  { id: "auto",  ar: "✨ تلقائي حسب المقاس", en: "✨ Auto by size" },
+                  { id: "feed",  ar: "📷 الكل بوست", en: "📷 All feed" },
+                  { id: "story", ar: "⭕ الكل ستوري", en: "⭕ All story" },
+                  { id: "both",  ar: "📷+⭕ بوست وستوري", en: "📷+⭕ Both" },
                 ].map((t) => {
-                  const active = postTypes.includes(t.id);
+                  const active = typeMode === t.id;
                   return (
                     <button
                       key={t.id}
-                      onClick={() => togglePostType(t.id)}
-                      className={`py-2 rounded text-[12px] font-bold transition inline-flex items-center justify-center gap-1 ${
+                      onClick={() => setTypeMode(t.id)}
+                      className={`py-2 rounded text-[11px] font-bold transition inline-flex items-center justify-center gap-1 ${
                         active ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-700"
                       }`}
                     >
@@ -457,13 +497,11 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                   );
                 })}
               </div>
-              {postTypes.includes("story") && (
-                <p className="text-[10px] text-amber-300/90 mt-1 leading-relaxed">
-                  {isRtl
-                    ? "لو اخترت الاثنين، يُنشر بوست وستوري معاً. الستوري لانستقرام وفيسبوك فقط (تيك توك/سناب لا يدعمانه)."
-                    : "If both are picked, it posts a feed post AND a story. Stories are Instagram & Facebook only."}
-                </p>
-              )}
+              <p className="text-[10px] text-emerald-300/90 mt-1 leading-relaxed">
+                {isRtl
+                  ? "✨ «تلقائي»: كل صورة تُجدول حسب مقاسها — الطويلة (9:16) ستوري، والباقي بوست. كل صورة تروح مكانها الصح بدون تعب. الستوري لانستقرام وفيسبوك فقط."
+                  : "✨ Auto: each image is scheduled by its size — tall (9:16) as a story, the rest as feed. Stories are Instagram & Facebook only."}
+              </p>
             </div>
 
             {/* Mode tabs */}
@@ -771,9 +809,22 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           )}
                         </div>
                       </div>
+                      {/* Type pill — shows where THIS image lands (story vs feed). */}
+                      {(() => {
+                        const t = typeForPost(p);
+                        const isStory = typeMode === "both" ? null : t === "story";
+                        const label = typeMode === "both"
+                          ? (isRtl ? "بوست+ستوري" : "Feed+Story")
+                          : isStory ? (isRtl ? "ستوري" : "Story") : (isRtl ? "بوست" : "Feed");
+                        return (
+                          <span className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200" : "bg-indigo-600/30 text-indigo-200"}`}>
+                            {typeMode === "both" ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}
+                          </span>
+                        );
+                      })()}
                       {p.platform && (
                         <span
-                          className="text-[10px] inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-700/60 text-slate-200"
+                          className="text-[10px] inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-700/60 text-slate-200 flex-shrink-0"
                           title={platformLabel(p.platform, isRtl)}
                         >
                           {platformEmoji(p.platform)}
