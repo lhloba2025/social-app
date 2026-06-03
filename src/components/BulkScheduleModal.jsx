@@ -88,6 +88,20 @@ function formatDateLabel(isoDate, isRtl) {
 export default function BulkScheduleModal({ isOpen, posts = [], language, onClose, onSuccess }) {
   const isRtl = language === "ar";
 
+  // Human-readable name for an aspect id — so warnings say "مربّع 1:1" not
+  // a bare "1:1" the user has to decode.
+  const aspectLabel = (id) => {
+    const ar = {
+      "9:16": "طولي 9:16 (ستوري ملء الشاشة)", "1:1": "مربّع 1:1",
+      "4:5": "عمودي 4:5", "3:4": "عمودي 3:4", "16:9": "عريض 16:9", "4:3": "أفقي 4:3",
+    };
+    const en = {
+      "9:16": "vertical 9:16 (full-screen story)", "1:1": "square 1:1",
+      "4:5": "portrait 4:5", "3:4": "portrait 3:4", "16:9": "wide 16:9", "4:3": "landscape 4:3",
+    };
+    return (isRtl ? ar : en)[id] || id || "—";
+  };
+
   // Which platforms to publish ALL these posts to. Defaults to whatever the
   // uploaded media were tagged with, but the user can tick more (cross-post).
   const [pubPlatforms, setPubPlatforms] = useState([]);
@@ -917,7 +931,14 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                               <span className={off ? "text-slate-600 line-through" : "text-slate-200"}>{platformEmoji(e.platform)} {platformLabel(e.platform, isRtl)}</span>
                               <span className={off ? "text-slate-600 line-through" : isStory ? "text-fuchsia-300" : "text-indigo-300"}>← {isStory ? (isRtl ? "ستوري" : "story") : (isRtl ? "بوست" : "feed")}</span>
                               {e.posts.length > 1 && !off && <span className="text-amber-300">{isRtl ? `ألبوم ${e.posts.length}` : `album ${e.posts.length}`}</span>}
-                              {e.substituted && !off && <span className="text-amber-300" title={isRtl ? `لا يوجد ${e.ideal}؛ استخدمنا ${e.got}` : ""}>⚠️ {e.got}→{e.ideal}</span>}
+                              {e.substituted && !off && (
+                                <span className="text-amber-300"
+                                  title={isRtl
+                                    ? `ما فيه صورة ${aspectLabel(e.ideal)} لهذا الموضوع — بنستخدم ${aspectLabel(e.got)} المتوفّر.`
+                                    : `No ${aspectLabel(e.ideal)} image — using available ${aspectLabel(e.got)}.`}>
+                                  ⚠️ {isRtl ? `مقاس غير مثالي` : `non-ideal size`}
+                                </span>
+                              )}
                             </div>
                           );
                         })}
@@ -989,27 +1010,48 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
           </button>
         </div>
 
-        {/* Substitution confirmation — a platform got a non-ideal size. */}
+        {/* Substitution confirmation — spells out EXACTLY what's wrong for each
+            case: which topic, which platform + placement, the missing size, the
+            size we'll use instead, what that looks like, and how to fix it. */}
         {confirmSubs && (
           <div className="absolute inset-0 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmSubs(null)}>
-            <div className="bg-slate-900 rounded-xl border border-amber-500/40 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-900 rounded-xl border border-amber-500/40 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-slate-800">
-                <p className="font-bold text-amber-300 text-sm">⚠️ {isRtl ? "تنبيه مقاسات" : "Size notice"}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{isRtl ? "بعض المنصات ما لها مقاس مناسب في موضوعها، فاخترنا أقرب مقاس متوفّر:" : "Some platforms had no ideal size; closest was used:"}</p>
+                <p className="font-bold text-amber-300 text-sm">⚠️ {isRtl ? "تنبيه: مقاس ناقص" : "Heads up: missing size"}</p>
+                <p className="text-[11px] text-slate-400 mt-1">{isRtl ? "المواضيع التالية ما فيها الصورة بالمقاس المثالي للمكان المطلوب — اقرأ التفصيل واختر:" : "These topics lack the ideal size for the placement — review and choose:"}</p>
               </div>
-              <div className="p-4 space-y-1.5">
-                {confirmSubs.subs.map((s, k) => (
-                  <div key={k} className="text-[12px] text-slate-200 flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold">{s.title || "—"}</span>
-                    <span className="text-slate-400">←</span>
-                    <span>{platformEmoji(s.platform)} {platformLabel(s.platform, isRtl)}</span>
-                    <span className="text-amber-300">{isRtl ? `استخدمنا ${s.got} بدل ${s.ideal}` : `used ${s.got} instead of ${s.ideal}`}</span>
-                  </div>
-                ))}
+              <div className="p-4 space-y-2.5">
+                {confirmSubs.subs.map((s, k) => {
+                  const isStory = s.type === "story";
+                  const place = isStory ? (isRtl ? "ستوري" : "story") : (isRtl ? "بوست" : "post");
+                  return (
+                    <div key={k} className="bg-slate-800/50 rounded-lg p-3 space-y-1 border border-slate-700/50">
+                      <p className="text-[12px] font-bold text-white">📌 {s.title || (isRtl ? "بدون عنوان" : "Untitled")}</p>
+                      <p className="text-[11px] text-slate-300">
+                        {isRtl ? "المكان:" : "Placement:"} <span className="font-semibold">{platformEmoji(s.platform)} {platformLabel(s.platform, isRtl)} — {place}</span>
+                      </p>
+                      <p className="text-[11px] text-amber-200 leading-relaxed">
+                        {isRtl
+                          ? `المشكلة: هذا الموضوع ما فيه صورة بمقاس ${aspectLabel(s.ideal)} المطلوب للـ${place}.`
+                          : `Problem: this topic has no ${aspectLabel(s.ideal)} image needed for the ${place}.`}
+                      </p>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        {isRtl
+                          ? `بنستخدم المتوفّر: ${aspectLabel(s.got)} — ${isStory ? "بيظهر بالنص مع حواف فوق وتحت، مو ملء الشاشة." : "قد يظهر بهوامش أو يُقص أطرافه."}`
+                          : `We'll use what's available: ${aspectLabel(s.got)} — ${isStory ? "it shows centered with bars, not full-screen." : "it may show with margins or get cropped."}`}
+                      </p>
+                      <p className="text-[10px] text-emerald-300 leading-relaxed">
+                        {isRtl
+                          ? `💡 الحل: أضف صورة ${aspectLabel(s.ideal)} بنفس العنوان «${s.title}»، أو ارجع واضغط ✕ على سطر الـ${place} لإلغائه.`
+                          : `💡 Fix: add a ${aspectLabel(s.ideal)} image under the same title, or go back and ✕ the ${place} line.`}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="p-4 border-t border-slate-800 flex gap-2">
-                <button onClick={() => setConfirmSubs(null)} className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold">{isRtl ? "رجوع" : "Back"}</button>
-                <button onClick={() => doSchedule(confirmSubs.payload)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">{isRtl ? "نعم، أكمل الجدولة" : "Yes, continue"}</button>
+              <div className="p-4 border-t border-slate-800 flex gap-2 sticky bottom-0 bg-slate-900">
+                <button onClick={() => setConfirmSubs(null)} className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold">{isRtl ? "رجوع وأعدّل" : "Back & fix"}</button>
+                <button onClick={() => doSchedule(confirmSubs.payload)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">{isRtl ? "أكمل بالمقاس المتوفّر" : "Continue anyway"}</button>
               </div>
             </div>
           </div>
