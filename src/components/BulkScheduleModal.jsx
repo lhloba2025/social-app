@@ -129,10 +129,23 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     return () => { cancelled = true; };
   }, [isOpen, posts]);
 
+  // Per-image type OVERRIDE (post_id → "story"|"feed"). Lets the user force a
+  // specific image to be a story (or feed) regardless of its size — e.g. publish
+  // a post-sized image as a story with the size they already have.
+  const [typeOverride, setTypeOverride] = useState({});
+  React.useEffect(() => { if (isOpen) setTypeOverride({}); }, [isOpen, posts]);
+  const toggleTypeFor = (postId, current) =>
+    setTypeOverride((prev) => ({ ...prev, [postId]: current === "story" ? "feed" : "story" }));
+
   // Stories are only supported on Instagram & Facebook.
   const STORY_CAPABLE = ["instagram", "facebook"];
-  // The type a given post will be scheduled as (respecting the chosen mode).
-  const typeForPost = (p) => (typeMode === "auto" ? (typeByPost[p.post_id] || "feed") : typeMode);
+  // The type a given post will be scheduled as (override → mode → auto).
+  const typeForPost = (p) => (
+    typeOverride[p.post_id] ||
+    (typeMode === "auto" ? (typeByPost[p.post_id] || "feed")
+      : typeMode === "both" ? "feed"
+      : typeMode)
+  );
 
   // ── Group same-topic images into ONE scheduling unit ─────────────────
   // A topic's feed post and its story are separate library rows but share the
@@ -334,8 +347,10 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
           sourcePostId: p.post_id,
           sourcePostItemCount: p.items?.length || 1,
         };
-        // Which type(s) this image becomes.
-        const types = typeMode === "auto" ? [typeForPost(p)]
+        // Which type(s) this image becomes. A per-image override always wins
+        // (even over "both"); otherwise follow the mode.
+        const types = typeOverride[p.post_id] ? [typeOverride[p.post_id]]
+          : typeMode === "auto" ? [typeForPost(p)]
           : typeMode === "both" ? ["feed", "story"]
           : [typeMode];
         return types.map((pt) => {
@@ -520,8 +535,8 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </div>
               <p className="text-[10px] text-emerald-300/90 mt-1 leading-relaxed">
                 {isRtl
-                  ? "✨ «تلقائي»: كل صورة تُجدول حسب مقاسها — الطويلة (9:16) ستوري، والباقي بوست. كل صورة تروح مكانها الصح بدون تعب. الستوري لانستقرام وفيسبوك فقط."
-                  : "✨ Auto: each image is scheduled by its size — tall (9:16) as a story, the rest as feed. Stories are Instagram & Facebook only."}
+                  ? "✨ «تلقائي»: كل صورة تُجدول حسب مقاسها — الطويلة (9:16) ستوري، والباقي بوست. 💡 وتقدر تبدّل نوع أي صورة يدوياً بالضغط على شارتها (⇄) في المعاينة — حتى لو مقاسها بوست تخليها ستوري. الستوري لانستقرام وفيسبوك فقط."
+                  : "✨ Auto: each image is scheduled by its size. 💡 Click any image's badge (⇄) in the preview to switch it between feed/story — even a post-sized image can be a story. Stories are Instagram & Facebook only."}
               </p>
             </div>
 
@@ -822,16 +837,24 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                         {u.posts.map((p, k) => {
                           const cover = p.items?.[0];
                           const t = typeForPost(p);
-                          const isStory = typeMode === "both" ? null : t === "story";
-                          const label = typeMode === "both" ? (isRtl ? "بوست+ستوري" : "Feed+Story")
+                          // In "both" mode (no override) the image is posted as BOTH.
+                          const isBoth = typeMode === "both" && !typeOverride[p.post_id];
+                          const isStory = isBoth ? null : t === "story";
+                          const label = isBoth ? (isRtl ? "بوست+ستوري" : "Feed+Story")
                             : isStory ? (isRtl ? "ستوري" : "Story") : (isRtl ? "بوست" : "Feed");
                           return (
                             <div key={k} className="flex items-center gap-2">
                               {cover && <img src={cover.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />}
                               <span className="text-[10px] text-slate-300 truncate flex-1">{cover?.name || ""}</span>
-                              <span className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200" : "bg-indigo-600/30 text-indigo-200"}`}>
-                                {typeMode === "both" ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => !isBoth && toggleTypeFor(p.post_id, t)}
+                                disabled={isBoth}
+                                title={isBoth ? "" : (isRtl ? "اضغط لتبديل بوست/ستوري" : "Click to switch feed/story")}
+                                className={`text-[9px] font-bold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 transition ${isStory ? "bg-fuchsia-600/30 text-fuchsia-200 hover:bg-fuchsia-600/50" : "bg-indigo-600/30 text-indigo-200 hover:bg-indigo-600/50"} ${isBoth ? "cursor-default" : "cursor-pointer"}`}
+                              >
+                                {isBoth ? "📷+⭕" : isStory ? "⭕" : "📷"} {label}{!isBoth && " ⇄"}
+                              </button>
                             </div>
                           );
                         })}
