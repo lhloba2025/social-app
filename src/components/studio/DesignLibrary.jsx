@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { localApi } from "@/api/localClient";
-import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload, CalendarPlus, ChevronLeft, ChevronRight, Search, CheckSquare, Square, Calendar, Ban, Check } from "lucide-react";
+import { Plus, Trash2, Edit3, FolderOpen, Loader2, Home, X, Eye, Upload, CalendarPlus, ChevronLeft, ChevronRight, Search, CheckSquare, Square, Calendar, Ban, Check, Download, Layers } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import MediaUploadModal from "../MediaUploadModal";
 import BulkMediaUploadModal, { readCaptionsMap, platformLabel, platformEmoji, PLATFORMS } from "../BulkMediaUploadModal";
@@ -85,6 +85,82 @@ function dateRangeLowerBound(range, now = new Date()) {
     }
     default: return 0; // "all" — no lower bound
   }
+}
+
+// Force-download a remote image. The `download` attribute is ignored for
+// cross-origin URLs (Railway serves on a different origin), so we fetch the
+// bytes into a blob and download that. Falls back to opening in a new tab.
+async function downloadImage(url, name) {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    const blob = await res.blob();
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = obj;
+    a.download = name || "image.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(obj), 1500);
+  } catch {
+    window.open(url, "_blank", "noopener");
+  }
+}
+
+// One image inside the topic-detail modal. Shows the image, its real pixel
+// size (read on load), and per-image actions: download, open, info, delete.
+function LibImageTile({ image, isRtl, onInfo, onDelete, busy }) {
+  const [dim, setDim] = useState(null);
+  return (
+    <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/60">
+      <div className="aspect-square bg-slate-950 flex items-center justify-center overflow-hidden relative">
+        <img
+          src={image.url}
+          alt={image.name}
+          className="w-full h-full object-contain"
+          onLoad={(e) => setDim({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
+        />
+        {dim && (
+          <span className="absolute top-1.5 start-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-bold">
+            {dim.w}×{dim.h}
+          </span>
+        )}
+      </div>
+      <div className="p-2 flex items-center justify-center gap-1.5">
+        <button
+          onClick={() => downloadImage(image.url, image.name)}
+          className="p-2 rounded-lg bg-slate-700/70 hover:bg-emerald-600 text-slate-200 transition"
+          title={isRtl ? "تحميل على الكمبيوتر" : "Download"}
+        >
+          <Download className="w-4 h-4" />
+        </button>
+        <a
+          href={image.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2 rounded-lg bg-slate-700/70 hover:bg-indigo-600 text-slate-200 transition"
+          title={isRtl ? "فتح في نافذة جديدة" : "Open"}
+        >
+          <Eye className="w-4 h-4" />
+        </a>
+        <button
+          onClick={onInfo}
+          className="p-2 rounded-lg bg-slate-700/70 hover:bg-indigo-600 text-slate-200 transition"
+          title={isRtl ? "معلومات (العنوان/المنصات)" : "Info"}
+        >
+          <Upload className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          disabled={busy}
+          className="p-2 rounded-lg bg-slate-700/70 hover:bg-red-600 text-slate-200 transition disabled:opacity-50"
+          title={isRtl ? "حذف هذه الصورة" : "Delete this image"}
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
@@ -237,6 +313,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // every image in the post, the full untruncated caption, and quick
   // actions (copy caption, delete). `null` when closed.
   const [previewingPost, setPreviewingPost] = useState(null);
+  // Topic-detail modal — set to a topic object (all images sharing a title)
+  // when the user clicks a topic card. `null` when closed.
+  const [viewingTopic, setViewingTopic] = useState(null);
   // Page index within a carousel preview (resets on each open).
   const [previewPage, setPreviewPage] = useState(0);
   // Lightweight feedback for the "copy caption" button.
@@ -863,6 +942,46 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           }
           const visibleCount = posts.length;
 
+          // ── Group posts into TOPICS by title ─────────────────────────
+          // The library shows ONE card per topic (caption_title). Clicking
+          // a topic opens ALL its images (every size) for editing. Posts
+          // with no title each stay their own card (we can't group what
+          // has no identifier), so nothing disappears.
+          const topicMap = new Map();
+          for (const p of posts) {
+            const t = (p.caption_title || "").trim();
+            const key = t || `__untitled__${p.post_id}`;
+            if (!topicMap.has(key)) {
+              topicMap.set(key, { key, title: t, isUntitled: !t, posts: [], items: [], platforms: [] });
+            }
+            const topic = topicMap.get(key);
+            topic.posts.push(p);
+            for (const it of p.items) topic.items.push(it);
+            for (const pl of (p.platforms && p.platforms.length ? p.platforms : [p.platform]).filter(Boolean)) {
+              if (!topic.platforms.includes(pl)) topic.platforms.push(pl);
+            }
+          }
+          const topics = Array.from(topicMap.values());
+          const visibleTopics = topics.length;
+
+          // Toggle a whole topic's selection (all its post_ids at once) in
+          // select mode. Respects the per-mode lock (already-scheduled in
+          // schedule mode, not-cancelable in cancel mode).
+          const toggleTopicSelected = (topic) => {
+            const ids = topic.posts.map((p) => p.post_id);
+            const selectable = cancelMode
+              ? ids.filter((id) => cancelableMap.has(id))
+              : ids.filter((id) => !scheduledIds.has(id));
+            if (selectable.length === 0) return;
+            const allOn = selectable.every((id) => selectedPostIds.has(id));
+            setSelectedPostIds((prev) => {
+              const next = new Set(prev);
+              if (allOn) selectable.forEach((id) => next.delete(id));
+              else selectable.forEach((id) => next.add(id));
+              return next;
+            });
+          };
+
           return (
             <div key={`media-grid-${localMediaVersion}`}>
               {/* ── Filter bar ──────────────────────────────────────────
@@ -1029,8 +1148,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
                   <span>
                     {isRtl
-                      ? `عرض ${visibleCount} من ${totalCount} منشور`
-                      : `Showing ${visibleCount} of ${totalCount} posts`}
+                      ? `عرض ${visibleTopics} موضوع (${visibleCount} منشور)`
+                      : `Showing ${visibleTopics} topics (${visibleCount} posts)`}
                   </span>
                   <div className="flex items-center gap-2">
                     {(mediaSearch || mediaPlatform !== "all" || mediaDateRange !== "all" || mediaSort !== "newest") && (
@@ -1112,7 +1231,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
               {/* Empty-after-filter state — distinct from empty library
                   so the user knows their filters are the cause. */}
-              {visibleCount === 0 ? (
+              {visibleTopics === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-slate-500 bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
                   <p className="text-base mb-1">{isRtl ? "لا توجد نتائج مطابقة" : "No matching posts"}</p>
                   <p className="text-[12px]">{isRtl ? "جرّب تعديل البحث أو الفلاتر." : "Try changing the search or filters."}</p>
@@ -1121,161 +1240,148 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             <div
               className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
             >
-              {posts.map((post) => {
-                const isCarousel = post.items.length > 1;
-                const cover = post.items[0];
-                const hasCaption = post.caption_title || post.caption_text;
-                const isSelected = selectedPostIds.has(post.post_id);
-                // Already has a scheduled/published entry → can't be picked
-                // again in select mode (prevents duplicate scheduling).
-                const isScheduled = scheduledIds.has(post.post_id);
-                const isCancelable = cancelableMap.has(post.post_id);
-                // Schedule mode locks already-scheduled posts. Cancel mode
-                // does the opposite — only scheduled/queued posts are pickable.
-                const lockedForSelect = selectMode && (cancelMode ? !isCancelable : isScheduled);
+              {topics.map((topic) => {
+                const cover = topic.items[0];
+                if (!cover) return null;
+                const imageCount = topic.items.length;
+                const postIds = topic.posts.map((p) => p.post_id);
+                // Selection is per TOPIC: a topic is "selected" when ALL its
+                // selectable post_ids are picked. Locking mirrors the per-post
+                // rules — schedule mode locks fully-scheduled topics, cancel
+                // mode only allows topics with cancelable entries.
+                const selectableIds = cancelMode
+                  ? postIds.filter((id) => cancelableMap.has(id))
+                  : postIds.filter((id) => !scheduledIds.has(id));
+                const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedPostIds.has(id));
+                const someSelected = postIds.some((id) => selectedPostIds.has(id));
+                const someScheduled = postIds.some((id) => scheduledIds.has(id));
+                const lockedForSelect = selectMode && selectableIds.length === 0;
                 return (
                   <div
-                    key={post.post_id}
+                    key={topic.key}
                     onClick={() => {
-                      // In select mode, the card click toggles selection
-                      // (unless the card is locked for the current mode).
-                      // Otherwise it opens the preview, as before.
+                      // Select mode → toggle the whole topic. Otherwise open
+                      // the topic-detail view (all its sizes).
                       if (selectMode) {
                         if (lockedForSelect) return;
-                        togglePostSelected(post.post_id);
+                        toggleTopicSelected(topic);
                       } else {
-                        setPreviewingPost(post);
-                        setPreviewPage(0);
+                        setViewingTopic(topic);
                       }
                     }}
                     className={`group relative bg-slate-800 rounded-xl overflow-hidden transition ${
                       lockedForSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                     } ${
-                      isSelected
+                      allSelected
                         ? "ring-4 ring-indigo-500"
-                        : lockedForSelect
-                          ? ""
-                          : selectMode
-                            ? "hover:ring-2 hover:ring-indigo-400 opacity-90"
-                            : "hover:ring-2 hover:ring-indigo-500"
+                        : someSelected
+                          ? "ring-2 ring-indigo-400"
+                          : lockedForSelect
+                            ? ""
+                            : selectMode
+                              ? "hover:ring-2 hover:ring-indigo-400 opacity-90"
+                              : "hover:ring-2 hover:ring-indigo-500"
                     }`}
                   >
-                    {/* "Already scheduled" badge — shown whenever this post
-                        has a calendar entry, so the user knows not to
-                        re-schedule it. Sits top-start under the platform
-                        badge area; in select mode the whole card is dimmed
-                        and locked too. */}
-                    {isScheduled && (
+                    {/* "Already scheduled" badge — shown when ANY post in the
+                        topic has a calendar entry. */}
+                    {someScheduled && (
                       <div className={`absolute z-10 ${isRtl ? "right-2" : "left-2"} bottom-2 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow`}>
                         <Calendar className="w-3 h-3" />
                         {isRtl ? "مجدول" : "Scheduled"}
                       </div>
                     )}
-                    {/* Selection checkbox overlay — visible whenever
-                        select mode is on. The icon flips between empty
-                        and filled to mirror native checkbox affordances. */}
+                    {/* Selection checkbox overlay. Full check when the whole
+                        topic is selected, half-state otherwise. */}
                     {selectMode && (
                       <div
                         className={`absolute top-2 ${isRtl ? "left-2" : "right-2"} z-10 w-7 h-7 rounded-full flex items-center justify-center transition ${
-                          isSelected
+                          allSelected
                             ? "bg-indigo-500 text-white"
-                            : "bg-slate-900/80 text-slate-300 border border-slate-600"
+                            : someSelected
+                              ? "bg-indigo-500/50 text-white"
+                              : "bg-slate-900/80 text-slate-300 border border-slate-600"
                         }`}
                       >
-                        {isSelected
+                        {allSelected || someSelected
                           ? <CheckSquare className="w-4 h-4" />
                           : <Square className="w-4 h-4" />}
                       </div>
                     )}
-                    {/* Cover thumbnail + carousel badge (top-end) +
-                        platform badge (top-start) — gives instant glance
-                        on what the post is and which app it's for. */}
+                    {/* Cover thumbnail + sizes badge (top-end) + platform
+                        badges (top-start). The sizes badge tells the user
+                        this card is a TOPIC holding several images. */}
                     <div className="aspect-square bg-slate-700 flex items-center justify-center overflow-hidden relative">
                       <img src={cover.url} alt={cover.name} className="w-full h-full object-cover" />
-                      {/* Platform badges (one image can serve several
-                          platforms) — compact emoji row at top-start. */}
                       <div className="absolute top-2 start-2 flex flex-wrap gap-1 max-w-[85%]">
-                        {(post.platforms && post.platforms.length ? post.platforms : [post.platform]).filter(Boolean).slice(0, 5).map((pl) => (
+                        {topic.platforms.filter(Boolean).slice(0, 5).map((pl) => (
                           <span key={pl} title={platformLabel(pl, isRtl)}
                             className="px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-bold inline-flex items-center">
                             {platformEmoji(pl)}
                           </span>
                         ))}
                       </div>
-                      {isCarousel && (
-                        <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-cyan-500 text-slate-900 text-[10px] font-bold">
-                          🎠 {post.items.length}
+                      {imageCount > 1 && (
+                        <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow">
+                          <Layers className="w-3 h-3" />
+                          {imageCount} {isRtl ? "مقاس" : "sizes"}
                         </span>
                       )}
                     </div>
 
-                    {/* Info — title goes first when present (it's the user's
-                        own label), platform pill second (Arabic name +
-                        emoji so it's unmistakable), caption snippet last. */}
+                    {/* Info — topic title first, platform pills, caption. */}
                     <div className="p-3 min-h-[3rem]">
                       <p className="font-semibold text-sm truncate">
-                        {post.caption_title || cover.name}
+                        {topic.title || cover.name}
                       </p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {(post.platforms && post.platforms.length ? post.platforms : [post.platform]).filter(Boolean).map((pl) => (
+                        {topic.platforms.filter(Boolean).map((pl) => (
                           <span key={pl} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-200 text-[10px] font-semibold">
                             <span>{platformEmoji(pl)}</span>
                             <span>{platformLabel(pl, isRtl)}</span>
                           </span>
                         ))}
                       </div>
-                      {hasCaption && post.caption_text && (
+                      {topic.posts[0]?.caption_text && (
                         <p className="text-slate-500 text-[11px] mt-1.5 line-clamp-2" dir="auto">
-                          {post.caption_text}
+                          {topic.posts[0].caption_text}
                         </p>
                       )}
                     </div>
 
-                    {/* Hover overlay — uses cover as the representative for
-                        legacy single-action handlers. Hidden in select
-                        mode so the side actions (edit/delete) can't
-                        conflict with picking cards to schedule. */}
+                    {/* Hover overlay — open all sizes, edit topic title/caption,
+                        delete the whole topic. Hidden in select mode. */}
                     <div className={`absolute inset-0 bg-black/40 opacity-0 transition flex items-center justify-center gap-2 ${
                       selectMode ? "" : "group-hover:opacity-100"
                     }`}>
-                      <a
-                        href={cover.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setViewingTopic(topic); }}
                         className="p-2 rounded-lg bg-slate-800/80 hover:bg-indigo-600 transition"
-                        title={isRtl ? "فتح" : "Open"}
+                        title={isRtl ? "فتح المقاسات" : "Open sizes"}
                       >
                         <Eye className="w-4 h-4" />
-                      </a>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEditMediaContent(post); }}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-purple-600 transition"
-                        title={isRtl ? "تحرير الكابشن" : "Edit caption"}
-                      >
-                        <Edit3 className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEditMedia(cover); }}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-indigo-600 transition"
-                        title={isRtl ? "معلومات" : "Info"}
-                      >
-                        <Upload className="w-4 h-4" />
-                      </button>
-                      {/* Carousel delete opens a confirmation modal so a
-                          stray click on a 50-post grid can't nuke a
-                          post by accident. The actual delete runs
-                          inside the confirmation handler below. */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setConfirmDeletePost(post);
+                          handleEditMediaContent({ post_id: topic.key, items: topic.items, caption_title: topic.title, caption_text: topic.posts[0]?.caption_text || "" });
                         }}
-                        disabled={post.items.some((m) => deleting === m.id)}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-red-600 transition disabled:opacity-50"
-                        title={isRtl ? "حذف" : "Delete"}
+                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-purple-600 transition"
+                        title={isRtl ? "تحرير العنوان/الكابشن" : "Edit title/caption"}
                       >
-                        {post.items.some((m) => deleting === m.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      {/* Delete the WHOLE topic — confirmation gate first. */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeletePost({ post_id: topic.key, items: topic.items, caption_title: topic.title, caption_text: topic.posts[0]?.caption_text || "" });
+                        }}
+                        disabled={topic.items.some((m) => deleting === m.id)}
+                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-red-600 transition disabled:opacity-50"
+                        title={isRtl ? "حذف الموضوع" : "Delete topic"}
+                      >
+                        {topic.items.some((m) => deleting === m.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -1545,6 +1651,111 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         );
       })()}
 
+      {/* ── Topic-detail modal ────────────────────────────────────────
+          Opens when the user clicks a topic card. Shows EVERY image in
+          the topic (all sizes), each with its own actions: download,
+          open, info (title/platforms), delete. A header action edits the
+          whole topic's title/caption at once. This is the "one card per
+          topic, click to see all sizes & edit any" behaviour. */}
+      {viewingTopic && (() => {
+        const topic = viewingTopic;
+        const syntheticPost = {
+          post_id: topic.key,
+          items: topic.items,
+          caption_title: topic.title,
+          caption_text: topic.posts[0]?.caption_text || "",
+        };
+        return (
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setViewingTopic(null)}
+            dir={isRtl ? "rtl" : "ltr"}
+          >
+            <div
+              className="bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 p-4 border-b border-slate-800">
+                <div className="min-w-0">
+                  <p className="text-[10px] text-slate-400">{isRtl ? "الموضوع" : "Topic"}</p>
+                  <h3 className="font-bold text-white truncate">
+                    {topic.title || (isRtl ? "بدون عنوان" : "Untitled")}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {topic.items.length} {isRtl ? "صورة/مقاس" : "images"}
+                    {topic.platforms.length > 0 && <> · {topic.platforms.map((pl) => platformEmoji(pl)).join(" ")}</>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => { handleEditMediaContent(syntheticPost); setViewingTopic(null); }}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold transition flex items-center gap-1.5"
+                    title={isRtl ? "تعديل العنوان والكابشن لكل صور الموضوع" : "Edit title & caption for the whole topic"}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span className="hidden sm:inline">{isRtl ? "تعديل العنوان/الكابشن" : "Edit title/caption"}</span>
+                  </button>
+                  <button
+                    onClick={() => setViewingTopic(null)}
+                    className="text-slate-400 hover:text-white p-1 rounded transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body — grid of all images in this topic */}
+              <div className="p-4 overflow-y-auto">
+                <p className="text-[11px] text-slate-400 mb-3">
+                  {isRtl
+                    ? "كل المقاسات تحت هذا العنوان. حمّل أو احذف أو عدّل بيانات أي صورة."
+                    : "All sizes under this topic. Download, delete, or edit info for any image."}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {topic.items.map((img) => (
+                    <LibImageTile
+                      key={img.id}
+                      image={img}
+                      isRtl={isRtl}
+                      busy={deleting === img.id}
+                      onInfo={() => handleEditMedia(img)}
+                      onDelete={async () => {
+                        await handleDeleteMedia({ stopPropagation() {} }, img.id);
+                        // Drop the deleted image from the open topic view; if
+                        // it was the last one, close the modal.
+                        setViewingTopic((t) => {
+                          if (!t) return t;
+                          const items = t.items.filter((x) => x.id !== img.id);
+                          return items.length ? { ...t, items } : null;
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 p-4 border-t border-slate-800">
+                <button
+                  onClick={() => setConfirmDeletePost(syntheticPost)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-200 text-sm transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isRtl ? "حذف الموضوع كامل" : "Delete whole topic"}
+                </button>
+                <button
+                  onClick={() => setViewingTopic(null)}
+                  className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition"
+                >
+                  {isRtl ? "إغلاق" : "Close"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Caption editor modal ──────────────────────────────────────
           Opens from the pencil button on any post. Edits the post's
           title + caption text + hashtags. Saves to localStorage (the
@@ -1726,6 +1937,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     // content.
                     if (previewingPost?.post_id === post.post_id) {
                       setPreviewingPost(null);
+                    }
+                    // Same for the topic-detail modal.
+                    if (viewingTopic?.key === post.post_id) {
+                      setViewingTopic(null);
                     }
                   }}
                   disabled={isBusy}

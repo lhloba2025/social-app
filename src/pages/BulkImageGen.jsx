@@ -15,6 +15,8 @@ const SWATCHES = ["#09007C", "#2E14ED", "#EF43DC", "#000000", "#FFFFFF", "#0F172
 
 // Content columns.
 const COL = {
+  // العنوان = مُعرّف الموضوع (إجباري). الصور بنفس العنوان تُعامل كموضوع واحد عند الجدولة.
+  title:     ["العنوان", "عنوان", "العنوان (مُعرّف الموضوع)", "المعرف", "title", "topic"],
   scene:     ["وصف المشهد", "المشهد", "scene", "description"],
   hook:      ["الهوك", "hook"],
   highlight: ["الكلمات المميزة", "الكلمة المميزة", "highlight", "highlights"],
@@ -95,8 +97,9 @@ export default function BulkImageGen({ ar }) {
   }, [perDay]);
 
   const downloadTemplate = () => {
-    const headers = ["وصف المشهد", "الهوك", "الكلمات المميزة", "الكابشن", "انستقرام", "فيسبوك", "تيك توك", "استوري", "تويتر", "لينكدإن", "يوتيوب", "سناب"];
+    const headers = ["العنوان (إجباري)", "وصف المشهد", "الهوك", "الكلمات المميزة", "الكابشن", "انستقرام", "فيسبوك", "تيك توك", "استوري", "تويتر", "لينكدإن", "يوتيوب", "سناب"];
     const ex = [
+      "عرض الصيف",
       "هاتف على رخام كريمي يعرض تطبيق حجز مواعيد أنيق، إضاءة دافئة، مساحة فاضية بالأعلى للشعار والهوك",
       "صالونكِ يستاهل الأفضل", "صالونكِ",
       "أفضل تجربة لإدارة صالونك من مكان واحد 💜 hovera.sa #هوفيرا",
@@ -104,7 +107,7 @@ export default function BulkImageGen({ ar }) {
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ex]);
     ws["!cols"] = Array(headers.length).fill({ wch: 18 });
-    ws["!cols"][0] = { wch: 45 }; ws["!cols"][3] = { wch: 42 };
+    ws["!cols"][0] = { wch: 22 }; ws["!cols"][1] = { wch: 45 }; ws["!cols"][4] = { wch: 42 };
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "المنشورات");
     XLSX.writeFile(wb, "نموذج_المنشورات.xlsx");
@@ -123,9 +126,17 @@ export default function BulkImageGen({ ar }) {
           const asp = parseAspectFromCell(cellRaw(r, col.names));
           if (asp) targets.push({ platforms: col.platforms, type: col.type, aspect: asp, labelAr: col.labelAr });
         }
-        return { scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption), targets };
+        return { title: pick(r, COL.title), scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption), targets };
       }).filter((r) => (r.scene || r.hook || r.caption) && r.targets.length);
       if (!parsed.length) { setError(ar ? "الملف فاضي أو ما فيه أعمدة منصات معبّأة (انستقرام/فيسبوك/تيك توك/استوري...)." : "No filled platform columns found."); return; }
+      // العنوان إجباري — هو مُعرّف الموضوع الذي تُجمع به الصور عند الجدولة.
+      const missingTitle = parsed.filter((r) => !(r.title || "").trim()).length;
+      if (missingTitle) {
+        setError(ar
+          ? `العنوان إجباري: ${missingTitle} صف بدون عنوان. عبّئ عمود «العنوان (إجباري)» لكل صف — هو مُعرّف الموضوع الذي تُجمع به الصور.`
+          : `Title is required: ${missingTitle} row(s) missing a title. Fill the "Title" column for every row.`);
+        return;
+      }
       setRows(parsed);
     } catch (err) {
       setError((ar ? "تعذّرت قراءة الملف: " : "Couldn't read file: ") + (err?.message || err));
@@ -300,11 +311,12 @@ export default function BulkImageGen({ ar }) {
           ));
           addLocalMedia({
             url,
-            name: (row.hook || row.scene || "AI").slice(0, 40),
+            name: (row.title || row.hook || row.scene || "AI").slice(0, 40),
             platform: platforms[0] || "instagram", // back-compat (single)
             platforms,                              // multi-platform tags
             post_id: `post_${Date.now()}_${i}_${aspect.replace(":", "x")}_${Math.random().toString(36).slice(2, 5)}`,
-            caption_title: row.hook || "", caption_text: row.caption || "", position: 0, type: "image",
+            // caption_title = العنوان (مُعرّف الموضوع) — الصور بنفس العنوان تتجمّع كموضوع واحد.
+            caption_title: row.title || row.hook || "", caption_text: row.caption || "", position: 0, type: "image",
           });
           saved++;
         }
@@ -354,6 +366,7 @@ export default function BulkImageGen({ ar }) {
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-2 text-[12px] text-slate-300 leading-relaxed">
           <p className="font-bold text-white">{ar ? "كيف يعمل تبويب «عام»:" : "How bulk works:"}</p>
+          <p className="text-amber-300/90">{ar ? "⚠️ عمود «العنوان» إجباري لكل صف — هو مُعرّف الموضوع الذي تُجمع به الصور وتُجدول سوا." : "⚠️ The «Title» column is required per row — it's the topic id that groups & schedules images together."}</p>
           <p>{ar ? "كل صف = منشور. تكتب عمود لكل منصة وفيه مقاسها (مثل ملفك):" : "One row = a post. A column per platform with its size:"}</p>
           <p className="text-slate-400">{ar ? "انستقرام · فيسبوك · تيك توك · تويتر · لينكدإن · استوري." : "instagram · facebook · tiktok · twitter · linkedin · story."}</p>
           <p className="text-emerald-300/90">{ar ? "عمود «استوري» = ينشر ستوري (انستقرام + فيسبوك). الصور بنفس المقاس تُولّد مرة وحدة وتُستخدم لكل منصاتها (أوفر)." : "Same-size images are generated once and reused."}</p>
