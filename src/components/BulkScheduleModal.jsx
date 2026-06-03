@@ -125,23 +125,24 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
     return () => { cancelled = true; };
   }, [isOpen, posts]);
 
-  // Per-image OVERRIDE (post_id → "story"|"feed") — force a specific image to be
-  // a story (vertical) or feed regardless of its size.
+  // Per-image OVERRIDE (post_id → "feed"|"story"|"both") — force a specific
+  // image to be published as a feed post, a story, or BOTH at once (same image
+  // sent to both placements). Without an override the image follows its size.
   const [typeOverride, setTypeOverride] = useState({});
   React.useEffect(() => { if (isOpen) setTypeOverride({}); }, [isOpen, posts]);
-  const toggleTypeFor = (postId, current) =>
-    setTypeOverride((prev) => ({ ...prev, [postId]: current === "story" ? "feed" : "story" }));
 
-  // Classify an image: "vertical" (9:16-like → stories/TikTok/Snap),
-  // "wide" (16:9-like) or "feed" (4:5/1:1/3:4). Override wins.
-  const kindForPost = (p) => {
-    const ov = typeOverride[p.post_id];
-    if (ov === "story") return "vertical";
-    if (ov === "feed") return "feed";
-    const a = aspectByPost[p.post_id] || "4:5";
-    if (a === "9:16") return "vertical";
-    if (a === "16:9" || a === "4:3") return "wide";
-    return "feed";
+  // The type an image takes purely from its size: 9:16 → story, anything else
+  // (1:1, 4:5, 16:9…) → feed.
+  const autoTypeOf = (p) => ((aspectByPost[p.post_id] || "4:5") === "9:16" ? "story" : "feed");
+  // Effective type = override if set, else the size-based default.
+  const effectiveType = (p) => typeOverride[p.post_id] || autoTypeOf(p); // "feed"|"story"|"both"
+  // Which placement slots this image wants. "both" → feed AND story.
+  const desiredSlots = (p) => { const t = effectiveType(p); return t === "both" ? ["feed", "story"] : [t]; };
+  // Click cycles: feed → story → both → feed.
+  const cycleTypeFor = (p) => {
+    const order = { feed: "story", story: "both", both: "feed" };
+    const eff = effectiveType(p);
+    setTypeOverride((prev) => ({ ...prev, [p.post_id]: order[eff] || "story" }));
   };
 
   // What each platform wants. IG/FB have TWO slots (feed + story); others one.
@@ -172,8 +173,7 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
       if (!slots) continue;
       const platEntries = [];
       for (const slot of slots) {
-        const want = slot === "story" ? ["vertical"] : ["feed", "wide"];
-        const imgs = u.posts.filter((p) => want.includes(kindForPost(p)));
+        const imgs = u.posts.filter((p) => desiredSlots(p).includes(slot));
         if (!imgs.length) continue;
         const carousel = (platform === "instagram" || platform === "facebook") && slot === "feed" && imgs.length > 1;
         platEntries.push({ platform, type: slot, posts: carousel ? imgs : [imgs[0]], substituted: false });
@@ -535,8 +535,8 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
               </div>
               <p className="text-[10px] text-emerald-300/90 mt-1 leading-relaxed">
                 {isRtl
-                  ? "اختر المنصات اللي تبي تنشر عليها. النظام يوزّع صور كل موضوع تلقائياً: الطويلة (9:16) ستوري/تيك توك، والعريضة بوست — كل صورة لمنصتها المناسبة. 💡 تقدر تبدّل نوع أي صورة (بوست/ستوري) بالضغط على شارتها (⇄) في المعاينة."
-                  : "Pick the platforms. Each topic's images are auto-distributed by size — tall (9:16) → story/TikTok, wide → feed. 💡 Click an image's badge (⇄) to switch its type."}
+                  ? "اختر المنصات. النظام يوزّع صور كل موضوع تلقائياً حسب المقاس: الطويلة (9:16) ستوري، والمربعة/العمودية (1:1, 4:5) بوست. 💡 تبي تنشر نفس الصورة بوست وستوري معاً؟ اضغط على شارة الصورة في المعاينة لين توصل «بوست+ستوري»."
+                  : "Pick the platforms. Each topic's images are auto-distributed by size — tall (9:16) → story, square/portrait → feed. 💡 Want the same image as BOTH a post and a story? Click its badge in the preview until it shows «feed+story»."}
               </p>
             </div>
 
@@ -832,20 +832,25 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
                           </div>
                         </div>
                       </div>
-                      {/* This topic's images — click a badge to flip story/feed (re-routes it). */}
+                      {/* This topic's images — click a badge to cycle
+                          feed → story → both (re-routes the image). */}
                       <div className="mt-1.5 ms-6 flex flex-wrap gap-1.5">
                         {u.posts.map((p, k) => {
                           const cover = p.items?.[0];
-                          const kind = kindForPost(p);
-                          const isStory = kind === "vertical";
+                          const t = effectiveType(p);
+                          const label = t === "both" ? (isRtl ? "بوست+ستوري" : "feed+story")
+                            : t === "story" ? (isRtl ? "ستوري" : "story")
+                            : (isRtl ? "بوست" : "feed");
+                          const icon = t === "both" ? "📷⭕" : t === "story" ? "⭕" : "📷";
+                          const color = t === "story" ? "text-fuchsia-300" : t === "both" ? "text-amber-300" : "text-indigo-300";
                           return (
                             <button key={k} type="button"
-                              onClick={() => toggleTypeFor(p.post_id, isStory ? "story" : "feed")}
-                              title={isRtl ? "اضغط لتبديل بوست/ستوري" : "Click to switch feed/story"}
+                              onClick={() => cycleTypeFor(p)}
+                              title={isRtl ? "اضغط للتبديل: بوست → ستوري → بوست+ستوري" : "Click to cycle: feed → story → both"}
                               className="inline-flex items-center gap-1 bg-slate-900/60 rounded px-1 py-0.5 hover:bg-slate-700 transition">
                               {cover && <img src={cover.url} alt="" className="w-6 h-6 rounded object-cover" />}
-                              <span className={`text-[9px] font-bold ${isStory ? "text-fuchsia-300" : "text-indigo-300"}`}>
-                                {isStory ? "⭕" : "📷"} {aspectByPost[p.post_id] || ""} ⇄
+                              <span className={`text-[9px] font-bold ${color}`}>
+                                {icon} {label} <span className="text-slate-500">{aspectByPost[p.post_id] || ""}</span> ⇄
                               </span>
                             </button>
                           );
