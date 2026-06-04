@@ -48,7 +48,9 @@ function loadImg(src) {
 // real weight. `document.fonts.load()` returns the NEAREST face (so it can't
 // tell us what's real), so after triggering the download we inspect each loaded
 // FontFace's declared `.weight` for this family.
+const _famWeightCache = new Map(); // family → real weights (cached after first resolve)
 async function loadFamily(fam, px = 64) {
+  if (_famWeightCache.has(fam)) return _famWeightCache.get(fam);
   for (const req of ["400", "700", "900"]) {
     try { await document.fonts.load(`${req} ${px}px "${fam}"`); } catch { /* nearest-match, ignore */ }
   }
@@ -63,7 +65,9 @@ async function loadFamily(fam, px = 64) {
       } else real.add(wt);
     });
   } catch { /* FontFaceSet not iterable — leave empty */ }
-  return [...real];
+  const arr = [...real];
+  if (arr.length) _famWeightCache.set(fam, arr); // cache only a real result
+  return arr;
 }
 
 // Heaviest REAL weight (preferring a bold ~700–900) so text is bold WITHOUT
@@ -144,28 +148,37 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, weight = 
   while (size > 14 && allWords.some((w) => ctx.measureText(w).width > maxWidth)) {
     size = Math.round(size * 0.94); setFont(size); lines = wrap();
   }
-  // Measure the inter-word space at the FINAL size (so spacing matches glyphs).
-  const space = ctx.measureText(" ").width;
   const lineH = size * 1.35;
   // place block starting below the logo area (adjustable)
   const startY = H * (layout.hookY ?? 0.26);
+  ctx.textAlign = "right";
+  ctx.direction = "rtl";
+  const space = ctx.measureText(" ").width;
   lines.forEach((lineWords, li) => {
-    const widths = lineWords.map((w) => ctx.measureText(w).width);
-    const lineW = widths.reduce((a, b) => a + b, 0) + space * (lineWords.length - 1);
+    if (!lineWords.length) return;
+    // Draw the WHOLE line as one string first. This is the critical fix: Arabic
+    // letters shape and join across the line correctly only when the browser
+    // lays out the full run in one fillText. Drawing word-by-word (the old way)
+    // made some fonts emit wrong/garbled glyphs. We render the full line in the
+    // main color, then overlay only the HIGHLIGHTED words in the accent color
+    // at their measured positions (a highlighted word is self-contained between
+    // spaces, so overlaying it lines up exactly).
+    const lineStr = lineWords.join(" ");
+    const lineW = ctx.measureText(lineStr).width;
     const y = startY + li * lineH;
-    // RTL: first word at the RIGHT. Start x at right edge of the line, centered
-    // around the chosen horizontal anchor (hookX).
     const cx = W * (layout.hookX ?? 0.5);
-    let x = cx + lineW / 2;
-    ctx.textAlign = "right";
-    ctx.direction = "rtl";
-    lineWords.forEach((w, i) => {
-      ctx.fillStyle = isHi(w) ? hi : main;
-      // No glow/shadow — the user asked for clean text. (Was a white halo
-      // for legibility; removed per request.)
-      ctx.fillText(w, x, y);
-      x -= widths[i] + space;
-    });
+    const rightX = cx + lineW / 2; // right edge (textAlign = right)
+    ctx.fillStyle = main;
+    ctx.fillText(lineStr, rightX, y);
+    // Overlay highlighted words.
+    if (lineWords.some(isHi)) {
+      let x = rightX;
+      for (const w of lineWords) {
+        const ww = ctx.measureText(w).width;
+        if (isHi(w)) { ctx.fillStyle = hi; ctx.fillText(w, x, y); }
+        x -= ww + space;
+      }
+    }
   });
 }
 
