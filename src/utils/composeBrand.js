@@ -49,11 +49,17 @@ function loadImg(src) {
 // tell us what's real), so after triggering the download we inspect each loaded
 // FontFace's declared `.weight` for this family.
 const _famWeightCache = new Map(); // family → real weights (cached after first resolve)
-async function loadFamily(fam, px = 64) {
-  if (_famWeightCache.has(fam)) return _famWeightCache.get(fam);
+async function loadFamily(fam, px = 64, sample = "") {
+  // CRITICAL: pass the actual (Arabic) text as the sample. Google Fonts splits
+  // each family into Latin/Arabic subsets and only downloads the subset whose
+  // glyphs are requested. Loading without a sample fetched only the LATIN
+  // subset, so the canvas drew Arabic with a font that had no Arabic glyphs →
+  // garbled output. The sample forces the Arabic subset to download.
+  const txt = sample || undefined;
   for (const req of ["400", "700", "900"]) {
-    try { await document.fonts.load(`${req} ${px}px "${fam}"`); } catch { /* nearest-match, ignore */ }
+    try { await document.fonts.load(`${req} ${px}px "${fam}"`, txt); } catch { /* nearest-match, ignore */ }
   }
+  if (_famWeightCache.has(fam)) return _famWeightCache.get(fam);
   const real = new Set();
   try {
     document.fonts.forEach((f) => {
@@ -272,13 +278,15 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
   let font = kit.font || "Tajawal";
-  // Download the chosen family and find its REAL weights. If it has none (failed
-  // to load), fall back to Tajawal so we never draw at a synthesized weight.
-  let realW = await loadFamily(font, Math.round(W * 0.075));
-  if (!realW.length) { font = "Tajawal"; realW = await loadFamily(font, Math.round(W * 0.075)); }
+  // Sample text = the actual hook (so the font's ARABIC subset downloads) plus
+  // the contact handles for the bar. Without this the Arabic subset never
+  // loaded and the canvas drew garbled glyphs.
+  const sample = `${hook || ""} ${(contacts || []).map((c) => c.v).join(" ")} أبجد هوز`;
+  let realW = await loadFamily(font, Math.round(W * 0.075), sample);
+  if (!realW.length) { font = "Tajawal"; realW = await loadFamily(font, Math.round(W * 0.075), sample); }
   const hookWeight = heaviestWeight(realW);
   // Tajawal is also the fallback for the contact bar text.
-  if (font !== "Tajawal") await loadFamily("Tajawal", Math.round(W * 0.026));
+  if (font !== "Tajawal") await loadFamily("Tajawal", Math.round(W * 0.026), sample);
 
   if (logoUrl) {
     try {

@@ -46,9 +46,12 @@ function loadImg(src) {
 
 // Download a family and return its REAL declared weights (so we never draw at a
 // synthesized weight — faux-bold breaks Arabic shaping in canvas).
-async function loadFamilyWeights(fam, px = 64) {
+async function loadFamilyWeights(fam, px = 64, sample = "") {
+  // Pass Arabic sample text so Google Fonts downloads the ARABIC subset (not
+  // just Latin) — otherwise the canvas draws garbled Arabic.
+  const txt = sample || undefined;
   for (const req of ["400", "700", "900"]) {
-    try { await document.fonts.load(`${req} ${px}px "${fam}"`); } catch { /* nearest-match */ }
+    try { await document.fonts.load(`${req} ${px}px "${fam}"`, txt); } catch { /* nearest-match */ }
   }
   const real = new Set();
   try {
@@ -90,7 +93,8 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
 
   // Resolve REAL weights so we draw bold without faux-synthesis (which would
   // garble Arabic). nameW = bold for the name; infoW = lighter for the details.
-  const realW = await loadFamilyWeights(font, Math.round(H * 0.26));
+  const lhSample = `${fields.nameAr || ""} ${fields.subAr || ""} ${fields.nameEn || ""} أبجد هوز`;
+  const realW = await loadFamilyWeights(font, Math.round(H * 0.26), lhSample);
   const nameW = pickWeight(realW, ["800", "900", "700", "600", "500", "400"]);
   const subW  = pickWeight(realW, ["700", "600", "800", "500", "400"]);
   const infoW = pickWeight(realW, ["500", "600", "400", "700"]);
