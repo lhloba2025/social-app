@@ -41,6 +41,17 @@ function loadImg(src) {
   });
 }
 
+// Ensure a web font family is actually downloaded before drawing to canvas.
+// Requesting a single heavy weight (e.g. 800) fails silently for families that
+// don't ship that weight, so we try a spread (400/700/900) — whichever exists
+// downloads, and the canvas can then render the family instead of falling back.
+async function loadFamily(fam, px = 64) {
+  for (const w of ["400", "700", "900"]) {
+    try { await document.fonts.load(`${w} ${px}px "${fam}"`); } catch { /* weight may not exist */ }
+  }
+  try { await document.fonts.ready; } catch { /* best-effort */ }
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -126,10 +137,9 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     ctx.direction = "rtl";
     lineWords.forEach((w, i) => {
       ctx.fillStyle = isHi(w) ? hi : main;
-      // subtle shadow for legibility on light/busy backgrounds
-      ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = size * 0.12;
+      // No glow/shadow — the user asked for clean text. (Was a white halo
+      // for legibility; removed per request.)
       ctx.fillText(w, x, y);
-      ctx.shadowBlur = 0;
       x -= widths[i] + space;
     });
   });
@@ -225,11 +235,14 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
   const font = kit.font || "Tajawal";
-  try {
-    await document.fonts.load(`800 ${Math.round(W * 0.075)}px "${font}"`);
-    await document.fonts.load(`600 ${Math.round(W * 0.026)}px "Tajawal"`);
-    await document.fonts.ready;
-  } catch { /* fonts best-effort */ }
+  // Load SEVERAL weights of the chosen family. Critical: requesting only weight
+  // 800 silently fails for families that don't ship an 800 face (El Messiri,
+  // Amiri, Lalezar, Aref Ruqaa…) — the file never downloads and the canvas
+  // falls back to Tajawal, so changing the font appeared to do nothing. Loading
+  // 400/700/900 forces the family to download whichever of those it has, so the
+  // canvas can actually render it.
+  await loadFamily(font, Math.round(W * 0.075));
+  await loadFamily("Tajawal", Math.round(W * 0.026));
 
   if (logoUrl) {
     try {

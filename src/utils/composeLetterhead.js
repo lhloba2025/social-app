@@ -66,10 +66,13 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
   const logoDy = layout.logoDy ?? 0;               // vertical nudge (fraction of H)
   const textScale = layout.textScale ?? 1;
 
-  try {
-    await document.fonts.load(`800 ${Math.round(H * 0.26)}px "${font}"`);
-    await document.fonts.ready;
-  } catch { /* best-effort */ }
+  // Load a spread of weights so the family actually downloads (requesting only
+  // 800 silently fails for families without an 800 face → fallback to Tajawal).
+  const fpx = Math.round(H * 0.26);
+  for (const w of ["400", "700", "900"]) {
+    try { await document.fonts.load(`${w} ${fpx}px "${font}"`); } catch { /* weight may not exist */ }
+  }
+  try { await document.fonts.ready; } catch { /* best-effort */ }
 
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
