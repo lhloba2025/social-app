@@ -41,15 +41,38 @@ function loadImg(src) {
   });
 }
 
-// Ensure a web font family is actually downloaded before drawing to canvas.
-// Requesting a single heavy weight (e.g. 800) fails silently for families that
-// don't ship that weight, so we try a spread (400/700/900) — whichever exists
-// downloads, and the canvas can then render the family instead of falling back.
+// Load a web font family and return the set of REAL declared weights it ships.
+// Why this matters: drawing Arabic at a weight the font doesn't actually have
+// makes the browser SYNTHESIZE bold, and synthesized bold breaks Arabic letter
+// shaping in canvas — that's what garbled the hook text. We must draw only at a
+// real weight. `document.fonts.load()` returns the NEAREST face (so it can't
+// tell us what's real), so after triggering the download we inspect each loaded
+// FontFace's declared `.weight` for this family.
 async function loadFamily(fam, px = 64) {
-  for (const w of ["400", "700", "900"]) {
-    try { await document.fonts.load(`${w} ${px}px "${fam}"`); } catch { /* weight may not exist */ }
+  for (const req of ["400", "700", "900"]) {
+    try { await document.fonts.load(`${req} ${px}px "${fam}"`); } catch { /* nearest-match, ignore */ }
   }
-  try { await document.fonts.ready; } catch { /* best-effort */ }
+  const real = new Set();
+  try {
+    document.fonts.forEach((f) => {
+      if (String(f.family).replace(/['"]/g, "").trim().toLowerCase() !== fam.toLowerCase()) return;
+      const wt = String(f.weight || "400");
+      if (wt.includes(" ")) { // variable font range "300 900"
+        const [lo, hi] = wt.split(/\s+/).map(Number);
+        for (let n = Math.ceil(lo / 100) * 100; n <= hi; n += 100) real.add(String(n));
+      } else real.add(wt);
+    });
+  } catch { /* FontFaceSet not iterable — leave empty */ }
+  return [...real];
+}
+
+// Heaviest REAL weight (preferring a bold ~700–900) so text is bold WITHOUT
+// faux synthesis. Empty → "400" (a single-weight family draws at its own weight).
+function heaviestWeight(realWeights) {
+  for (const w of ["800", "900", "700", "600", "500", "400"]) {
+    if (realWeights.includes(w)) return w;
+  }
+  return realWeights.length ? realWeights[realWeights.length - 1] : "400";
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -90,7 +113,7 @@ function normAr(s) {
     .trim();
 }
 
-function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
+function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, weight = "700") {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
   const hlNorm = (highlights || []).map(normAr).filter(Boolean);
@@ -101,7 +124,8 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const segments = hook.split(/\r?\n/);
   const allWords = segments.flatMap((s) => s.split(/\s+/).filter(Boolean));
   ctx.textBaseline = "middle";
-  const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
+  // Draw at a REAL weight of the family (no faux-bold → Arabic stays shaped).
+  const setFont = (s) => { ctx.font = `${weight} ${s}px "${font}", "Tajawal", sans-serif`; };
   const wrap = () => segments.flatMap((seg) => {
     const ws = seg.split(/\s+/).filter(Boolean);
     return ws.length ? wrapWords(ctx, ws, maxWidth) : [[]]; // keep blank lines for spacing
@@ -234,15 +258,14 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   const dw = bw * scale, dh = bh * scale;
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
-  const font = kit.font || "Tajawal";
-  // Load SEVERAL weights of the chosen family. Critical: requesting only weight
-  // 800 silently fails for families that don't ship an 800 face (El Messiri,
-  // Amiri, Lalezar, Aref Ruqaa…) — the file never downloads and the canvas
-  // falls back to Tajawal, so changing the font appeared to do nothing. Loading
-  // 400/700/900 forces the family to download whichever of those it has, so the
-  // canvas can actually render it.
-  await loadFamily(font, Math.round(W * 0.075));
-  await loadFamily("Tajawal", Math.round(W * 0.026));
+  let font = kit.font || "Tajawal";
+  // Download the chosen family and find its REAL weights. If it has none (failed
+  // to load), fall back to Tajawal so we never draw at a synthesized weight.
+  let realW = await loadFamily(font, Math.round(W * 0.075));
+  if (!realW.length) { font = "Tajawal"; realW = await loadFamily(font, Math.round(W * 0.075)); }
+  const hookWeight = heaviestWeight(realW);
+  // Tajawal is also the fallback for the contact bar text.
+  if (font !== "Tajawal") await loadFamily("Tajawal", Math.round(W * 0.026));
 
   if (logoUrl) {
     try {
@@ -271,7 +294,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
 
   if (hook && hook.trim()) {
     const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
-    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout);
+    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout, hookWeight);
   }
 
   if (contacts && contacts.length) {

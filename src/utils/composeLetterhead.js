@@ -44,6 +44,28 @@ function loadImg(src) {
   });
 }
 
+// Download a family and return its REAL declared weights (so we never draw at a
+// synthesized weight — faux-bold breaks Arabic shaping in canvas).
+async function loadFamilyWeights(fam, px = 64) {
+  for (const req of ["400", "700", "900"]) {
+    try { await document.fonts.load(`${req} ${px}px "${fam}"`); } catch { /* nearest-match */ }
+  }
+  const real = new Set();
+  try {
+    document.fonts.forEach((f) => {
+      if (String(f.family).replace(/['"]/g, "").trim().toLowerCase() !== fam.toLowerCase()) return;
+      const wt = String(f.weight || "400");
+      if (wt.includes(" ")) { const [lo, hi] = wt.split(/\s+/).map(Number); for (let n = Math.ceil(lo / 100) * 100; n <= hi; n += 100) real.add(String(n)); }
+      else real.add(wt);
+    });
+  } catch { /* not iterable */ }
+  return [...real];
+}
+function pickWeight(real, prefs) {
+  for (const w of prefs) if (real.includes(w)) return w;
+  return real.length ? real[real.length - 1] : "400";
+}
+
 // Fit a single text row into maxW by shrinking the font if needed.
 function fitFont(ctx, text, weight, px, font, maxW) {
   ctx.font = `${weight} ${px}px "${font}", "Tajawal", sans-serif`;
@@ -66,13 +88,12 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
   const logoDy = layout.logoDy ?? 0;               // vertical nudge (fraction of H)
   const textScale = layout.textScale ?? 1;
 
-  // Load a spread of weights so the family actually downloads (requesting only
-  // 800 silently fails for families without an 800 face → fallback to Tajawal).
-  const fpx = Math.round(H * 0.26);
-  for (const w of ["400", "700", "900"]) {
-    try { await document.fonts.load(`${w} ${fpx}px "${font}"`); } catch { /* weight may not exist */ }
-  }
-  try { await document.fonts.ready; } catch { /* best-effort */ }
+  // Resolve REAL weights so we draw bold without faux-synthesis (which would
+  // garble Arabic). nameW = bold for the name; infoW = lighter for the details.
+  const realW = await loadFamilyWeights(font, Math.round(H * 0.26));
+  const nameW = pickWeight(realW, ["800", "900", "700", "600", "500", "400"]);
+  const subW  = pickWeight(realW, ["700", "600", "800", "500", "400"]);
+  const infoW = pickWeight(realW, ["500", "600", "400", "700"]);
 
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
@@ -147,9 +168,9 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
   // Draw a stacked, vertically-centered block clamped to [maxW].
   function drawBlock({ name, sub, info, align, xEdge, maxW }) {
     const rows = [];
-    if (name) rows.push({ t: name, fs: fsName, color: nameColor, weight: 800 });
-    if (sub)  rows.push({ t: sub,  fs: fsSub,  color: accentColor, weight: 700, underline: true });
-    if (info) rows.push({ t: info, fs: fsInfo, color: nameColor, weight: 600 });
+    if (name) rows.push({ t: name, fs: fsName, color: nameColor, weight: nameW });
+    if (sub)  rows.push({ t: sub,  fs: fsSub,  color: accentColor, weight: subW, underline: true });
+    if (info) rows.push({ t: info, fs: fsInfo, color: nameColor, weight: infoW });
     if (!rows.length) return;
     // Clamp each row to the available width.
     for (const r of rows) r.fs = fitFont(ctx, r.t, r.weight, r.fs, font, maxW);
