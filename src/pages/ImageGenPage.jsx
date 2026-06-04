@@ -23,10 +23,10 @@ function CustomGen({ ar }) {
   const [highlight, setHighlight] = useState("");
   const [aspect, setAspect] = useState("4:5");
   const [bgOnly, setBgOnly] = useState(false);
-  // High-precision mode: AI paints only the scene, then we composite the real
-  // logo + hook (real font) + contact bar on top — exact every time.
-  const [autoCompose, setAutoCompose] = useState(() => localStorage.getItem("ai_auto_compose") !== "0");
-  React.useEffect(() => { localStorage.setItem("ai_auto_compose", autoCompose ? "1" : "0"); }, [autoCompose]);
+  // High precision is ALWAYS on now: the AI paints only the scene, then we
+  // composite the real logo + hook (real Arabic font) + contact bar on top.
+  // (The old toggle let the AI draw the text itself, which always garbled
+  // Arabic and disabled live editing — so it was removed.)
   const [kit, setKit] = useState(loadKit);
   const [logo, setLogo] = useState(loadLogo);
 
@@ -61,7 +61,7 @@ function CustomGen({ ar }) {
     if (!scene.trim()) { setError(ar ? "اكتب فكرة المشهد أولاً." : "Describe the scene first."); return; }
     setError(""); setSaved(false); setResult(""); setLoading(true);
     try {
-      if (autoCompose && !bgOnly) {
+      if (!bgOnly) {
         // AI paints the scene only; the effect composites the brand elements
         // (and re-composites live as you tweak layout/colors/text).
         const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly: true });
@@ -158,23 +158,21 @@ function CustomGen({ ar }) {
           </div>
         </div>
 
-        <label className="flex items-start gap-2 bg-fuchsia-900/20 border border-fuchsia-500/40 rounded-lg p-2.5 cursor-pointer">
-          <input type="checkbox" checked={autoCompose} onChange={(e) => setAutoCompose(e.target.checked)} className="mt-0.5" />
+        <div className="flex items-start gap-2 bg-fuchsia-900/20 border border-fuchsia-500/40 rounded-lg p-2.5">
+          <span className="mt-0.5">🎯</span>
           <span className="text-[12px] text-slate-100 leading-relaxed">
-            {ar ? "🎯 دقة عالية (تركيب الشعار والخط تلقائياً)" : "🎯 High precision (auto-composite logo & font)"}
-            <span className="block text-[10px] text-slate-400">{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك بخط تجوال الحقيقي والشريط بدقة." : "AI paints the scene; we composite the real logo, font & contact bar."}</span>
+            {ar ? "النص يُطبع بدقة عالية بالخط الحقيقي" : "Text is composited in the real font (high precision)"}
+            <span className="block text-[10px] text-slate-400">{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك والشريط بدقة — والنص يتحدّث مباشرة وتقدر تحرّكه بزر «تحرير»." : "AI paints the scene; the app composites the real logo, hook & bar — text updates live and is editable."}</span>
+          </span>
+        </div>
+
+        <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
+          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
+          <span className="text-[12px] text-slate-200 leading-relaxed">
+            {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
+            <span className="block text-[10px] text-slate-500">{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
           </span>
         </label>
-
-        {!autoCompose && (
-          <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
-            <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
-            <span className="text-[12px] text-slate-200 leading-relaxed">
-              {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
-              <span className="block text-[10px] text-slate-500">{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
-            </span>
-          </label>
-        )}
 
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
 

@@ -172,7 +172,9 @@ export default function BulkImageGen({ ar }) {
   // makes the AI paint only the scene, then composites the real logo + hook
   // (real font) + contact bar. Returns { dataUrl, bgUrl } (bgUrl = raw scene).
   const genFor = async (row, aspect) => {
-    const autoCompose = localStorage.getItem("ai_auto_compose") !== "0";
+    // Always high-precision: the AI paints the scene, we composite the real
+    // logo + hook (real Arabic font) + bar. (AI-drawn Arabic always garbled.)
+    const autoCompose = true;
     if (autoCompose) {
       const prompt = buildPrompt({ scene: row.scene, hook: row.hook, highlight: row.highlight, aspect, kit, bgOnly: true });
       const bgUrl = await generateImage({ prompt, aspectRatio: aspect });
