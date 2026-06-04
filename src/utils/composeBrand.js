@@ -41,50 +41,6 @@ function loadImg(src) {
   });
 }
 
-// Load a web font family and return the set of REAL declared weights it ships.
-// Why this matters: drawing Arabic at a weight the font doesn't actually have
-// makes the browser SYNTHESIZE bold, and synthesized bold breaks Arabic letter
-// shaping in canvas — that's what garbled the hook text. We must draw only at a
-// real weight. `document.fonts.load()` returns the NEAREST face (so it can't
-// tell us what's real), so after triggering the download we inspect each loaded
-// FontFace's declared `.weight` for this family.
-const _famWeightCache = new Map(); // family → real weights (cached after first resolve)
-async function loadFamily(fam, px = 64, sample = "") {
-  // CRITICAL: pass the actual (Arabic) text as the sample. Google Fonts splits
-  // each family into Latin/Arabic subsets and only downloads the subset whose
-  // glyphs are requested. Loading without a sample fetched only the LATIN
-  // subset, so the canvas drew Arabic with a font that had no Arabic glyphs →
-  // garbled output. The sample forces the Arabic subset to download.
-  const txt = sample || undefined;
-  for (const req of ["400", "700", "900"]) {
-    try { await document.fonts.load(`${req} ${px}px "${fam}"`, txt); } catch { /* nearest-match, ignore */ }
-  }
-  if (_famWeightCache.has(fam)) return _famWeightCache.get(fam);
-  const real = new Set();
-  try {
-    document.fonts.forEach((f) => {
-      if (String(f.family).replace(/['"]/g, "").trim().toLowerCase() !== fam.toLowerCase()) return;
-      const wt = String(f.weight || "400");
-      if (wt.includes(" ")) { // variable font range "300 900"
-        const [lo, hi] = wt.split(/\s+/).map(Number);
-        for (let n = Math.ceil(lo / 100) * 100; n <= hi; n += 100) real.add(String(n));
-      } else real.add(wt);
-    });
-  } catch { /* FontFaceSet not iterable — leave empty */ }
-  const arr = [...real];
-  if (arr.length) _famWeightCache.set(fam, arr); // cache only a real result
-  return arr;
-}
-
-// Heaviest REAL weight (preferring a bold ~700–900) so text is bold WITHOUT
-// faux synthesis. Empty → "400" (a single-weight family draws at its own weight).
-function heaviestWeight(realWeights) {
-  for (const w of ["800", "900", "700", "600", "500", "400"]) {
-    if (realWeights.includes(w)) return w;
-  }
-  return realWeights.length ? realWeights[realWeights.length - 1] : "400";
-}
-
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -123,7 +79,7 @@ function normAr(s) {
     .trim();
 }
 
-function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, weight = "700") {
+function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
   const hlNorm = (highlights || []).map(normAr).filter(Boolean);
@@ -134,8 +90,7 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, weight = 
   const segments = hook.split(/\r?\n/);
   const allWords = segments.flatMap((s) => s.split(/\s+/).filter(Boolean));
   ctx.textBaseline = "middle";
-  // Draw at a REAL weight of the family (no faux-bold → Arabic stays shaped).
-  const setFont = (s) => { ctx.font = `${weight} ${s}px "${font}", "Tajawal", sans-serif`; };
+  const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
   const wrap = () => segments.flatMap((seg) => {
     const ws = seg.split(/\s+/).filter(Boolean);
     return ws.length ? wrapWords(ctx, ws, maxWidth) : [[]]; // keep blank lines for spacing
@@ -154,37 +109,27 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, weight = 
   while (size > 14 && allWords.some((w) => ctx.measureText(w).width > maxWidth)) {
     size = Math.round(size * 0.94); setFont(size); lines = wrap();
   }
+  // Measure the inter-word space at the FINAL size (so spacing matches glyphs).
+  const space = ctx.measureText(" ").width;
   const lineH = size * 1.35;
   // place block starting below the logo area (adjustable)
   const startY = H * (layout.hookY ?? 0.26);
-  ctx.textAlign = "right";
-  ctx.direction = "rtl";
-  const space = ctx.measureText(" ").width;
   lines.forEach((lineWords, li) => {
-    if (!lineWords.length) return;
-    // Draw the WHOLE line as one string first. This is the critical fix: Arabic
-    // letters shape and join across the line correctly only when the browser
-    // lays out the full run in one fillText. Drawing word-by-word (the old way)
-    // made some fonts emit wrong/garbled glyphs. We render the full line in the
-    // main color, then overlay only the HIGHLIGHTED words in the accent color
-    // at their measured positions (a highlighted word is self-contained between
-    // spaces, so overlaying it lines up exactly).
-    const lineStr = lineWords.join(" ");
-    const lineW = ctx.measureText(lineStr).width;
+    const widths = lineWords.map((w) => ctx.measureText(w).width);
+    const lineW = widths.reduce((a, b) => a + b, 0) + space * (lineWords.length - 1);
     const y = startY + li * lineH;
+    // RTL: first word at the RIGHT. Start x at right edge of the line, centered
+    // around the chosen horizontal anchor (hookX).
     const cx = W * (layout.hookX ?? 0.5);
-    const rightX = cx + lineW / 2; // right edge (textAlign = right)
-    ctx.fillStyle = main;
-    ctx.fillText(lineStr, rightX, y);
-    // Overlay highlighted words.
-    if (lineWords.some(isHi)) {
-      let x = rightX;
-      for (const w of lineWords) {
-        const ww = ctx.measureText(w).width;
-        if (isHi(w)) { ctx.fillStyle = hi; ctx.fillText(w, x, y); }
-        x -= ww + space;
-      }
-    }
+    let x = cx + lineW / 2;
+    ctx.textAlign = "right";
+    ctx.direction = "rtl";
+    lineWords.forEach((w, i) => {
+      ctx.fillStyle = isHi(w) ? hi : main;
+      // No glow — user asked for clean text (removed the white halo).
+      ctx.fillText(w, x, y);
+      x -= widths[i] + space;
+    });
   });
 }
 
@@ -277,16 +222,12 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   const dw = bw * scale, dh = bh * scale;
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
-  let font = kit.font || "Tajawal";
-  // Sample text = the actual hook (so the font's ARABIC subset downloads) plus
-  // the contact handles for the bar. Without this the Arabic subset never
-  // loaded and the canvas drew garbled glyphs.
-  const sample = `${hook || ""} ${(contacts || []).map((c) => c.v).join(" ")} أبجد هوز`;
-  let realW = await loadFamily(font, Math.round(W * 0.075), sample);
-  if (!realW.length) { font = "Tajawal"; realW = await loadFamily(font, Math.round(W * 0.075), sample); }
-  const hookWeight = heaviestWeight(realW);
-  // Tajawal is also the fallback for the contact bar text.
-  if (font !== "Tajawal") await loadFamily("Tajawal", Math.round(W * 0.026), sample);
+  const font = kit.font || "Tajawal";
+  try {
+    await document.fonts.load(`800 ${Math.round(W * 0.075)}px "${font}"`);
+    await document.fonts.load(`600 ${Math.round(W * 0.026)}px "Tajawal"`);
+    await document.fonts.ready;
+  } catch { /* fonts best-effort */ }
 
   if (logoUrl) {
     try {
@@ -315,7 +256,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
 
   if (hook && hook.trim()) {
     const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
-    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout, hookWeight);
+    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout);
   }
 
   if (contacts && contacts.length) {
