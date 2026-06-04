@@ -126,8 +126,10 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     ctx.direction = "rtl";
     lineWords.forEach((w, i) => {
       ctx.fillStyle = isHi(w) ? hi : main;
-      // No glow — user asked for clean text (removed the white halo).
+      // subtle shadow for legibility on light/busy backgrounds
+      ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = size * 0.12;
       ctx.fillText(w, x, y);
+      ctx.shadowBlur = 0;
       x -= widths[i] + space;
     });
   });
