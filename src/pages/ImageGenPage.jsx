@@ -39,7 +39,7 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true, cardRotate: 0 };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
@@ -234,6 +234,7 @@ function CustomGen({ ar }) {
                       { k: "cardX", label: ar ? "البطاقة ↔" : "Card ↔", min: 0.15, max: 0.85, step: 0.01 },
                       { k: "cardY", label: ar ? "البطاقة ↕" : "Card ↕", min: 0.1, max: 0.95, step: 0.01 },
                       { k: "cardScale", label: ar ? "حجم البطاقة" : "Card size", min: 0.35, max: 0.95, step: 0.01 },
+                      { k: "cardRotate", label: ar ? "ميل البطاقة" : "Card tilt", min: -45, max: 45, step: 1 },
                     ] : []),
                   ].map((s) => (
                     <div key={s.k} className="flex items-center gap-2">

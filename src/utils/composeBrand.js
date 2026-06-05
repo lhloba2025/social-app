@@ -279,6 +279,12 @@ function drawCard(ctx, W, H, { title, body, logoImg }, layout = {}, font = "Taja
   const cardX = W * (layout.cardX ?? 0.5) - cw / 2;
   const cardY = H * (layout.cardY ?? 0.6) - ch / 2;
 
+  // Optional rotation around the card center — so it can be tilted to "lie flat"
+  // on a flat-lay / angled phone instead of standing upright.
+  const rot = ((layout.cardRotate ?? 0) * Math.PI) / 180;
+  ctx.save();
+  if (rot) { const ccx = cardX + cw / 2, ccy = cardY + ch / 2; ctx.translate(ccx, ccy); ctx.rotate(rot); ctx.translate(-ccx, -ccy); }
+
   // Card plate + shadow.
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.22)";
@@ -318,6 +324,8 @@ function drawCard(ctx, W, H, { title, body, logoImg }, layout = {}, font = "Taja
   ctx.font = `500 ${bodyFs}px "${font}", "Tajawal", sans-serif`;
   let yy = cardY + pad + topH + gap;
   for (const ln of bodyLines) { ctx.fillText(ln.join(" "), cardX + cw - pad, yy); yy += bodyLineH; }
+
+  ctx.restore(); // end rotation transform
 }
 
 // Main entry. Returns a PNG data URL of the composed image.
