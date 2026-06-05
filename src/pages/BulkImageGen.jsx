@@ -126,7 +126,10 @@ export default function BulkImageGen({ ar }) {
           const asp = parseAspectFromCell(cellRaw(r, col.names));
           if (asp) targets.push({ platforms: col.platforms, type: col.type, aspect: asp, labelAr: col.labelAr });
         }
-        return { title: pick(r, COL.title), scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption), targets };
+        // Title uses a CONTAINS match (cellRaw) — the template header is
+        // «العنوان (إجباري)» which an exact match would miss, wrongly flagging
+        // filled rows as "no title". Any header containing «عنوان»/«title» works.
+        return { title: String(cellRaw(r, COL.title) ?? "").trim(), scene: pick(r, COL.scene), hook: pick(r, COL.hook), highlight: pick(r, COL.highlight), caption: pick(r, COL.caption), targets };
       }).filter((r) => (r.scene || r.hook || r.caption) && r.targets.length);
       if (!parsed.length) { setError(ar ? "الملف فاضي أو ما فيه أعمدة منصات معبّأة (انستقرام/فيسبوك/تيك توك/استوري...)." : "No filled platform columns found."); return; }
       // العنوان إجباري — هو مُعرّف الموضوع الذي تُجمع به الصور عند الجدولة.
