@@ -97,6 +97,8 @@ export function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly }) {
 
 COMPOSITION (very important): keep the TOP THIRD of the frame a CLEAN, calm, evenly-lit, uncluttered area — a smooth softly-lit wall, bright window light, or plain surface — with NO objects and NO busy detail there. This empty top space is RESERVED for a logo and a headline to be placed on top afterward, so it must read clean and uniform. Arrange ALL props in the LOWER two-thirds, with a clear focal subject.
 
+DEPTH & AMBIANCE: don't make it a flat close-up desk shot — give a real sense of PLACE and depth: a softly-blurred, elegant upscale-salon environment in the background (refined chairs, a tall mirror, sheer curtains / a bright window, warm premium interior), so it feels like a luxurious salon, with the main props sharp in the foreground.
+
 LIGHTING & QUALITY: bright, soft, airy natural daylight (light and luminous, never dim or muddy); high-end product / editorial photography look; tack-sharp focus with crisp fine detail and realistic materials & textures; gentle shallow depth-of-field so the background softly blurs while the props stay sharp; high resolution, clean and premium. Light / cream base with a harmonious palette built around ${mainColor} and ${highlightColor}.
 
 Photorealistic. Aspect ratio ${aspect}.

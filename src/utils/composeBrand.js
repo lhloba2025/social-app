@@ -109,7 +109,8 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     return wl.map((lineWords) => ({ lineWords, seg: si }));
   });
   // 1) Pick a comfortable BASE size (default look) that fits within ~3 lines.
-  let base = Math.round(W * 0.075);
+  //    Bumped for more impact (was 0.075) so the hook reads big & bold by default.
+  let base = Math.round(W * 0.086);
   setFont(base);
   let lines = wrap();
   while (lines.length > 3 && base > 22) { base = Math.round(base * 0.92); setFont(base); lines = wrap(); }
@@ -357,7 +358,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
-      const lw = W * 0.26 * (layout.logoScale ?? 1); // bigger default logo (was 0.20)
+      const lw = W * 0.29 * (layout.logoScale ?? 1); // bigger default logo (was 0.20 → 0.26)
       const lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
       const lx = W * (layout.logoX ?? 0.5) - lw / 2;
       const ly = H * (layout.logoY ?? 0.04);
