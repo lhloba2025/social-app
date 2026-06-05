@@ -39,7 +39,7 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62 };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
@@ -160,6 +160,10 @@ function CustomGen({ ar }) {
               <textarea value={layout.cardBody || ""} onChange={(e) => setLayout((p) => ({ ...p, cardBody: e.target.value }))} rows={2}
                 placeholder={ar ? "نص البطاقة — مثال: تذكير: موعدك بعد ساعتين في الصالون" : "Card body — e.g. Reminder: your appointment in 2 hours"}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 resize-none leading-relaxed" />
+              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                <input type="checkbox" checked={layout.cardLogo !== false} onChange={(e) => setLayout((p) => ({ ...p, cardLogo: e.target.checked }))} />
+                {ar ? "إظهار الشعار داخل البطاقة" : "Show logo in card"}
+              </label>
               <p className="text-[10px] text-slate-500">{ar ? "بعد التوليد، حرّكها وكبّرها من زر «تحرير»." : "After generating, move/resize it from Edit."}</p>
             </>
           )}

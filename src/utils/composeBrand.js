@@ -389,10 +389,11 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
     drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout);
   }
 
-  // Optional notification CARD (logo + title + body) drawn on top.
+  // Optional notification CARD (logo + title + body) drawn on top. The badge
+  // logo is included only when layout.cardLogo isn't explicitly false.
   if (layout.cardOn && (layout.cardTitle || layout.cardBody)) {
     let cardLogo = null;
-    if (logoUrl) { try { cardLogo = await loadImg(logoUrl); } catch { /* no badge */ } }
+    if (logoUrl && layout.cardLogo !== false) { try { cardLogo = await loadImg(logoUrl); } catch { /* no badge */ } }
     drawCard(ctx, W, H, { title: layout.cardTitle, body: layout.cardBody, logoImg: cardLogo }, layout, font);
   }
 
