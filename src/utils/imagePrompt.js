@@ -95,9 +95,13 @@ export function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly }) {
   if (bgOnly) {
     return `${(scene || "").trim()}
 
-COLOR & STYLE: a clean, premium, uncluttered composition with a light / cream base and a harmonious palette built around ${mainColor} and ${highlightColor}. Leave generous EMPTY NEGATIVE SPACE (especially the top-center and the middle) so a logo and a headline can be placed on top afterward. Photorealistic. Aspect ratio ${aspect}.
+COMPOSITION (very important): keep the TOP THIRD of the frame a CLEAN, calm, evenly-lit, uncluttered area — a smooth softly-lit wall, bright window light, or plain surface — with NO objects and NO busy detail there. This empty top space is RESERVED for a logo and a headline to be placed on top afterward, so it must read clean and uniform. Arrange ALL props in the LOWER two-thirds, with a clear focal subject.
 
-Negative: any text, any words, any letters, any logo, any watermark, human faces, clutter, blur, low quality.`;
+LIGHTING & QUALITY: bright, soft, airy natural daylight (light and luminous, never dim or muddy); high-end product / editorial photography look; tack-sharp focus with crisp fine detail and realistic materials & textures; gentle shallow depth-of-field so the background softly blurs while the props stay sharp; high resolution, clean and premium. Light / cream base with a harmonious palette built around ${mainColor} and ${highlightColor}.
+
+Photorealistic. Aspect ratio ${aspect}.
+
+Negative: any text, words, letters, logo, watermark, human faces, clutter at the top, busy/detailed background behind the top logo area, blur on the main props, dark/dim/muddy lighting, harsh yellow tones, plastic or fake-looking objects, low quality.`;
   }
 
   return `${(scene || "").trim()}
