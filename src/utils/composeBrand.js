@@ -82,8 +82,18 @@ function normAr(s) {
 function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
+  // Word highlights (letters/digits — punctuation-insensitive) AND symbol
+  // highlights (e.g. "|", "•") which normAr would empty out, so we match those
+  // literally. This keeps "صالونك" matching "صالونك!!" while still letting a
+  // separator like "|" be highlighted.
   const hlNorm = (highlights || []).map(normAr).filter(Boolean);
-  const isHi = (w) => { const nw = normAr(w); return !!nw && hlNorm.some((h) => nw === h || nw.includes(h)); };
+  const hlSym = (highlights || []).map((s) => String(s || "").trim()).filter((s) => s && !normAr(s));
+  const isHi = (w) => {
+    const nw = normAr(w);
+    if (nw && hlNorm.some((h) => nw === h || nw.includes(h))) return true;
+    const raw = String(w);
+    return hlSym.some((sym) => raw.includes(sym));
+  };
   const scale = layout.hookScale ?? 1;
   const maxWidth = W * 0.86;
   // Honor EXPLICIT line breaks (Enter), then word-wrap each segment.
