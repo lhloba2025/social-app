@@ -101,11 +101,11 @@ DEPTH & AMBIANCE: don't make it a flat close-up desk shot — give a real sense 
 
 LIGHTING & QUALITY: bright, soft, airy natural daylight (light and luminous, never dim or muddy); high-end product / editorial photography look; tack-sharp focus with crisp fine detail and realistic materials & textures; gentle shallow depth-of-field so the background softly blurs while the props stay sharp; high resolution, clean and premium. Light / cream base with a harmonious palette built around ${mainColor} and ${highlightColor}.
 
-ON-SCREEN UI COLORS (important): any phone or laptop SCREENS / app dashboards shown must use ONLY ${mainColor} (navy/blue) and ${highlightColor} (pink) as their interface accents on a clean white/light UI — calendars, charts, graphs, bars, buttons and highlights all in navy and pink. Absolutely NO orange, red, green, yellow or teal anywhere inside the on-screen interface.
+ON-SCREEN UI COLORS (important): any phone or laptop SCREENS / app dashboards shown must use ONLY the brand colors ${mainColor} and ${highlightColor} as their interface accents, on a clean white/light UI — calendars, charts, graphs, bars, buttons and highlights all in these two brand colors. Do NOT introduce ANY other or random accent colors inside the on-screen interface — keep it strictly on-brand.
 
 Photorealistic. Aspect ratio ${aspect}.
 
-Negative: any text, words, letters, logo, watermark, human faces, clutter at the top, busy/detailed background behind the top logo area, blur on the main props, dark/dim/muddy lighting, harsh yellow tones, orange/red/green/yellow/teal user-interface or charts on the device screens, plastic or fake-looking objects, low quality.`;
+Negative: any text, words, letters, logo, watermark, human faces, clutter at the top, busy/detailed background behind the top logo area, blur on the main props, dark/dim/muddy lighting; on the device screens, any user-interface accent or chart colors that are NOT the brand colors ${mainColor} / ${highlightColor}; plastic or fake-looking objects, low quality.`;
   }
 
   return `${(scene || "").trim()}
