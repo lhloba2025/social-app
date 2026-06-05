@@ -79,7 +79,7 @@ function normAr(s) {
     .trim();
 }
 
-function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
+function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}, minTop = 0) {
   const main = kit.mainColor || "#09007C";
   const hi = kit.highlightColor || "#EF43DC";
   // Word highlights (letters/digits — punctuation-insensitive) AND symbol
@@ -126,8 +126,9 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   // Measure the inter-word space at the FINAL size (so spacing matches glyphs).
   const space = ctx.measureText(" ").width;
   const lineH = size * 1.35;
-  // place block starting below the logo area (adjustable)
-  const startY = H * (layout.hookY ?? 0.26);
+  // place block starting below the logo area (adjustable). Never let the first
+  // line (or its bg panel) sit on top of the logo: clamp to minTop + half-line.
+  const startY = Math.max(H * (layout.hookY ?? 0.26), minTop + size * 0.62);
 
   // Alignment (like Word): a global default (center) plus an optional PER-LINE
   // override (layout.hookAligns[segmentIndex]) so the user can center one line
@@ -363,6 +364,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
     await document.fonts.ready;
   } catch { /* fonts best-effort */ }
 
+  let logoBottom = 0; // y where the logo ends — used to keep the hook below it
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
@@ -370,6 +372,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
       const lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
       const lx = W * (layout.logoX ?? 0.5) - lw / 2;
       const ly = H * (layout.logoY ?? 0.04);
+      logoBottom = ly + lh;
       if (kit.changeLogoColor && kit.logoColor) {
         // Tint the logo at its NATIVE resolution, then resample ONCE to the
         // display size (high quality) — avoids the double-resample blur.
@@ -390,7 +393,9 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
 
   if (hook && hook.trim()) {
     const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
-    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout);
+    // Keep the hook (and its bg panel) BELOW the logo with a small gap, so they
+    // never overlap — important now that the logo & text are bigger by default.
+    drawHook(ctx, W, H, hook.trim(), hl, kit, font, layout, logoBottom + H * 0.03);
   }
 
   if (contacts && contacts.length) {

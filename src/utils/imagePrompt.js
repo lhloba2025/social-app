@@ -95,7 +95,7 @@ export function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly }) {
   if (bgOnly) {
     return `${(scene || "").trim()}
 
-COMPOSITION (very important): keep the TOP THIRD of the frame a CLEAN, calm, evenly-lit, uncluttered area — a smooth softly-lit wall, bright window light, or plain surface — with NO objects and NO busy detail there. This empty top space is RESERVED for a logo and a headline to be placed on top afterward, so it must read clean and uniform. Arrange ALL props in the LOWER two-thirds, with a clear focal subject.
+COMPOSITION (very important): keep the TOP THIRD of the frame a CLEAN, BRIGHT, LIGHT, evenly-lit, uncluttered area — a smooth pale wall or soft bright surface — with NO objects and NO busy detail. The TOP-CENTER specifically (where a logo will be placed) must be the BRIGHTEST, calmest spot: absolutely NO lamps, NO ceiling lights, NO hanging fixtures, NO dark corners, NO window frames, NO furniture and NO shadows in that top-center zone — keep it light and uniform so a logo reads clearly on top. Arrange ALL props in the LOWER two-thirds, with a clear focal subject.
 
 DEPTH & AMBIANCE: don't make it a flat close-up desk shot — give a real sense of PLACE and depth: a softly-blurred, elegant upscale-salon environment in the background (refined chairs, a tall mirror, sheer curtains / a bright window, warm premium interior), so it feels like a luxurious salon, with the main props sharp in the foreground.
 
@@ -105,7 +105,7 @@ ON-SCREEN UI COLORS (important): any phone or laptop SCREENS / app dashboards sh
 
 Photorealistic. Aspect ratio ${aspect}.
 
-Negative: any text, words, letters, logo, watermark, human faces, clutter at the top, busy/detailed background behind the top logo area, blur on the main props, dark/dim/muddy lighting; on the device screens, any user-interface accent or chart colors that are NOT the brand colors ${mainColor} / ${highlightColor}; plastic or fake-looking objects, low quality.`;
+Negative: any text, words, letters, logo, watermark, human faces, clutter at the top, busy/detailed background behind the top logo area, lamp / light fixture / window / dark corner / shadow / furniture in the top-center logo zone, blur on the main props, dark/dim/muddy lighting; on the device screens, any user-interface accent or chart colors that are NOT the brand colors ${mainColor} / ${highlightColor}; plastic or fake-looking objects, low quality.`;
   }
 
   return `${(scene || "").trim()}
