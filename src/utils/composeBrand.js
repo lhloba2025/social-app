@@ -126,10 +126,8 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
     ctx.direction = "rtl";
     lineWords.forEach((w, i) => {
       ctx.fillStyle = isHi(w) ? hi : main;
-      // subtle shadow for legibility on light/busy backgrounds
-      ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = size * 0.12;
+      // No glow — clean text (user asked to remove the white halo).
       ctx.fillText(w, x, y);
-      ctx.shadowBlur = 0;
       x -= widths[i] + space;
     });
   });
@@ -225,9 +223,13 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
   const font = kit.font || "Tajawal";
+  // Pass the actual Arabic text as the sample so Google Fonts downloads the
+  // ARABIC subset of the chosen family (not just Latin). Without this the
+  // selected font silently fell back to Tajawal — i.e. "the font never changed".
+  const sample = `${hook || ""} ${(contacts || []).map((c) => c.v).join(" ")} أبجد هوز يكلمن`;
   try {
-    await document.fonts.load(`800 ${Math.round(W * 0.075)}px "${font}"`);
-    await document.fonts.load(`600 ${Math.round(W * 0.026)}px "Tajawal"`);
+    await document.fonts.load(`800 ${Math.round(W * 0.075)}px "${font}"`, sample);
+    await document.fonts.load(`600 ${Math.round(W * 0.026)}px "Tajawal"`, sample);
     await document.fonts.ready;
   } catch { /* fonts best-effort */ }
 
