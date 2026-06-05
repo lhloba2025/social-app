@@ -249,6 +249,76 @@ function drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout = {}) {
   }
 }
 
+// Draws an iOS-style NOTIFICATION CARD: a rounded white plate with a soft
+// shadow, a small app-icon (the logo) top-right, a bold title beside it, and
+// gray body text below — all RTL, right-aligned. Position/size from layout.
+function drawCard(ctx, W, H, { title, body, logoImg }, layout = {}, font = "Tajawal") {
+  const t = String(title || "").trim();
+  const b = String(body || "").trim();
+  if (!t && !b) return;
+
+  const cw = W * (layout.cardScale ?? 0.62);
+  const pad = cw * 0.06;
+  const radius = cw * 0.07;
+  const badgeD = cw * 0.135;
+  const titleFs = Math.round(cw * 0.072);
+  const bodyFs = Math.round(cw * 0.058);
+  const innerW = cw - pad * 2;
+  const gap = cw * 0.035;
+
+  // Wrap body to up to 3 lines within the inner width.
+  ctx.font = `500 ${bodyFs}px "${font}", "Tajawal", sans-serif`;
+  ctx.direction = "rtl"; ctx.textAlign = "right";
+  const bodyLines = b ? wrapWords(ctx, b.split(/\s+/).filter(Boolean), innerW).slice(0, 3) : [];
+  const bodyLineH = bodyFs * 1.42;
+  const topH = Math.max(badgeD, titleFs);
+  const bodyH = bodyLines.length * bodyLineH;
+  const ch = pad + topH + (bodyLines.length ? gap + bodyH : 0) + pad;
+
+  const cardX = W * (layout.cardX ?? 0.5) - cw / 2;
+  const cardY = H * (layout.cardY ?? 0.6) - ch / 2;
+
+  // Card plate + shadow.
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.22)";
+  ctx.shadowBlur = cw * 0.05;
+  ctx.shadowOffsetY = cw * 0.018;
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  roundRect(ctx, cardX, cardY, cw, ch, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // App-icon badge (logo) at the TOP-RIGHT (RTL leading edge).
+  const badgeX = cardX + cw - pad - badgeD;
+  const badgeY = cardY + pad;
+  if (logoImg) {
+    ctx.save();
+    roundRect(ctx, badgeX, badgeY, badgeD, badgeD, badgeD * 0.28);
+    ctx.clip();
+    const lim = badgeD * 0.84;
+    let lw = lim, lh = lim * ((logoImg.naturalHeight || 1) / (logoImg.naturalWidth || 1));
+    if (lh > lim) { const s = lim / lh; lw *= s; lh *= s; }
+    ctx.drawImage(logoImg, badgeX + (badgeD - lw) / 2, badgeY + (badgeD - lh) / 2, lw, lh);
+    ctx.restore();
+  }
+
+  // Title — to the LEFT of the badge, right-aligned, vertically centered on badge.
+  ctx.textBaseline = "middle";
+  ctx.direction = "rtl"; ctx.textAlign = "right";
+  const titleRight = (logoImg ? badgeX - cw * 0.025 : cardX + cw - pad);
+  const titleY = badgeY + topH / 2;
+  ctx.fillStyle = "#16213e";
+  ctx.font = `800 ${titleFs}px "${font}", "Tajawal", sans-serif`;
+  if (t) ctx.fillText(t, titleRight, titleY);
+
+  // Body — gray, right-aligned, below.
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#6b7280";
+  ctx.font = `500 ${bodyFs}px "${font}", "Tajawal", sans-serif`;
+  let yy = cardY + pad + topH + gap;
+  for (const ln of bodyLines) { ctx.fillText(ln.join(" "), cardX + cw - pad, yy); yy += bodyLineH; }
+}
+
 // Main entry. Returns a PNG data URL of the composed image.
 // When targetW/targetH are given (the REAL platform pixel size), the canvas is
 // forced to that exact size and the AI background is drawn "cover" (scaled to
@@ -317,6 +387,13 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   if (contacts && contacts.length) {
     const iconImgs = await Promise.all(contacts.map((cc) => loadIcon(cc.p, kit.contactText || "#FFFFFF")));
     drawContactBar(ctx, W, H, contacts, kit, iconImgs, layout);
+  }
+
+  // Optional notification CARD (logo + title + body) drawn on top.
+  if (layout.cardOn && (layout.cardTitle || layout.cardBody)) {
+    let cardLogo = null;
+    if (logoUrl) { try { cardLogo = await loadImg(logoUrl); } catch { /* no badge */ } }
+    drawCard(ctx, W, H, { title: layout.cardTitle, body: layout.cardBody, logoImg: cardLogo }, layout, font);
   }
 
   return c.toDataURL("image/png");

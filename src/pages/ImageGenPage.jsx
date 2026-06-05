@@ -39,7 +39,7 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF" };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62 };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
@@ -146,6 +146,25 @@ function CustomGen({ ar }) {
           <p className="text-[10px] text-slate-500 mt-1">{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Several words allowed — all get the highlight color."}</p>
         </div>
 
+        {/* Notification card (logo + title + body) — like an app notification */}
+        <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 space-y-2">
+          <label className="flex items-center gap-2 text-[12px] font-bold text-slate-200 cursor-pointer">
+            <input type="checkbox" checked={!!layout.cardOn} onChange={(e) => setLayout((p) => ({ ...p, cardOn: e.target.checked }))} />
+            {ar ? "🔔 بطاقة إشعار (شعار + عنوان + نص)" : "🔔 Notification card"}
+          </label>
+          {layout.cardOn && (
+            <>
+              <input value={layout.cardTitle || ""} onChange={(e) => setLayout((p) => ({ ...p, cardTitle: e.target.value }))}
+                placeholder={ar ? "عنوان البطاقة — مثال: هوفيرا" : "Card title — e.g. Hovera"}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+              <textarea value={layout.cardBody || ""} onChange={(e) => setLayout((p) => ({ ...p, cardBody: e.target.value }))} rows={2}
+                placeholder={ar ? "نص البطاقة — مثال: تذكير: موعدك بعد ساعتين في الصالون" : "Card body — e.g. Reminder: your appointment in 2 hours"}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 resize-none leading-relaxed" />
+              <p className="text-[10px] text-slate-500">{ar ? "بعد التوليد، حرّكها وكبّرها من زر «تحرير»." : "After generating, move/resize it from Edit."}</p>
+            </>
+          )}
+        </div>
+
         <div>
           <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "المقاس" : "Size"}</label>
           <div className="grid grid-cols-3 gap-1.5">
@@ -206,6 +225,11 @@ function CustomGen({ ar }) {
                     ...(kit.showContact ? [
                       { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },
                       { k: "contactY", label: ar ? "الشريط ↕" : "Bar ↕", min: 0, max: 0.8, step: 0.01 },
+                    ] : []),
+                    ...(layout.cardOn ? [
+                      { k: "cardX", label: ar ? "البطاقة ↔" : "Card ↔", min: 0.15, max: 0.85, step: 0.01 },
+                      { k: "cardY", label: ar ? "البطاقة ↕" : "Card ↕", min: 0.1, max: 0.95, step: 0.01 },
+                      { k: "cardScale", label: ar ? "حجم البطاقة" : "Card size", min: 0.35, max: 0.95, step: 0.01 },
                     ] : []),
                   ].map((s) => (
                     <div key={s.k} className="flex items-center gap-2">
