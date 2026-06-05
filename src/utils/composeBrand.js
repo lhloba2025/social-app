@@ -114,21 +114,50 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const lineH = size * 1.35;
   // place block starting below the logo area (adjustable)
   const startY = H * (layout.hookY ?? 0.26);
-  lines.forEach((lineWords, li) => {
+
+  // Alignment (like Word): center (default — unchanged behavior), right, left.
+  const align = layout.hookAlign || "center";
+  const margin = W * 0.07;
+  const cx = W * (layout.hookX ?? 0.5);
+  // Pre-compute each line's geometry so we can (1) draw an optional background
+  // panel behind the whole block and (2) place each line per the alignment.
+  const meta = lines.map((lineWords) => {
     const widths = lineWords.map((w) => ctx.measureText(w).width);
-    const lineW = widths.reduce((a, b) => a + b, 0) + space * (lineWords.length - 1);
+    const lineW = widths.reduce((a, b) => a + b, 0) + space * Math.max(0, lineWords.length - 1);
+    let rightX;                                   // x of the line's RIGHT edge
+    if (align === "left") rightX = margin + lineW;
+    else if (align === "right") rightX = W - margin;
+    else rightX = cx + lineW / 2;                 // center (original behavior)
+    return { lineWords, widths, lineW, rightX };
+  });
+
+  // Optional text background panel (a soft rounded plate behind the hook).
+  if (layout.hookBg && meta.some((m) => m.lineW > 0)) {
+    let minX = Infinity, maxX = -Infinity;
+    for (const m of meta) { if (m.lineW > 0) { minX = Math.min(minX, m.rightX - m.lineW); maxX = Math.max(maxX, m.rightX); } }
+    const half = size * 0.62;
+    const top = startY - half;
+    const bottom = startY + (lines.length - 1) * lineH + half;
+    const padX = size * 0.5, padY = size * 0.3;
+    const bx = minX - padX, by = top - padY;
+    const bw = (maxX - minX) + padX * 2, bh = (bottom - top) + padY * 2;
+    ctx.save();
+    ctx.globalAlpha = layout.hookBgAlpha ?? 0.72;
+    ctx.fillStyle = layout.hookBgColor || "#FFFFFF";
+    roundRect(ctx, bx, by, bw, bh, Math.min(bh * 0.3, size * 0.55));
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.textAlign = "right";
+  ctx.direction = "rtl";
+  meta.forEach((m, li) => {
     const y = startY + li * lineH;
-    // RTL: first word at the RIGHT. Start x at right edge of the line, centered
-    // around the chosen horizontal anchor (hookX).
-    const cx = W * (layout.hookX ?? 0.5);
-    let x = cx + lineW / 2;
-    ctx.textAlign = "right";
-    ctx.direction = "rtl";
-    lineWords.forEach((w, i) => {
+    let x = m.rightX;
+    m.lineWords.forEach((w, i) => {
       ctx.fillStyle = isHi(w) ? hi : main;
-      // No glow — clean text (user asked to remove the white halo).
       ctx.fillText(w, x, y);
-      x -= widths[i] + space;
+      x -= m.widths[i] + space;
     });
   });
 }

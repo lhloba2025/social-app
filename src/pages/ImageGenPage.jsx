@@ -39,7 +39,7 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0 };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF" };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
@@ -213,6 +213,35 @@ function CustomGen({ ar }) {
                       <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setLayoutField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
                     </div>
                   ))}
+
+                  {/* Text alignment (like Word) */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة" : "Align"}</span>
+                    <div className="flex-1 grid grid-cols-3 gap-1">
+                      {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
+                        <button key={o.v} onClick={() => setLayout((p) => ({ ...p, hookAlign: o.v }))}
+                          className={`py-1 rounded text-[10px] font-bold transition ${(layout.hookAlign || "center") === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Text background plate */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
+                      <input type="checkbox" checked={layout.hookBg !== false} onChange={(e) => setLayout((p) => ({ ...p, hookBg: e.target.checked }))} />
+                      {ar ? "خلفية للنص" : "Text background"}
+                    </label>
+                    {layout.hookBg !== false && (
+                      <div className="flex items-center gap-1.5">
+                        <input type="color" value={layout.hookBgColor || "#FFFFFF"} onChange={(e) => setLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" />
+                        {["#FFFFFF", "#000000", "#1d2a6b", "#09007C", "#10203a", "#F7E8F4"].map((s) => (
+                          <button key={s} type="button" onClick={() => setLayout((p) => ({ ...p, hookBgColor: s }))}
+                            className={`w-5 h-5 rounded-full border ${(layout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-[10px] text-slate-500">{ar ? "الألوان والخط ولون/شكل الشريط من «هويتك» — تتحدّث هنا فوراً." : "Colors/font & bar style from your brand — update live."}</p>
                   <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] text-indigo-400 hover:text-indigo-300 underline">{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
                 </div>

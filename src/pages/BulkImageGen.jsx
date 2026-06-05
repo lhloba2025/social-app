@@ -146,7 +146,7 @@ export default function BulkImageGen({ ar }) {
   // PER-IMAGE editor — each image keeps its raw AI scene + its OWN layout AND
   // its OWN overrides (text, colors, logo on/off, contact bar on/off), so
   // editing one image never touches the others.
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0 };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF" };
   // Per-image content/brand overrides — start from the row + the global kit.
   const defaultOv = (row) => ({
     hook: row?.hook || "",
@@ -616,6 +616,35 @@ export default function BulkImageGen({ ar }) {
                   <input type="range" min={s.min} max={s.max} step={s.step} value={editLayout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setEditField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
                 </div>
               ))}
+
+              {/* Text alignment */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة" : "Align"}</span>
+                <div className="flex-1 grid grid-cols-3 gap-1">
+                  {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
+                    <button key={o.v} onClick={() => setEditLayout((p) => ({ ...p, hookAlign: o.v }))}
+                      className={`py-1 rounded text-[10px] font-bold transition ${(editLayout.hookAlign || "center") === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Text background plate */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={editLayout.hookBg !== false} onChange={(e) => setEditLayout((p) => ({ ...p, hookBg: e.target.checked }))} />
+                  {ar ? "خلفية للنص" : "Text bg"}
+                </label>
+                {editLayout.hookBg !== false && (
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={editLayout.hookBgColor || "#FFFFFF"} onChange={(e) => setEditLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" />
+                    {["#FFFFFF", "#000000", "#1d2a6b", "#09007C", "#10203a", "#F7E8F4"].map((s) => (
+                      <button key={s} type="button" onClick={() => setEditLayout((p) => ({ ...p, hookBgColor: s }))}
+                        className={`w-5 h-5 rounded-full border ${(editLayout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-2 pt-1">
                 <button onClick={() => { setEditLayout(DEFAULT_LAYOUT); setEditOv(defaultOv(jobsRef.current[editing]?.row)); }} className="text-[11px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">↺ {ar ? "إعادة" : "Reset"}</button>
                 <button onClick={() => setEditing(null)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm">{ar ? "تم" : "Done"}</button>
