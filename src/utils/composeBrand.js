@@ -73,7 +73,7 @@ function wrapWords(ctx, words, maxWidth) {
 // and surrounding punctuation. This is why a highlight like "صالونك" now matches
 // "صالونكِ،" in the hook (previously it didn't, so the color wasn't applied).
 function normAr(s) {
-  return String(s || "")
+  return String(s || "").replace(/[^\p{L}\p{N}]/gu, "")  /* keep letters+digits only */
     .replace(/[ً-ٰٟـ]/g, "")
     .replace(/[؟?.!،,؛:"'()«»‏‎]/g, "")
     .trim();
@@ -91,9 +91,12 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   const allWords = segments.flatMap((s) => s.split(/\s+/).filter(Boolean));
   ctx.textBaseline = "middle";
   const setFont = (s) => { ctx.font = `800 ${s}px "${font}", "Tajawal", sans-serif`; };
-  const wrap = () => segments.flatMap((seg) => {
+  // Each wrapped line remembers which ORIGINAL segment (Enter-separated line) it
+  // came from, so per-line alignment can target the line the user is editing.
+  const wrap = () => segments.flatMap((seg, si) => {
     const ws = seg.split(/\s+/).filter(Boolean);
-    return ws.length ? wrapWords(ctx, ws, maxWidth) : [[]]; // keep blank lines for spacing
+    const wl = ws.length ? wrapWords(ctx, ws, maxWidth) : [[]];
+    return wl.map((lineWords) => ({ lineWords, seg: si }));
   });
   // 1) Pick a comfortable BASE size (default look) that fits within ~3 lines.
   let base = Math.round(W * 0.075);
@@ -115,18 +118,22 @@ function drawHook(ctx, W, H, hook, highlights, kit, font, layout = {}) {
   // place block starting below the logo area (adjustable)
   const startY = H * (layout.hookY ?? 0.26);
 
-  // Alignment (like Word): center (default — unchanged behavior), right, left.
+  // Alignment (like Word): a global default (center) plus an optional PER-LINE
+  // override (layout.hookAligns[segmentIndex]) so the user can center one line
+  // and right-align the rest, etc.
   const align = layout.hookAlign || "center";
+  const perLine = Array.isArray(layout.hookAligns) ? layout.hookAligns : [];
   const margin = W * 0.07;
   const cx = W * (layout.hookX ?? 0.5);
   // Pre-compute each line's geometry so we can (1) draw an optional background
-  // panel behind the whole block and (2) place each line per the alignment.
-  const meta = lines.map((lineWords) => {
+  // panel behind the whole block and (2) place each line per its alignment.
+  const meta = lines.map(({ lineWords, seg }) => {
+    const a = perLine[seg] || align;
     const widths = lineWords.map((w) => ctx.measureText(w).width);
     const lineW = widths.reduce((a, b) => a + b, 0) + space * Math.max(0, lineWords.length - 1);
     let rightX;                                   // x of the line's RIGHT edge
-    if (align === "left") rightX = margin + lineW;
-    else if (align === "right") rightX = W - margin;
+    if (a === "left") rightX = margin + lineW;
+    else if (a === "right") rightX = W - margin;
     else rightX = cx + lineW / 2;                 // center (original behavior)
     return { lineWords, widths, lineW, rightX };
   });

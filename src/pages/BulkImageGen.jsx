@@ -617,16 +617,38 @@ export default function BulkImageGen({ ar }) {
                 </div>
               ))}
 
-              {/* Text alignment */}
+              {/* Text alignment — global default (clears per-line overrides). */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة" : "Align"}</span>
+                <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة الكل" : "Align all"}</span>
                 <div className="flex-1 grid grid-cols-3 gap-1">
                   {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
-                    <button key={o.v} onClick={() => setEditLayout((p) => ({ ...p, hookAlign: o.v }))}
-                      className={`py-1 rounded text-[10px] font-bold transition ${(editLayout.hookAlign || "center") === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
+                    <button key={o.v} onClick={() => setEditLayout((p) => ({ ...p, hookAlign: o.v, hookAligns: [] }))}
+                      className={`py-1 rounded text-[10px] font-bold transition ${(editLayout.hookAlign || "center") === o.v && !(editLayout.hookAligns || []).length ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
                   ))}
                 </div>
               </div>
+
+              {/* Per-line alignment — when this image's hook has >1 line. */}
+              {(editOv.hook || "").split(/\r?\n/).length > 1 && (
+                <div className="bg-slate-800/30 rounded-lg p-2 space-y-1">
+                  <span className="text-[10px] text-slate-400">{ar ? "محاذاة كل سطر على حدة:" : "Per-line align:"}</span>
+                  {(editOv.hook || "").split(/\r?\n/).map((seg, i) => {
+                    const cur = (editLayout.hookAligns || [])[i] || editLayout.hookAlign || "center";
+                    return (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-slate-400 flex-1 truncate text-right" dir="rtl" title={seg}>{seg.trim() || `${ar ? "سطر" : "line"} ${i + 1}`}</span>
+                        <div className="flex gap-0.5 flex-shrink-0">
+                          {[{ v: "right", t: "يمين" }, { v: "center", t: "توسيط" }, { v: "left", t: "يسار" }].map((o) => (
+                            <button key={o.v} title={o.t}
+                              onClick={() => setEditLayout((p) => { const arr = [...(p.hookAligns || [])]; arr[i] = o.v; return { ...p, hookAligns: arr }; })}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${cur === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{o.t}</button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Text background plate */}
               <div className="flex items-center gap-2 flex-wrap">
