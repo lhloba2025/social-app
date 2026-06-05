@@ -264,9 +264,14 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high"; // best resampling when scaling the logo up
   // Cover-fit: scale the background to fully cover the exact target, centered.
+  // A subtle contrast/saturation boost (ONLY on the photo) so AI scenes don't
+  // look washed-out/faded. Text + logo are drawn AFTER with the filter off, so
+  // they keep their exact colors.
   const scale = Math.max(W / bw, H / bh);
   const dw = bw * scale, dh = bh * scale;
+  try { ctx.filter = "contrast(1.06) saturate(1.12)"; } catch { /* unsupported */ }
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  try { ctx.filter = "none"; } catch { /* unsupported */ }
 
   const font = kit.font || "Tajawal";
   // Pass the actual Arabic text as the sample so Google Fonts downloads the
@@ -282,7 +287,7 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   if (logoUrl) {
     try {
       const lg = await loadImg(logoUrl);
-      const lw = W * 0.20 * (layout.logoScale ?? 1);
+      const lw = W * 0.26 * (layout.logoScale ?? 1); // bigger default logo (was 0.20)
       const lh = lw * ((lg.naturalHeight || 1) / (lg.naturalWidth || 1));
       const lx = W * (layout.logoX ?? 0.5) - lw / 2;
       const ly = H * (layout.logoY ?? 0.04);
