@@ -105,6 +105,10 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
       if (orient === "right") cxLogo = W - marginX - lw / 2;
       else if (orient === "left") cxLogo = marginX + lw / 2;
       else cxLogo = W / 2;
+      // Free horizontal nudge on top of the preset position (so the logo can be
+      // moved smoothly anywhere, not just the 3 presets). The text zones below
+      // clamp around logoBox.x, so they adjust automatically.
+      cxLogo += W * (layout.logoDx ?? 0);
       const lx = cxLogo - lw / 2;
       const ly = (contentH - lh) / 2 + H * logoDy;
       if (kit.changeLogoColor && kit.logoColor) {

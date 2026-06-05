@@ -28,7 +28,7 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
   const [font, setFont] = useState(kit.font || "Tajawal");
   const [recolorLogo, setRecolorLogo] = useState(false);
   const [logoColor, setLogoColor] = useState(kit.mainColor || "#0F172A");
-  const [layout, setLayout] = useState({ orientation: "center", logoScale: 1, logoDy: 0, textScale: 1 });
+  const [layout, setLayout] = useState({ orientation: "center", logoScale: 1, logoDy: 0, logoDx: 0, textScale: 1 });
 
   // Background controls.
   const [bgColor, setBgColor] = useState("#FFFFFF");
@@ -123,6 +123,7 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
 
   const SLIDERS = [
     { k: "logoScale", label: ar ? "حجم الشعار" : "Logo size", min: 0.4, max: 2, step: 0.05 },
+    { k: "logoDx", label: ar ? "الشعار ↔" : "Logo ↔", min: -0.42, max: 0.42, step: 0.01 },
     { k: "logoDy", label: ar ? "الشعار ↕" : "Logo ↕", min: -0.35, max: 0.35, step: 0.01 },
     { k: "textScale", label: ar ? "حجم النص" : "Text size", min: 0.6, max: 1.7, step: 0.05 },
   ];
