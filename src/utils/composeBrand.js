@@ -353,6 +353,20 @@ export async function composeBranded({ bgUrl, logoUrl, hook, highlight, kit, con
   ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
   try { ctx.filter = "none"; } catch { /* unsupported */ }
 
+  // GUARANTEED light backdrop behind the logo: a soft cream/near-white gradient
+  // over the TOP of the image that fades downward. This ensures the logo always
+  // sits on a clean, near-white area no matter what the AI painted up there
+  // (lamp, dark corner, busy detail) — then fades smoothly into the photo.
+  if (layout.logoScrim !== false) {
+    const sh = H * 0.34;
+    const g = ctx.createLinearGradient(0, 0, 0, sh);
+    g.addColorStop(0, "rgba(252,250,246,0.82)");
+    g.addColorStop(0.55, "rgba(252,250,246,0.42)");
+    g.addColorStop(1, "rgba(252,250,246,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, sh);
+  }
+
   const font = kit.font || "Tajawal";
   // Pass the actual Arabic text as the sample so Google Fonts downloads the
   // ARABIC subset of the chosen family (not just Latin). Without this the

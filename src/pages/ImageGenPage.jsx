@@ -39,7 +39,7 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true, cardRotate: 0 };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true, cardRotate: 0, logoScrim: true };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
 
@@ -276,6 +276,12 @@ function CustomGen({ ar }) {
                       })}
                     </div>
                   )}
+
+                  {/* Light backdrop behind the logo (guarantees a clean near-white logo area) */}
+                  <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
+                    <input type="checkbox" checked={layout.logoScrim !== false} onChange={(e) => setLayout((p) => ({ ...p, logoScrim: e.target.checked }))} />
+                    {ar ? "خلفية فاتحة خلف الشعار (تضمن منطقة شعار نظيفة)" : "Light backdrop behind logo"}
+                  </label>
 
                   {/* Text background plate */}
                   <div className="flex items-center gap-2 flex-wrap">

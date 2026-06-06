@@ -149,7 +149,7 @@ export default function BulkImageGen({ ar }) {
   // PER-IMAGE editor — each image keeps its raw AI scene + its OWN layout AND
   // its OWN overrides (text, colors, logo on/off, contact bar on/off), so
   // editing one image never touches the others.
-  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF" };
+  const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", logoScrim: true };
   // Per-image content/brand overrides — start from the row + the global kit.
   const defaultOv = (row) => ({
     hook: row?.hook || "",
