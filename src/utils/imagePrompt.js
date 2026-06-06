@@ -87,17 +87,27 @@ export function loadLogo() {
 }
 
 // Build the image prompt from the brand kit + this post's content.
-export function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly }) {
+export function buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly, freeScene }) {
   const { mainColor, highlightColor, font, changeLogoColor, logoColor } = kit;
   const hl = (highlight || "").split(/[,،]/).map((s) => s.trim()).filter(Boolean);
   const hlList = hl.map((h) => `"${h}"`).join(", ");
 
   if (bgOnly) {
+    // FREE mode: follow the scene EXACTLY — no forced lighting/mood/props. We
+    // only ask for clean negative space at the top (for the composited logo)
+    // and to not draw text/logo. Use this for dark/moody or non-salon scenes.
+    if (freeScene) {
+      return `${(scene || "").trim()}
+
+Leave clean EMPTY NEGATIVE SPACE in the UPPER area of the frame for a logo and a headline to be added on top afterward. Photorealistic, high quality. Aspect ratio ${aspect}.
+
+Negative: any text, words, letters, logo, watermark, human faces.`;
+    }
     return `${(scene || "").trim()}
 
 COMPOSITION (very important): keep the TOP THIRD of the frame a CLEAN, BRIGHT, LIGHT, evenly-lit, uncluttered area — a smooth pale wall or soft bright surface — with NO objects and NO busy detail. The TOP-CENTER specifically (where a logo will be placed) must be the BRIGHTEST, calmest spot: absolutely NO lamps, NO ceiling lights, NO hanging fixtures, NO dark corners, NO window frames, NO furniture and NO shadows in that top-center zone — keep it light and uniform so a logo reads clearly on top. Arrange ALL props in the LOWER two-thirds, with a clear focal subject.
 
-DEPTH & AMBIANCE: don't make it a flat close-up desk shot — give a real sense of PLACE and depth: a softly-blurred, elegant upscale-salon environment in the background (refined chairs, a tall mirror, sheer curtains / a bright window, warm premium interior), so it feels like a luxurious salon, with the main props sharp in the foreground.
+DEPTH & AMBIANCE: don't make it a flat close-up shot — give a real sense of PLACE and depth: a softly-blurred background environment that SUITS the scene, with the main props tack-sharp in the foreground. (Let the scene description decide the setting and props — do not add furniture that wasn't asked for.)
 
 LIGHTING & QUALITY: bright, soft, airy natural daylight (light and luminous, never dim or muddy); high-end product / editorial photography look; tack-sharp focus with crisp fine detail and realistic materials & textures; gentle shallow depth-of-field so the background softly blurs while the props stay sharp; high resolution, clean and premium. Light / cream base with a harmonious palette built around ${mainColor} and ${highlightColor}.
 

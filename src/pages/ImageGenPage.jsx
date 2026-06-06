@@ -23,6 +23,9 @@ function CustomGen({ ar }) {
   const [highlight, setHighlight] = useState("");
   const [aspect, setAspect] = useState("4:5");
   const [bgOnly, setBgOnly] = useState(false);
+  // Free mode: send the scene prompt as-is (no forced bright lighting / salon
+  // props), so dark/moody or non-salon scenes come out as described.
+  const [freeScene, setFreeScene] = useState(false);
   // High precision is ALWAYS on now: the AI paints only the scene, then we
   // composite the real logo + hook (real Arabic font) + contact bar on top.
   // (The old toggle let the AI draw the text itself, which always garbled
@@ -64,7 +67,7 @@ function CustomGen({ ar }) {
       if (!bgOnly) {
         // AI paints the scene only; the effect composites the brand elements
         // (and re-composites live as you tweak layout/colors/text).
-        const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly: true });
+        const prompt = buildPrompt({ scene, hook, highlight, aspect, kit, bgOnly: true, freeScene });
         const sceneUrl = await generateImage({ prompt, aspectRatio: aspect });
         setBgUrl(sceneUrl);
         const px = pxForAspect(aspect);
@@ -188,6 +191,14 @@ function CustomGen({ ar }) {
             <span className="block text-[10px] text-slate-400">{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك والشريط بدقة — والنص يتحدّث مباشرة وتقدر تحرّكه بزر «تحرير»." : "AI paints the scene; the app composites the real logo, hook & bar — text updates live and is editable."}</span>
           </span>
         </div>
+
+        <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
+          <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} className="mt-0.5" />
+          <span className="text-[12px] text-slate-200 leading-relaxed">
+            {ar ? "🎨 وضع حر — لا تقيّد المشهد" : "🎨 Free scene (don't constrain)"}
+            <span className="block text-[10px] text-slate-500">{ar ? "يتبع وصفك حرفياً بدون فرض إضاءة فاتحة أو أثاث (كراسي/مرايا) — مناسب للأجواء الغامقة أو أي ستايل خاص." : "Follows your scene as-is — no forced bright lighting or props. Good for dark/moody styles."}</span>
+          </span>
+        </label>
 
         <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
           <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
