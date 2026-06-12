@@ -58,7 +58,24 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
   const [err, setErr] = useState("");
 
   const set = (k, v) => { setF((p) => ({ ...p, [k]: v })); setSaved(false); };
+  // Numeric layout values (sliders) — parse to number.
   const setLay = (k, v) => { setLayout((p) => ({ ...p, [k]: typeof v === "number" ? v : parseFloat(v) })); setSaved(false); };
+  // String layout values (e.g. orientation) — set verbatim. (Previously these
+  // went through setLay's parseFloat, turning "right"/"left" into NaN, so the
+  // logo-position buttons silently did nothing.)
+  const setLayStr = (k, v) => { setLayout((p) => ({ ...p, [k]: v })); setSaved(false); };
+
+  // What each arrangement places where — shown to the user so the options are
+  // self-explanatory (no guessing what goes left vs right).
+  const ORIENT_OPTIONS = [
+    { v: "center", ar: "شعار بالنص", en: "Logo center",
+      descAr: "الشعار في الوسط · المعلومات العربية يمين · الإنجليزية يسار", descEn: "Logo centered · Arabic on the right · English on the left" },
+    { v: "right", ar: "شعار يمين", en: "Logo right",
+      descAr: "الشعار على اليمين · كل المعلومات على اليسار", descEn: "Logo on the right · all info on the left" },
+    { v: "left", ar: "شعار يسار", en: "Logo left",
+      descAr: "الشعار على اليسار · كل المعلومات على اليمين", descEn: "Logo on the left · all info on the right" },
+  ];
+  const orientDesc = ORIENT_OPTIONS.find((o) => o.v === (layout.orientation || "center"));
 
   const W = size?.width || 1654, H = size?.height || 280;
 
@@ -128,35 +145,39 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
     { k: "textScale", label: ar ? "حجم النص" : "Text size", min: 0.6, max: 1.7, step: 0.05 },
   ];
 
+  const swatchStyle = (active, c) => active
+    ? { backgroundColor: c, borderColor: "var(--hv-primary)", boxShadow: "0 0 0 2px rgba(79,70,229,0.5)" }
+    : { backgroundColor: c, borderColor: "#cbd5e1" };
+
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="fixed inset-0 bg-black/80 z-[90] flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[94vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-          <p className="font-bold text-white flex items-center gap-2"><FileText className="w-5 h-5 text-indigo-400" /> {ar ? "الترويسة الرسمية" : "Letterhead"}</p>
-          <button onClick={onCancel} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+    <div dir={ar ? "rtl" : "ltr"} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[94vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10" style={{ borderColor: "var(--hv-border)" }}>
+          <p className="font-extrabold flex items-center gap-2" style={{ color: "var(--hv-text)" }}><FileText className="w-5 h-5" style={{ color: "var(--hv-primary)" }} /> {ar ? "الترويسة الرسمية" : "Letterhead"}</p>
+          <button onClick={onCancel} className="p-1 rounded-lg hover:bg-slate-100" style={{ color: "var(--hv-text-soft)" }}><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-5 space-y-4">
           {/* Live preview */}
-          <div className="bg-[repeating-conic-gradient(#1e293b_0_25%,#0f172a_0_50%)] bg-[length:24px_24px] rounded-lg p-2 border border-slate-800">
+          <div className="rounded-lg p-2 border" style={{ borderColor: "var(--hv-border)", background: "repeating-conic-gradient(#eef0f8 0 25%, #e3e6f2 0 50%) 0 0 / 24px 24px" }}>
             {preview ? (
               <img src={preview} alt="letterhead" className="w-full rounded shadow" />
             ) : (
-              <div className="text-center text-slate-500 py-8 text-[12px]">{ar ? "عبّي خانة وحدة على الأقل لتظهر المعاينة" : "Fill a field to preview"}</div>
+              <div className="text-center py-8 text-[12px]" style={{ color: "var(--hv-text-faint)" }}>{ar ? "عبّي خانة وحدة على الأقل لتظهر المعاينة" : "Fill a field to preview"}</div>
             )}
           </div>
 
-          <p className="text-[12px] text-slate-400 leading-relaxed">{ar ? "عبّي اللي تبيه فقط — أي خانة فاضية ما تظهر. كل تعديل يتحدّث في المعاينة فوراً." : "Fill only what you want; live preview updates instantly."}</p>
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text-soft)" }}>{ar ? "عبّي اللي تبيه فقط — أي خانة فاضية ما تظهر. كل تعديل يتحدّث في المعاينة فوراً." : "Fill only what you want; live preview updates instantly."}</p>
 
           {/* Logo */}
           {logo ? (
-            <div className="flex items-center gap-3 bg-slate-800/60 rounded-lg p-2">
-              <img src={logo} alt="logo" className="w-12 h-12 object-contain rounded bg-white/10" />
-              <span className="text-[12px] text-emerald-300 flex-1">{ar ? "الشعار جاهز" : "Logo ready"}</span>
-              <button onClick={() => { setLogo(""); setSaved(false); }} className="text-slate-400 hover:text-red-300 p-1"><X className="w-4 h-4" /></button>
+            <div className="flex items-center gap-3 rounded-lg p-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+              <img src={logo} alt="logo" className="w-12 h-12 object-contain rounded bg-slate-50" />
+              <span className="text-[12px] flex-1 font-bold text-emerald-600">{ar ? "الشعار جاهز" : "Logo ready"}</span>
+              <button onClick={() => { setLogo(""); setSaved(false); }} className="p-1 text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
             </div>
           ) : (
-            <label className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-dashed border-slate-600 rounded-lg py-2.5 cursor-pointer text-[12px] text-slate-300">
+            <label className="flex items-center justify-center gap-2 border border-dashed rounded-lg py-2.5 cursor-pointer text-[12px] hover:bg-slate-100" style={{ background: "var(--hv-surface)", borderColor: "#cbd5e1", color: "var(--hv-text-soft)" }}>
               <Upload className="w-4 h-4" /> {ar ? "ارفع الشعار (اختياري)" : "Upload logo (optional)"}
               <input type="file" accept="image/png,image/*" className="hidden" onChange={onPickLogo} />
             </label>
@@ -166,65 +187,83 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
           <div className="grid grid-cols-2 gap-3">
             {FIELDS.map(([k, label, ph, dir]) => (
               <div key={k}>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{label}</label>
-                <input value={f[k]} onChange={(e) => set(k, e.target.value)} placeholder={ph} dir={dir}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-[13px] text-white outline-none focus:border-indigo-500" />
+                <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{label}</label>
+                <input value={f[k]} onChange={(e) => set(k, e.target.value)} placeholder={ph} dir={dir} className="hv-input text-[13px]" />
               </div>
             ))}
           </div>
 
           {/* Edit controls */}
-          <div className="border-t border-slate-800 pt-3 space-y-3">
-            <p className="text-[12px] font-bold text-fuchsia-300 flex items-center gap-1.5"><Edit3 className="w-4 h-4" /> {ar ? "التحرير" : "Edit"}</p>
+          <div className="border-t pt-3 space-y-3" style={{ borderColor: "var(--hv-border)" }}>
+            <p className="text-[12px] font-extrabold flex items-center gap-1.5" style={{ color: "var(--hv-secondary-600,#f43f5e)" }}><Edit3 className="w-4 h-4" /> {ar ? "التحرير" : "Edit"}</p>
 
-            {/* Logo placement */}
+            {/* Logo placement — now with a description of what goes where */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "مكان الشعار" : "Logo position"}</label>
+              <label className="text-[11px] font-bold block mb-1.5" style={{ color: "var(--hv-text-soft)" }}>{ar ? "ترتيب الترويسة (مكان الشعار)" : "Layout (logo position)"}</label>
               <div className="grid grid-cols-3 gap-1.5">
-                {[{ v: "center", ar: "بالنص", en: "Center" }, { v: "right", ar: "يمين", en: "Right" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
-                  <button key={o.v} onClick={() => setLay("orientation", o.v)}
-                    className={`py-1.5 rounded text-[11px] font-bold transition ${layout.orientation === o.v ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
-                ))}
+                {ORIENT_OPTIONS.map((o) => {
+                  const active = (layout.orientation || "center") === o.v;
+                  return (
+                    <button key={o.v} onClick={() => setLayStr("orientation", o.v)}
+                      className="py-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center gap-1"
+                      style={active ? { background: "var(--hv-grad)", color: "#fff" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", border: "1px solid var(--hv-border)" }}>
+                      {/* tiny visual hint of logo position */}
+                      <span className="flex items-center gap-0.5">
+                        {o.v === "left" && <span className="w-2 h-2 rounded-sm" style={{ background: active ? "#fff" : "var(--hv-primary)" }} />}
+                        <span className="w-4 h-1.5 rounded-sm" style={{ background: active ? "rgba(255,255,255,0.55)" : "#cbd5e1" }} />
+                        {o.v === "center" && <span className="w-2 h-2 rounded-sm" style={{ background: active ? "#fff" : "var(--hv-primary)" }} />}
+                        <span className="w-4 h-1.5 rounded-sm" style={{ background: active ? "rgba(255,255,255,0.55)" : "#cbd5e1" }} />
+                        {o.v === "right" && <span className="w-2 h-2 rounded-sm" style={{ background: active ? "#fff" : "var(--hv-primary)" }} />}
+                      </span>
+                      {ar ? o.ar : o.en}
+                    </button>
+                  );
+                })}
               </div>
+              {orientDesc && (
+                <p className="text-[10.5px] mt-1.5 leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
+                  ℹ️ {ar ? orientDesc.descAr : orientDesc.descEn}
+                </p>
+              )}
             </div>
 
             {/* Sliders */}
             {SLIDERS.map((s) => (
               <div key={s.k} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{s.label}</span>
-                <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k]} onChange={(e) => setLay(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
+                <span className="text-[10px] w-16 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{s.label}</span>
+                <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k]} onChange={(e) => setLay(s.k, e.target.value)} className="flex-1" style={{ accentColor: "var(--hv-primary)" }} />
               </div>
             ))}
 
             {/* Background */}
-            <div className="bg-slate-800/40 rounded-lg p-2.5 space-y-2">
-              <p className="text-[11px] font-bold text-slate-200">{ar ? "الخلفية" : "Background"}</p>
-              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
-                <input type="checkbox" checked={transparent} onChange={(e) => { setTransparent(e.target.checked); setSaved(false); }} />
+            <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+              <p className="text-[11px] font-bold" style={{ color: "var(--hv-text)" }}>{ar ? "الخلفية" : "Background"}</p>
+              <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                <input type="checkbox" checked={transparent} onChange={(e) => { setTransparent(e.target.checked); setSaved(false); }} style={{ accentColor: "var(--hv-primary)" }} />
                 {ar ? "خلفية شفافة (للوضع فوق ورق)" : "Transparent background"}
               </label>
               {!transparent && (
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{ar ? "لون الخلفية" : "Bg color"}</span>
+                  <span className="text-[10px] w-16 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون الخلفية" : "Bg color"}</span>
                   <input type="color" value={bgColor} onChange={(e) => { setBgColor(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
                   <div className="flex flex-wrap gap-1">
                     {["#FFFFFF", "#F7F5F0", "#0F172A", "#09007C", "#FCE7F3", "#ECFCCB"].map((s) => (
                       <button key={s} type="button" onClick={() => { setBgColor(s); setSaved(false); }}
-                        className={`w-5 h-5 rounded-full border ${bgColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                        className="w-5 h-5 rounded-full border" style={swatchStyle(bgColor.toLowerCase() === s.toLowerCase(), s)} />
                     ))}
                   </div>
                 </div>
               )}
-              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
-                <input type="checkbox" checked={accentBorder} onChange={(e) => { setAccentBorder(e.target.checked); setSaved(false); }} />
+              <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                <input type="checkbox" checked={accentBorder} onChange={(e) => { setAccentBorder(e.target.checked); setSaved(false); }} style={{ accentColor: "var(--hv-primary)" }} />
                 {ar ? "إضافة خط ملوّن (إطار علوي)" : "Accent border line"}
               </label>
             </div>
 
             {/* Contact bar */}
-            <div className="bg-slate-800/40 rounded-lg p-2.5 space-y-2">
-              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-200 cursor-pointer">
-                <input type="checkbox" checked={showContact} onChange={(e) => { setShowContact(e.target.checked); setSaved(false); }} />
+            <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+              <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text)" }}>
+                <input type="checkbox" checked={showContact} onChange={(e) => { setShowContact(e.target.checked); setSaved(false); }} style={{ accentColor: "var(--hv-primary)" }} />
                 {ar ? "أضف شريط التواصل (شريط سفلي بالأيقونات)" : "Add contact bar"}
               </label>
               {showContact && (
@@ -238,17 +277,16 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
                       ["whatsapp", ar ? "واتساب" : "WhatsApp"],
                       ["website", ar ? "الموقع" : "Website"],
                     ].map(([k, label]) => (
-                      <input key={k} value={contacts[k]} onChange={(e) => setContact(k, e.target.value)} placeholder={label} dir="ltr"
-                        className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-indigo-500" />
+                      <input key={k} value={contacts[k]} onChange={(e) => setContact(k, e.target.value)} placeholder={label} dir="ltr" className="hv-input !py-1.5 text-[12px]" />
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400 w-16 flex-shrink-0">{ar ? "لون الشريط" : "Bar color"}</span>
+                    <span className="text-[10px] w-16 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون الشريط" : "Bar color"}</span>
                     <input type="color" value={contactBg} onChange={(e) => { setContactBg(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
                     <div className="flex flex-wrap gap-1">
                       {SWATCHES.map((s) => (
                         <button key={s} type="button" onClick={() => { setContactBg(s); setSaved(false); }}
-                          className={`w-5 h-5 rounded-full border ${contactBg.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                          className="w-5 h-5 rounded-full border" style={swatchStyle(contactBg.toLowerCase() === s.toLowerCase(), s)} />
                       ))}
                     </div>
                   </div>
@@ -259,8 +297,8 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
             {/* Logo recolor */}
             {logo && (
               <div>
-                <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 cursor-pointer">
-                  <input type="checkbox" checked={recolorLogo} onChange={(e) => { setRecolorLogo(e.target.checked); setSaved(false); }} />
+                <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                  <input type="checkbox" checked={recolorLogo} onChange={(e) => { setRecolorLogo(e.target.checked); setSaved(false); }} style={{ accentColor: "var(--hv-primary)" }} />
                   {ar ? "غيّر لون الشعار" : "Recolor logo"}
                 </label>
                 {recolorLogo && (
@@ -269,7 +307,7 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
                     <div className="flex flex-wrap gap-1">
                       {SWATCHES.map((s) => (
                         <button key={s} type="button" onClick={() => { setLogoColor(s); setSaved(false); }}
-                          className={`w-5 h-5 rounded-full border ${logoColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                          className="w-5 h-5 rounded-full border" style={swatchStyle(logoColor.toLowerCase() === s.toLowerCase(), s)} />
                       ))}
                     </div>
                   </div>
@@ -280,25 +318,25 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
             {/* Colors */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "لون الاسم" : "Name color"}</label>
+                <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون الاسم" : "Name color"}</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={headerColor} onChange={(e) => { setHeaderColor(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
                   <div className="flex flex-wrap gap-1">
                     {SWATCHES.map((s) => (
                       <button key={s} type="button" onClick={() => { setHeaderColor(s); setSaved(false); }}
-                        className={`w-5 h-5 rounded-full border ${headerColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                        className="w-5 h-5 rounded-full border" style={swatchStyle(headerColor.toLowerCase() === s.toLowerCase(), s)} />
                     ))}
                   </div>
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "لون التمييز والخط" : "Accent color"}</label>
+                <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون التمييز والخط" : "Accent color"}</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={accentColor} onChange={(e) => { setAccentColor(e.target.value); setSaved(false); }} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
                   <div className="flex flex-wrap gap-1">
                     {ACCENTS.map((s) => (
                       <button key={s} type="button" onClick={() => { setAccentColor(s); setSaved(false); }}
-                        className={`w-5 h-5 rounded-full border ${accentColor.toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                        className="w-5 h-5 rounded-full border" style={swatchStyle(accentColor.toLowerCase() === s.toLowerCase(), s)} />
                     ))}
                   </div>
                 </div>
@@ -307,29 +345,29 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
 
             {/* Font */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "نوع الخط" : "Font"}</label>
-              <select value={font} onChange={(e) => { setFont(e.target.value); setSaved(false); }} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-[12px] text-white outline-none">
+              <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "نوع الخط" : "Font"}</label>
+              <select value={font} onChange={(e) => { setFont(e.target.value); setSaved(false); }} className="hv-input text-[12px]">
                 {FONTS.map((ff) => <option key={ff.v} value={ff.v}>{ar ? ff.ar : ff.v}</option>)}
               </select>
             </div>
           </div>
 
-          {err && <div className="bg-red-900/30 border border-red-500/40 rounded-lg px-3 py-2 text-[12px] text-red-200">{err}</div>}
+          {err && <div className="rounded-lg px-3 py-2 text-[12px] border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{err}</div>}
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-800">
-            <button onClick={onCancel} className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold mt-3">{ar ? "إلغاء" : "Cancel"}</button>
+          <div className="flex flex-wrap gap-2 pt-3 border-t" style={{ borderColor: "var(--hv-border)" }}>
+            <button onClick={onCancel} className="hv-btn hv-btn-ghost text-sm">{ar ? "إلغاء" : "Cancel"}</button>
             <a href={preview || undefined} download={`letterhead_${Date.now()}.png`}
-              className={`px-3 py-2.5 rounded-lg text-sm font-semibold mt-3 inline-flex items-center gap-1.5 ${preview ? "bg-slate-800 hover:bg-slate-700 text-slate-100" : "bg-slate-800/50 text-slate-500 pointer-events-none"}`}>
+              className={`hv-btn text-sm inline-flex items-center gap-1.5 ${preview ? "hv-btn-soft" : "hv-btn-ghost opacity-50 pointer-events-none"}`}>
               <Download className="w-4 h-4" /> {ar ? "تحميل" : "Download"}
             </a>
             <button onClick={handleSave} disabled={!preview || busy || saved}
-              className={`px-3 py-2.5 rounded-lg text-sm font-semibold mt-3 inline-flex items-center gap-1.5 disabled:opacity-60 ${saved ? "bg-emerald-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-100"}`}>
+              className={`hv-btn text-sm inline-flex items-center gap-1.5 disabled:opacity-60 ${saved ? "bg-emerald-600 text-white" : "hv-btn-soft"}`}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
               {saved ? (ar ? "محفوظة" : "Saved") : (ar ? "حفظ بالمكتبة" : "Save")}
             </button>
             <button onClick={() => preview && onDone(preview)} disabled={!preview}
-              className="flex-1 min-w-[140px] py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold text-sm transition disabled:opacity-60 mt-3 inline-flex items-center justify-center gap-2">
+              className="hv-btn hv-btn-primary flex-1 min-w-[140px] text-sm disabled:opacity-60 inline-flex items-center justify-center gap-2">
               <Edit3 className="w-4 h-4" /> {ar ? "فتح في المحرر" : "Open in editor"}
             </button>
           </div>
