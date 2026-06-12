@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import * as htmlToImage from "html-to-image";
 import { useQueryClient } from "@tanstack/react-query";
 import { localApi, uploadFile } from "@/api/localClient";
+import { generateImage } from "@/utils/imagePrompt";
 import StudioCanvas from "./StudioCanvas";
 import TextPanel from "./panels/TextPanel";
 import ShapesPanel from "./panels/ShapesPanel";
@@ -60,7 +61,7 @@ const TAB_GROUPS = [
   { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "logo", "social", "colors"] },
   { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "bg"] },
   { labelAr: "إضافة عناصر", labelEn: "Elements", ids: ["text", "shapes", "icons", "symbols", "deco", "frames", "draw"] },
-  { labelAr: "ذكاء وقوالب",  labelEn: "Smart",    ids: ["templates", "ai", "offers"] },
+  { labelAr: "العروض والأسعار", labelEn: "Offers & Pricing", ids: ["offers"] },
   { labelAr: "ترتيب",        labelEn: "Arrange",  ids: ["layers", "effects", "size"] },
 ];
 
@@ -297,6 +298,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const [exportedImageUrl, setExportedImageUrl] = useState("");
   const [designName, setDesignName] = useState(loadedDesign?.name || "");
+  // Inline AI image generation (inside the "صور" tab).
+  const [aiImgPrompt, setAiImgPrompt] = useState("");
+  const [aiImgBusy, setAiImgBusy] = useState(false);
+  const [aiImgErr, setAiImgErr] = useState("");
   const qc = useQueryClient();
   const canvasRef = useRef(null);
   const canvasWrapRef = useRef(null);
@@ -1349,6 +1354,23 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const handleAiAddBg = (url) => { setBg(prev => ({ ...prev, mode: "image", imageUrl: url })); setActiveTab("bg"); };
   const handleAiAddImage = (url) => { addImage({ url, isSvg: false, svgContent: null }); setActiveTab("images"); };
 
+  // Inline AI image generation from the "صور" tab → drops the result on the canvas.
+  const handleGenerateAiImage = async () => {
+    const prompt = aiImgPrompt.trim();
+    if (!prompt || aiImgBusy) return;
+    setAiImgBusy(true); setAiImgErr("");
+    try {
+      const ratio = (size?.ratio && /^\d+:\d+$/.test(size.ratio)) ? size.ratio : "1:1";
+      const url = await generateImage({ prompt, aspectRatio: ratio });
+      if (url) addImage({ url, isSvg: false, svgContent: null });
+      setAiImgPrompt("");
+    } catch (e) {
+      setAiImgErr((language === "ar" ? "تعذّر التوليد: " : "Failed: ") + (e?.message || e));
+    } finally {
+      setAiImgBusy(false);
+    }
+  };
+
   // تطبيق قالب جاهز على الصفحة الحالية
   const handleApplyTemplate = ({ textLayers: tl, shapes: sh, images: im, logos: lo, groups: gr, bg: newBg }) => {
     skipCountRef.current = 6;
@@ -1756,6 +1778,28 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               />
             </div>
             <div style={{ display: activeTab === "images" ? "block" : "none" }}>
+              {/* Generate an image with AI → drops straight onto the canvas */}
+              <div className="mb-3 rounded-xl p-2.5 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+                <p className="text-[12px] font-extrabold mb-1.5 flex items-center gap-1.5" style={{ color: "var(--hv-primary-700)" }}>
+                  <Sparkles className="w-4 h-4" /> {language === "ar" ? "توليد صورة بالذكاء" : "Generate image (AI)"}
+                </p>
+                <textarea
+                  value={aiImgPrompt}
+                  onChange={(e) => setAiImgPrompt(e.target.value)}
+                  rows={2}
+                  placeholder={language === "ar" ? "صف الصورة… (مثال: علبة عطر فاخرة على رخام، خلفية شفافة)" : "Describe the image…"}
+                  className="hv-input text-[12px] mb-1.5 resize-none"
+                />
+                <button
+                  onClick={handleGenerateAiImage}
+                  disabled={aiImgBusy || !aiImgPrompt.trim()}
+                  className="hv-btn hv-btn-primary w-full !py-2 text-xs disabled:opacity-50"
+                >
+                  {aiImgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {aiImgBusy ? (language === "ar" ? "جارٍ التوليد…" : "Generating…") : (language === "ar" ? "توليد وإضافة للتصميم" : "Generate & add")}
+                </button>
+                {aiImgErr && <p className="text-[10px] text-red-600 mt-1 leading-relaxed">{aiImgErr}</p>}
+              </div>
               <DecorationFinder onAdd={addImage} language={language} />
               <ImagesPanel
                 images={images.filter(i => !i.isLucideIcon && !i.isSocialIcon && !i.isHandDrawn && !i.isSymbol && !i.isText)}
