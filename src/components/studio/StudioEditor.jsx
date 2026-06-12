@@ -92,18 +92,38 @@ async function recolorToDataUrl(url, hexColor) {
   });
 }
 
-const defaultText = () => ({
-  id: genId(), text: "نص جديد", x: 50, y: 50,
-  fontSize: 40, fontFamily: "Tajawal", color: "#ffffff",
-  bold: false, italic: false, align: "center", shadow: false,
-  opacity: 1, visible: true, bgColor: "", lineHeight: 1.4,
-  rotation: 0, blur: 0, brightness: 100,
-});
+// Read the saved Brand kit (from the "العلامة"/Brand panel) so new elements pick
+// up the brand font + colour BY DEFAULT. Handles both the studio panel shape
+// ({primaryColor, primaryFont, colors}) and the image-gen kit shape
+// ({mainColor, font}) since they share the same storage key.
+function loadBrandDefaults() {
+  try {
+    const b = JSON.parse(localStorage.getItem("brand_kit_v1") || "{}");
+    return {
+      font: b.primaryFont || b.font || "Tajawal",
+      textColor: b.primaryColor || b.mainColor || "#ffffff",
+      shapeColor: b.primaryColor || b.mainColor || (Array.isArray(b.colors) && b.colors[0]) || "#8b5cf6",
+    };
+  } catch {
+    return { font: "Tajawal", textColor: "#ffffff", shapeColor: "#8b5cf6" };
+  }
+}
+
+const defaultText = () => {
+  const bd = loadBrandDefaults();
+  return {
+    id: genId(), text: "نص جديد", x: 50, y: 50,
+    fontSize: 40, fontFamily: bd.font, color: bd.textColor,
+    bold: false, italic: false, align: "center", shadow: false,
+    opacity: 1, visible: true, bgColor: "", lineHeight: 1.4,
+    rotation: 0, blur: 0, brightness: 100,
+  };
+};
 
 const defaultShape = (type, canvasAspect = 1) => {
   // Mockups need specific aspect ratios so the device looks right out of the box
   let w = 25, h = 20 * canvasAspect;
-  let fill = "#8b5cf6";
+  let fill = loadBrandDefaults().shapeColor;
   if (type === "phone_mockup")    { w = 25; h = 50 * canvasAspect; }
   if (type === "tablet_mockup")   { w = 40; h = 45 * canvasAspect; }
   if (type === "laptop_mockup")   { w = 50; h = 35 * canvasAspect; }
