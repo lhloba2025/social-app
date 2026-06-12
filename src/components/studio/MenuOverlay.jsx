@@ -101,7 +101,13 @@ export default function MenuOverlay({ menu, selected, isExporting, cW, cH, onSta
         boxShadow: (isModern || isMinimal) ? "none" : `0 ${sp * 0.6}px ${sp * 3}px rgba(0,0,0,0.12)`,
         outline: isLuxe ? `${Math.max(1, sp * 0.2)}px solid ${accent}` : "none",
         outlineOffset: isLuxe ? `-${sp * 1.4}px` : 0,
+        position: "relative", overflow: "hidden",
       }}>
+        {menu.bgImage ? (
+          <img src={menu.bgImage} alt="" crossOrigin="anonymous"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: menu.bgImageOpacity ?? 0.15, pointerEvents: "none" }} />
+        ) : null}
+        <div style={{ position: "relative", zIndex: 1 }}>
         {menu.showLogo && menu.logoUrl ? (
           <div style={{ textAlign: "center", marginBottom: `${sp * 2}px` }}>
             <img src={menu.logoUrl} alt="" crossOrigin="anonymous"
@@ -120,6 +126,7 @@ export default function MenuOverlay({ menu, selected, isExporting, cW, cH, onSta
           {sections.map(renderSection)}
         </div>
         {footTxt ? <div style={{ textAlign: "center", marginTop: `${sp * 2.4}px`, color: textCol, opacity: 0.8, fontSize: `${u * 2.4}px` }}>{footTxt}</div> : null}
+        </div>
       </div>
     </div>
   );

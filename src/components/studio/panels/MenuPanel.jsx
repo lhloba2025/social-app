@@ -52,6 +52,12 @@ export default function MenuPanel({ menu, onChange, language }) {
     r.onload = () => onChange({ showLogo: true, logoUrl: String(r.result || "") });
     r.readAsDataURL(f);
   };
+  const onPickBg = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => onChange({ bgImage: String(r.result || ""), bgImageOpacity: m.bgImageOpacity ?? 0.15 });
+    r.readAsDataURL(f);
+  };
 
   const lang = m.lang || "ar";
   const showAr = lang === "ar" || lang === "both";
@@ -147,6 +153,28 @@ export default function MenuPanel({ menu, onChange, language }) {
                 </div>
               </>
             )}
+          </div>
+
+          {/* Background image */}
+          <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+            <p className="text-[11px] font-bold" style={{ color: "var(--hv-text)" }}>🖼️ {isRtl ? "خلفية صورة (شفافة)" : "Background image (faded)"}</p>
+            {m.bgImage
+              ? <img src={m.bgImage} alt="bg" className="h-14 w-full object-cover rounded" />
+              : <p className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "ارفع صورة (أظافر، مساج، شعر…) تظهر خلف المنيو بشفافية." : "Upload an image (nails, massage…) shown faded behind the menu."}</p>}
+            <div className="flex gap-1.5">
+              <label className="hv-btn hv-btn-ghost flex-1 text-[10px] cursor-pointer !py-1.5">
+                {isRtl ? "رفع صورة" : "Upload"}
+                <input type="file" accept="image/*" className="hidden" onChange={onPickBg} />
+              </label>
+              {m.bgImage && <button onClick={() => onChange({ bgImage: "" })} className="hv-btn hv-btn-danger text-[10px] !py-1.5">{isRtl ? "إزالة" : "Remove"}</button>}
+            </div>
+            {m.bgImage && (
+              <div>
+                <label className="text-[10px] block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "الشفافية" : "Opacity"}: {Math.round((m.bgImageOpacity ?? 0.15) * 100)}%</label>
+                <input type="range" min="0.03" max="0.6" step="0.01" value={m.bgImageOpacity ?? 0.15} onChange={(e) => onChange({ bgImageOpacity: parseFloat(e.target.value) })} className="w-full" style={{ accentColor: "var(--hv-primary)" }} />
+              </div>
+            )}
+            <p className="text-[9px]" style={{ color: "var(--hv-text-faint)" }}>{isRtl ? "💡 تقدر تجيب صور شفافة من تبويب «صور» ← «ابحث عن صور PNG»." : "💡 Find images in the Images tab → search PNGs."}</p>
           </div>
 
           {/* Sections */}
