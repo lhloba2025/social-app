@@ -258,22 +258,24 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     if (initDraft?.menu) return initDraft.menu;
     return {
       show: false,
-      title: "قائمة الخدمات",
-      subtitle: "",
-      items: [
-        { name: "قص شعر", desc: "", price: "80" },
-        { name: "صبغة كاملة", desc: "مع الترطيب", price: "250" },
-        { name: "مكياج سهرة", desc: "", price: "300" },
+      lang: "ar", style: "classic", columns: 1, autoFit: true,
+      title: "قائمة الخدمات", titleEn: "Our Services",
+      subtitle: "", subtitleEn: "",
+      sections: [
+        { title: "الشعر", titleEn: "Hair", items: [
+          { name: "قص شعر", nameEn: "Haircut", icon: "💇", desc: "", price: "80" },
+          { name: "صبغة كاملة", nameEn: "Full color", icon: "🎨", desc: "مع الترطيب", price: "250" },
+        ] },
+        { title: "العناية", titleEn: "Care", items: [
+          { name: "مكياج سهرة", nameEn: "Evening makeup", icon: "💄", desc: "", price: "300" },
+          { name: "مساج استرخاء", nameEn: "Relax massage", icon: "💆", desc: "", price: "200" },
+        ] },
       ],
       currency: "ريال",
-      accent: "#7c3aed",
-      textColor: "#1e1b3a",
-      bgColor: "#ffffff",
-      showDots: true,
-      footer: "",
-      fontFamily: "Tajawal",
-      fontScale: 1,
-      x: 50, y: 55, width: 70, rotation: 0,
+      accent: "#7c3aed", textColor: "#1e1b3a", bgColor: "#ffffff",
+      showDots: true, footer: "", footerEn: "",
+      fontFamily: "Tajawal", fontScale: 1,
+      x: 50, y: 50, width: 70, rotation: 0,
     };
   });
   const updateMenu = (patch) => setMenu((m) => ({ ...m, ...patch }));

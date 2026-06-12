@@ -5,6 +5,7 @@ import { DOODLE_STICKERS } from "./doodleStickers";
 import { SAUDI_MAP_PATH, SAUDI_REGIONS } from "./data/saudiMapPath";
 import { generateSvgBackground } from "./svgBackgrounds";
 import { findPlatform } from "./data/socialPlatforms.jsx";
+import MenuOverlay from "./MenuOverlay";
 
 function buildBg(bg) {
   if (!bg) return "#1e293b";
@@ -2650,61 +2651,18 @@ export default function StudioCanvas({
           );
         })()}
 
-        {/* ── Services menu overlay ──────────────────────────────────────
-            Sibling of the offers card: an elegant "name … price" list. */}
-        {menu?.show && menu.items?.length > 0 && (() => {
+        {/* ── Services menu overlay — sections + icons + bilingual + styles + auto-fit ── */}
+        {menu?.show && (() => {
+          const hasItems = (menu.sections && menu.sections.some(s => s.items && s.items.length)) || (menu.items && menu.items.length);
+          if (!hasItems) return null;
+          const cRect = containerRef.current?.getBoundingClientRect();
+          const cW = cRect?.width || 400, cH = cRect?.height || 400;
           const isSel = selectedId === "__menu" && selectedType === "menu";
-          const accent = menu.accent || "#7c3aed";
-          const textCol = menu.textColor || "#1e1b3a";
-          const bg = menu.bgColor || "#ffffff";
-          const cur = menu.currency || "ريال";
-          const fw = (menu.width || 70);
-          const cW = containerRef.current?.getBoundingClientRect().width || 400;
-          const fs = menu.fontScale || 1;
-          const u = (cW / 100) * fs;
-          const sp = cW / 100;
           return (
-            <div
-              onMouseDown={(e) => { e.stopPropagation(); onSelect?.("__menu", "menu"); startDrag(e, "__menu", "menu", menu.x ?? 50, menu.y ?? 55, false); }}
-              style={{
-                position: "absolute",
-                left: `${menu.x ?? 50}%`, top: `${menu.y ?? 55}%`,
-                width: `${fw}%`,
-                transform: `translate(-50%, -50%) rotate(${menu.rotation || 0}deg)`,
-                cursor: "grab",
-                outline: isSel && !isExporting ? `${Math.max(2, sp * 0.4)}px dashed #818cf8` : "none",
-                outlineOffset: `${sp}px`,
-                fontFamily: menu.fontFamily || "Tajawal",
-                direction: "rtl",
-                zIndex: 30,
-                background: bg,
-                borderRadius: `${sp * 3}px`,
-                padding: `${sp * 4}px ${sp * 4.5}px`,
-                boxShadow: `0 ${sp * 0.6}px ${sp * 3}px rgba(0,0,0,0.12)`,
-                border: `${Math.max(1, sp * 0.25)}px solid ${accent}22`,
-              }}
-            >
-              {(menu.title || menu.subtitle) && (
-                <div style={{ textAlign: "center", marginBottom: `${sp * 2.4}px` }}>
-                  {menu.title && <div style={{ color: accent, fontWeight: 800, fontSize: `${u * 5.5}px`, lineHeight: 1.15 }}>{menu.title}</div>}
-                  {menu.subtitle && <div style={{ display: "inline-block", marginTop: `${sp * 1.4}px`, background: accent, color: "#fff", fontWeight: 700, fontSize: `${u * 3}px`, padding: `${sp * 1}px ${sp * 3.5}px`, borderRadius: `${sp * 40}px` }}>{menu.subtitle}</div>}
-                  <div style={{ height: `${Math.max(1, sp * 0.3)}px`, background: `${accent}33`, marginTop: `${sp * 2}px` }} />
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: `${sp * 2.2}px` }}>
-                {menu.items.map((it, i) => (
-                  <div key={i}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: `${sp * 1.2}px` }}>
-                      <span style={{ color: textCol, fontWeight: 700, fontSize: `${u * 3.6}px`, whiteSpace: "nowrap" }}>{it.name}</span>
-                      <span style={{ flex: 1, borderBottom: menu.showDots !== false ? `${Math.max(1, sp * 0.3)}px dotted ${textCol}66` : "none", transform: `translateY(-${u * 0.5}px)` }} />
-                      <span style={{ color: accent, fontWeight: 800, fontSize: `${u * 3.8}px`, whiteSpace: "nowrap" }}>{it.price} {cur}</span>
-                    </div>
-                    {it.desc && <div style={{ color: textCol, opacity: 0.6, fontSize: `${u * 2.5}px`, marginTop: `${sp * 0.3}px` }}>{it.desc}</div>}
-                  </div>
-                ))}
-              </div>
-              {menu.footer && <div style={{ textAlign: "center", marginTop: `${sp * 2.4}px`, color: textCol, opacity: 0.8, fontSize: `${u * 2.5}px` }}>{menu.footer}</div>}
-            </div>
+            <MenuOverlay
+              menu={menu} selected={isSel} isExporting={isExporting} cW={cW} cH={cH}
+              onStartDrag={(e) => { e.stopPropagation(); onSelect?.("__menu", "menu"); startDrag(e, "__menu", "menu", menu.x ?? 50, menu.y ?? 50, false); }}
+            />
           );
         })()}
 
