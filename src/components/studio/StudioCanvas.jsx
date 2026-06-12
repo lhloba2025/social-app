@@ -1008,7 +1008,8 @@ function ShapeElement({ shape, scale, isSelected, selectedRegion, onSelectRegion
 }
 
 // ─── Smart Guides helper (خارج المكوّن لأنها دالة خالصة) ─────────────────────
-const SNAP_THRESHOLD = 0.9; // percent — gentle, so it aligns without feeling "magnetic"
+const SNAP_THRESHOLD = 0.9; // percent — gentle inner alignment (centers / other elements)
+const EDGE_SNAP = 2.4;      // percent — canvas borders grab from further so flush corners are easy
 
 function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, logos) {
   let dragW = 20, dragH = 15, isTextEl = type === "text";
@@ -1054,13 +1055,18 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
     ? [newY - dragH / 2, newY, newY + dragH / 2]
     : [newY, newY + dragH / 2, newY + dragH];
 
+  // Canvas borders (0 and 100) grab from further away so an element snaps
+  // FLUSH into a corner/edge easily; inner alignments (center, other elements)
+  // stay tight so they don't feel "magnetic".
+  const isEdge = (c) => c === 0 || c === 100;
   let bestSnapX = null, bestSnapY = null;
-  let minDx = SNAP_THRESHOLD, minDy = SNAP_THRESHOLD;
+  let minDx = EDGE_SNAP, minDy = EDGE_SNAP;
 
   [...new Set(candidateXs)].forEach(cx => {
+    const thr = isEdge(cx) ? EDGE_SNAP : SNAP_THRESHOLD;
     dragXs.forEach((dx, i) => {
       const d = Math.abs(dx - cx);
-      if (d < minDx) {
+      if (d <= thr && d < minDx) {
         minDx = d;
         const offsets = isTextEl ? [-dragW / 2, 0, dragW / 2] : [0, dragW / 2, dragW];
         bestSnapX = { guide: cx, newX: cx - offsets[i] };
@@ -1068,9 +1074,10 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
     });
   });
   [...new Set(candidateYs)].forEach(cy => {
+    const thr = isEdge(cy) ? EDGE_SNAP : SNAP_THRESHOLD;
     dragYs.forEach((dy, i) => {
       const d = Math.abs(dy - cy);
-      if (d < minDy) {
+      if (d <= thr && d < minDy) {
         minDy = d;
         const offsets = isTextEl ? [-dragH / 2, 0, dragH / 2] : [0, dragH / 2, dragH];
         bestSnapY = { guide: cy, newY: cy - offsets[i] };
