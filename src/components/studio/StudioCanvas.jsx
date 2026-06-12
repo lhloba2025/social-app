@@ -1027,20 +1027,27 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
     if (el) { dragW = el.width || 20; dragH = el.height || 15; }
   }
 
-  const candidateXs = [0, 50, 100];
-  const candidateYs = [0, 50, 100];
+  // Canvas alignment lines carry ROLES so an element's EDGE snaps to a canvas
+  // EDGE and its CENTER snaps to the canvas CENTER — never edge-to-center. The
+  // old code snapped every drag point to every line, so a wide element's far
+  // edge would stick to the middle line (50), creating a "barrier" down the
+  // centre that felt like the element repelled when you dragged toward a corner.
+  // pts = which drag points may snap here: 0 = left/top, 1 = center, 2 = right/bottom.
+  const ALL = [0, 1, 2];
+  const candidateXs = [{ v: 0, pts: [0] }, { v: 50, pts: [1] }, { v: 100, pts: [2] }];
+  const candidateYs = [{ v: 0, pts: [0] }, { v: 50, pts: [1] }, { v: 100, pts: [2] }];
 
   const addBounds = (el, elType) => {
     if (el.id === id || el.visible === false) return;
     const x = el.x || 0, y = el.y || 0;
     if (elType === "text") {
       const w = el.textWidth || 30;
-      candidateXs.push(x - w / 2, x, x + w / 2);
-      candidateYs.push(y - 7.5, y, y + 7.5);
+      candidateXs.push({ v: x - w / 2, pts: ALL }, { v: x, pts: ALL }, { v: x + w / 2, pts: ALL });
+      candidateYs.push({ v: y - 7.5, pts: ALL }, { v: y, pts: ALL }, { v: y + 7.5, pts: ALL });
     } else {
       const w = el.width || 20, h = el.height || 15;
-      candidateXs.push(x, x + w / 2, x + w);
-      candidateYs.push(y, y + h / 2, y + h);
+      candidateXs.push({ v: x, pts: ALL }, { v: x + w / 2, pts: ALL }, { v: x + w, pts: ALL });
+      candidateYs.push({ v: y, pts: ALL }, { v: y + h / 2, pts: ALL }, { v: y + h, pts: ALL });
     }
   };
   textLayers.forEach(l => addBounds(l, "text"));
@@ -1054,34 +1061,27 @@ function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, log
   const dragYs = isTextEl
     ? [newY - dragH / 2, newY, newY + dragH / 2]
     : [newY, newY + dragH / 2, newY + dragH];
+  const offsetsX = isTextEl ? [-dragW / 2, 0, dragW / 2] : [0, dragW / 2, dragW];
+  const offsetsY = isTextEl ? [-dragH / 2, 0, dragH / 2] : [0, dragH / 2, dragH];
 
-  // Canvas borders (0 and 100) grab from further away so an element snaps
-  // FLUSH into a corner/edge easily; inner alignments (center, other elements)
-  // stay tight so they don't feel "magnetic".
-  const isEdge = (c) => c === 0 || c === 100;
+  // Canvas borders (0/100) grab from a bit further so flush corners are easy;
+  // center and other-element alignments stay tight so they don't feel magnetic.
+  const thrFor = (v) => (v === 0 || v === 100) ? EDGE_SNAP : SNAP_THRESHOLD;
   let bestSnapX = null, bestSnapY = null;
   let minDx = EDGE_SNAP, minDy = EDGE_SNAP;
 
-  [...new Set(candidateXs)].forEach(cx => {
-    const thr = isEdge(cx) ? EDGE_SNAP : SNAP_THRESHOLD;
-    dragXs.forEach((dx, i) => {
-      const d = Math.abs(dx - cx);
-      if (d <= thr && d < minDx) {
-        minDx = d;
-        const offsets = isTextEl ? [-dragW / 2, 0, dragW / 2] : [0, dragW / 2, dragW];
-        bestSnapX = { guide: cx, newX: cx - offsets[i] };
-      }
+  candidateXs.forEach(c => {
+    const thr = thrFor(c.v);
+    c.pts.forEach(i => {
+      const d = Math.abs(dragXs[i] - c.v);
+      if (d <= thr && d < minDx) { minDx = d; bestSnapX = { guide: c.v, newX: c.v - offsetsX[i] }; }
     });
   });
-  [...new Set(candidateYs)].forEach(cy => {
-    const thr = isEdge(cy) ? EDGE_SNAP : SNAP_THRESHOLD;
-    dragYs.forEach((dy, i) => {
-      const d = Math.abs(dy - cy);
-      if (d <= thr && d < minDy) {
-        minDy = d;
-        const offsets = isTextEl ? [-dragH / 2, 0, dragH / 2] : [0, dragH / 2, dragH];
-        bestSnapY = { guide: cy, newY: cy - offsets[i] };
-      }
+  candidateYs.forEach(c => {
+    const thr = thrFor(c.v);
+    c.pts.forEach(i => {
+      const d = Math.abs(dragYs[i] - c.v);
+      if (d <= thr && d < minDy) { minDy = d; bestSnapY = { guide: c.v, newY: c.v - offsetsY[i] }; }
     });
   });
 
@@ -1404,8 +1404,14 @@ export default function StudioCanvas({
     const onMove = (e) => {
       const container = containerRef.current;
       if (!container) return;
-      const containerW = container.clientWidth;
-      const containerH = container.clientHeight;
+      // Use the VISUAL (rendered) size, not clientWidth/Height. The canvas is
+      // zoomed with a CSS transform to fit the screen, so clientWidth is the
+      // un-zoomed layout size. The mouse moves in zoomed screen pixels, so we
+      // must divide by the on-screen size — otherwise drags/resizes lag the
+      // cursor (the element never reaches a corner; feels like "repulsion").
+      const crect = container.getBoundingClientRect();
+      const containerW = crect.width;
+      const containerH = crect.height;
 
       const now = Date.now();
       if (now - lastUpdateTime < MIN_UPDATE_INTERVAL) return;
@@ -1692,8 +1698,8 @@ export default function StudioCanvas({
           key={img.id}
           style={{
             position: "absolute",
-            left: `${img.x || 10}%`,
-            top: `${img.y || 10}%`,
+            left: `${img.x ?? 10}%`,
+            top: `${img.y ?? 10}%`,
             width: `${w}%`,
             height: `${h}%`,
             transform: `rotate(${img.rotation || 0}deg)`,
@@ -1706,7 +1712,7 @@ export default function StudioCanvas({
             alignItems: "center",
             justifyContent: "center",
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x || 10, img.y || 10, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x ?? 10, img.y ?? 10, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
         >
           <div
@@ -1714,7 +1720,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: coloredSvg.replace('<svg ', '<svg width="100%" height="100%" style="display:block" ') }}
           />
           {isSelected && !isExporting && (
-            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
+            resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)
           )}
         </div>
       );
@@ -1738,8 +1744,8 @@ export default function StudioCanvas({
           key={img.id}
           style={{
             position: "absolute",
-            left: `${img.x || 10}%`,
-            top: `${img.y || 10}%`,
+            left: `${img.x ?? 10}%`,
+            top: `${img.y ?? 10}%`,
             width: `${w}%`,
             height: `${h}%`,
             transform: `rotate(${img.rotation || 0}deg)`,
@@ -1752,7 +1758,7 @@ export default function StudioCanvas({
             alignItems: "center",
             justifyContent: "center",
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x || 10, img.y || 10, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x ?? 10, img.y ?? 10, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
         >
           <div
@@ -1760,7 +1766,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: coloredSvg.replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="none" style="display:block;overflow:visible" ') }}
           />
           {isSelected && !isExporting && (
-            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
+            resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)
           )}
         </div>
       );
@@ -1776,8 +1782,8 @@ export default function StudioCanvas({
           key={img.id}
           style={{
             position: "absolute",
-            left: `${img.x || 30}%`,
-            top: `${img.y || 40}%`,
+            left: `${img.x ?? 30}%`,
+            top: `${img.y ?? 40}%`,
             width: `${w}%`,
             height: `${h}%`,
             transform: `rotate(${img.rotation || 0}deg)`,
@@ -1787,7 +1793,7 @@ export default function StudioCanvas({
             outlineOffset: `${2 * scale}px`,
             zIndex: 25,
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type); startDrag(e, img.id, type, img.x || 30, img.y || 40, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type); startDrag(e, img.id, type, img.x ?? 30, img.y ?? 40, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
         >
           <div
@@ -1795,7 +1801,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: img.svgContent.replace('<svg ', '<svg width="100%" height="100%" style="display:block;overflow:visible" ') }}
           />
           {isSelected && !isExporting && (
-            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
+            resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)
           )}
         </div>
       );
@@ -1812,8 +1818,8 @@ export default function StudioCanvas({
           key={img.id}
           style={{
             position: "absolute",
-            left: `${img.x || 10}%`,
-            top: `${img.y || 10}%`,
+            left: `${img.x ?? 10}%`,
+            top: `${img.y ?? 10}%`,
             width: `${w}%`,
             height: `${h}%`,
             transform: `rotate(${img.rotation || 0}deg)`,
@@ -1826,7 +1832,7 @@ export default function StudioCanvas({
             alignItems: "center",
             justifyContent: "center",
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x || 10, img.y || 10, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x ?? 10, img.y ?? 10, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
         >
           {Icon && (() => {
@@ -1844,7 +1850,7 @@ export default function StudioCanvas({
             );
           })()}
           {isSelected && !isExporting && (
-            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
+            resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)
           )}
         </div>
       );
@@ -1872,8 +1878,8 @@ export default function StudioCanvas({
           key={img.id}
           style={{
             position: "absolute",
-            left: `${img.x || 10}%`,
-            top: `${img.y || 10}%`,
+            left: `${img.x ?? 10}%`,
+            top: `${img.y ?? 10}%`,
             width: `${w}%`,
             height: `${h}%`,
             transform: `rotate(${img.rotation || 0}deg)`,
@@ -1884,7 +1890,7 @@ export default function StudioCanvas({
             zIndex: 20,
             mixBlendMode: img.blendMode || "normal",
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x || 10, img.y || 10, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x ?? 10, img.y ?? 10, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
         >
           <div style={{
@@ -1900,7 +1906,7 @@ export default function StudioCanvas({
             {img.text}
           </div>
           {isSelected && !isExporting && (
-            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
+            resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)
           )}
         </div>
       );
@@ -1919,8 +1925,8 @@ export default function StudioCanvas({
         key={img.id}
         style={{
           position: "absolute",
-          left: `${img.x || 10}%`,
-          top: `${img.y || 10}%`,
+          left: `${img.x ?? 10}%`,
+          top: `${img.y ?? 10}%`,
           width: `${w}%`,
           height: `${h}%`,
           transform: `rotate(${img.rotation || 0}deg)`,
@@ -1931,7 +1937,7 @@ export default function StudioCanvas({
            zIndex: type === "logo" ? 20 : 10,
            mixBlendMode: img.blendMode || "normal",
           }}
-          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x || 10, img.y || 10, img.locked); }}
+          onMouseDown={(e) => { if (!img.locked) onSelect(img.id, type, e); startDrag(e, img.id, type, img.x ?? 10, img.y ?? 10, img.locked); }}
           onContextMenu={ctxHandler(img.id, type)}
       >
         {img.isSvg && img.svgContent ? (
@@ -1981,13 +1987,13 @@ export default function StudioCanvas({
             </div>
           );
         })()}
-        {isSelected && !isExporting && resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)}
+        {isSelected && !isExporting && resizeHandles(img.id, type, img.x ?? 10, img.y ?? 10, w, h)}
       </div>
     );
 
     if (img.phoneFrame && type === "image") {
       return (
-        <div key={img.id} style={{ position: "absolute", left: `${img.x || 10}%`, top: `${img.y || 10}%`, width: `${w}%`, height: `${h}%`, zIndex: 10 }}>
+        <div key={img.id} style={{ position: "absolute", left: `${img.x ?? 10}%`, top: `${img.y ?? 10}%`, width: `${w}%`, height: `${h}%`, zIndex: 10 }}>
           <PhoneFrame color={img.phoneFrameColor || "#1e293b"} scale={scale}>
             <img src={src} alt="" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: `${img.borderRadius || 0}%` }} />
           </PhoneFrame>
@@ -2221,8 +2227,8 @@ export default function StudioCanvas({
               key={shape.id}
               style={{
                 position: "absolute",
-                left: `${shape.x || 10}%`,
-                top: `${shape.y || 10}%`,
+                left: `${shape.x ?? 10}%`,
+                top: `${shape.y ?? 10}%`,
                 width: `${shape.width || 20}%`,
                 height: `${shape.height || 15}%`,
                 perspective: (shape.rotateX || shape.rotateY) ? `${shape.perspective ?? 800}px` : undefined,
@@ -2263,7 +2269,7 @@ export default function StudioCanvas({
                   })() : "",
                 ].filter(Boolean).join(" ") || undefined,
               }}
-              onMouseDown={(e) => { if (!shape.locked) onSelect(shape.id, "shape", e); startDrag(e, shape.id, "shape", shape.x || 10, shape.y || 10, shape.locked); }}
+              onMouseDown={(e) => { if (!shape.locked) onSelect(shape.id, "shape", e); startDrag(e, shape.id, "shape", shape.x ?? 10, shape.y ?? 10, shape.locked); }}
               onContextMenu={ctxHandler(shape.id, "shape")}
             >
               <ShapeElement shape={shape} scale={scale} isSelected={isSelected} selectedRegion={selectedRegion} onSelectRegion={onSelectRegion} />
@@ -2433,8 +2439,8 @@ export default function StudioCanvas({
               key={layer.id}
               style={{
                 position: "absolute",
-                left: `${layer.x || 50}%`,
-                top: `${layer.y || 50}%`,
+                left: `${layer.x ?? 50}%`,
+                top: `${layer.y ?? 50}%`,
                 transform: `translate(-50%, -50%)${layer.rotation ? ` rotate(${layer.rotation}deg)` : ""}`,
                 width: layer.textWidth ? `${layer.textWidth}%` : "90%",
                 maxWidth: layer.textWidth ? `${layer.textWidth}%` : "90%",
@@ -2445,7 +2451,7 @@ export default function StudioCanvas({
                 userSelect: "none",
                 WebkitUserSelect: "none",
               }}
-              onMouseDown={(e) => { if (!isEditing) { if (!layer.locked) onSelect(layer.id, "text", e); startDrag(e, layer.id, "text", layer.x || 50, layer.y || 50, layer.locked); } }}
+              onMouseDown={(e) => { if (!isEditing) { if (!layer.locked) onSelect(layer.id, "text", e); startDrag(e, layer.id, "text", layer.x ?? 50, layer.y ?? 50, layer.locked); } }}
               onContextMenu={ctxHandler(layer.id, "text")}
               onDoubleClick={(e) => {
                 e.stopPropagation();
