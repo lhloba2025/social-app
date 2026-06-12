@@ -57,9 +57,9 @@ const TABS = [
 // The 18 tools, organised into logical clusters so the panel reads as tidy
 // groups instead of one crowded row.
 const TAB_GROUPS = [
+  { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "logo", "social", "colors"] },
+  { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "bg"] },
   { labelAr: "إضافة عناصر", labelEn: "Elements", ids: ["text", "shapes", "icons", "symbols", "deco", "frames", "draw"] },
-  { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "logo", "bg"] },
-  { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "social", "colors"] },
   { labelAr: "ذكاء وقوالب",  labelEn: "Smart",    ids: ["templates", "ai", "offers"] },
   { labelAr: "ترتيب",        labelEn: "Arrange",  ids: ["layers", "effects", "size"] },
 ];
@@ -1586,7 +1586,14 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           <div className="p-2.5 border-b space-y-2.5 overflow-y-auto" style={{ borderColor: "var(--hv-border)", maxHeight: "42%" }}>
             {TAB_GROUPS.map((group) => (
               <div key={group.labelEn}>
-                <p className="hv-overline mb-1.5 px-0.5">{isRtl ? group.labelAr : group.labelEn}</p>
+                {/* Group heading — a clear titled bar so the clusters read as sections */}
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md"
+                        style={{ background: "rgba(79,70,229,0.10)", color: "var(--hv-primary-700)" }}>
+                    {isRtl ? group.labelAr : group.labelEn}
+                  </span>
+                  <span className="flex-1 h-px" style={{ background: "var(--hv-border)" }} />
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {group.ids.map((id) => {
                     const tab = TABS.find((t) => t.id === id);
