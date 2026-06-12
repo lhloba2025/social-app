@@ -148,13 +148,37 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
   // Draw a stacked, vertically-centered block clamped to [maxW].
   function drawBlock({ name, sub, info, align, xEdge, maxW }) {
     const rows = [];
-    if (name) rows.push({ t: name, fs: fsName, color: nameColor, weight: 800 });
-    if (sub)  rows.push({ t: sub,  fs: fsSub,  color: accentColor, weight: 700, underline: true });
-    if (info) rows.push({ t: info, fs: fsInfo, color: nameColor, weight: 600 });
+    if (name) rows.push({ t: name, fs: fsName, color: nameColor, weight: 800, gap: lineGap, clamp: true });
+    if (sub)  rows.push({ t: sub,  fs: fsSub,  color: accentColor, weight: 700, underline: true, gap: lineGap, clamp: true });
+
+    // INFO line — instead of shrinking one long line until it's microscopic,
+    // keep it at a readable size and WRAP it onto as many lines as it needs.
+    // The separator between items is "   |   ".
+    if (info) {
+      const sep = "   |   ";
+      const segs = String(info).split(sep).filter(Boolean);
+      let ipx = Math.round(H * 0.15 * textScale);          // readable base
+      const floor = Math.round(H * 0.125 * textScale);     // never smaller than this
+      ctx.font = `600 ${ipx}px "${font}", "Tajawal", sans-serif`;
+      const widest = Math.max(1, ...segs.map((s) => ctx.measureText(s).width));
+      if (widest > maxW) ipx = Math.max(floor, Math.floor(ipx * (maxW / widest)));
+      ctx.font = `600 ${ipx}px "${font}", "Tajawal", sans-serif`;
+      // Greedily pack items into lines that fit maxW.
+      const infoLines = [];
+      let cur = "";
+      for (const s of segs) {
+        const test = cur ? cur + sep + s : s;
+        if (!cur || ctx.measureText(test).width <= maxW) cur = test;
+        else { infoLines.push(cur); cur = s; }
+      }
+      if (cur) infoLines.push(cur);
+      infoLines.forEach((t) => rows.push({ t, fs: ipx, color: nameColor, weight: 600, gap: lineGap * 0.45 }));
+    }
     if (!rows.length) return;
-    // Clamp each row to the available width.
-    for (const r of rows) r.fs = fitFont(ctx, r.t, r.weight, r.fs, font, maxW);
-    const totalH = rows.reduce((a, r) => a + r.fs, 0) + lineGap * (rows.length - 1);
+
+    // Clamp name/sub to the available width (info is already wrapped to fit).
+    for (const r of rows) if (r.clamp) r.fs = fitFont(ctx, r.t, r.weight, r.fs, font, maxW);
+    const totalH = rows.reduce((a, r) => a + r.fs, 0) + rows.slice(0, -1).reduce((a, r) => a + r.gap, 0);
     let y = midY - totalH / 2;
     ctx.textAlign = align;
     ctx.direction = align === "right" ? "rtl" : "ltr";
@@ -173,7 +197,7 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
         else { ctx.moveTo(xEdge, uy); ctx.lineTo(xEdge + w, uy); }
         ctx.stroke();
       }
-      y += r.fs + lineGap;
+      y += r.fs + r.gap;
     }
   }
 
