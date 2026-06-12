@@ -71,9 +71,9 @@ export default function LetterheadForm({ isRtl = true, size, onCancel, onDone })
     { v: "center", ar: "شعار بالنص", en: "Logo center",
       descAr: "الشعار في الوسط · المعلومات العربية يمين · الإنجليزية يسار", descEn: "Logo centered · Arabic on the right · English on the left" },
     { v: "right", ar: "شعار يمين", en: "Logo right",
-      descAr: "الشعار على اليمين · كل المعلومات على اليسار", descEn: "Logo on the right · all info on the left" },
+      descAr: "الشعار على اليمين · الكتابة (عربي) على اليسار", descEn: "Logo on the right · Arabic text on the left" },
     { v: "left", ar: "شعار يسار", en: "Logo left",
-      descAr: "الشعار على اليسار · كل المعلومات على اليمين", descEn: "Logo on the left · all info on the right" },
+      descAr: "الشعار على اليسار · الكتابة (عربي) على اليمين", descEn: "Logo on the left · Arabic text on the right" },
   ];
   const orientDesc = ORIENT_OPTIONS.find((o) => o.v === (layout.orientation || "center"));
 

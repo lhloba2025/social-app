@@ -208,10 +208,10 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
     drawBlock({ name: fields.nameAr, sub: fields.subAr, info: infoAr, align: "right", xEdge: W - marginX, maxW: Math.max(40, rightMaxW) });
     drawBlock({ name: fields.nameEn, sub: fields.subEn, info: infoEn, align: "left",  xEdge: marginX,     maxW: Math.max(40, leftMaxW) });
   } else if (orient === "right") {
-    // Logo on the right; text fills the left, right-aligned (Arabic-first).
+    // Logo on the RIGHT → Arabic writing fills the LEFT, right-aligned so it
+    // sits right next to the logo. (Logo one side, writing the other.)
     const textRightEdge = logoBox.x - logoBox.w - W * 0.02;
     const maxW = textRightEdge - marginX;
-    // Merge AR + EN into one right-aligned block.
     drawBlock({
       name: fields.nameAr || fields.nameEn,
       sub: fields.subAr || fields.subEn,
@@ -219,13 +219,16 @@ export async function composeLetterhead({ width = 1654, height = 280, kit = {}, 
       align: "right", xEdge: textRightEdge, maxW: Math.max(40, maxW),
     });
   } else { // left
-    const textLeftEdge = logoBox.x + logoBox.w + W * 0.02;
-    const maxW = (W - marginX) - textLeftEdge;
+    // Logo on the LEFT → Arabic writing fills the RIGHT, right-aligned at the
+    // right margin (the classic logo-left / Arabic-name-right letterhead).
+    const textRightEdge = W - marginX;
+    const minLeft = logoBox.x + logoBox.w + W * 0.02;
+    const maxW = textRightEdge - minLeft;
     drawBlock({
-      name: fields.nameEn || fields.nameAr,
-      sub: fields.subEn || fields.subAr,
-      info: infoEn || infoAr,
-      align: "left", xEdge: textLeftEdge, maxW: Math.max(40, maxW),
+      name: fields.nameAr || fields.nameEn,
+      sub: fields.subAr || fields.subEn,
+      info: infoAr || infoEn,
+      align: "right", xEdge: textRightEdge, maxW: Math.max(40, maxW),
     });
   }
 
