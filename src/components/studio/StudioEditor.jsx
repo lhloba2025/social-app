@@ -17,6 +17,7 @@ import AIPanel from "./panels/AIPanel";
 import IconsPanel from "./panels/IconsPanel.jsx";
 import SocialPanel from "./panels/SocialPanel.jsx";
 import OffersPanel from "./panels/OffersPanel.jsx";
+import MenuPanel from "./panels/MenuPanel.jsx";
 import SymbolsPanel from "./panels/SymbolsPanel";
 import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
@@ -53,6 +54,7 @@ const TABS = [
   { id: "brand", labelAr: "البراند", labelEn: "Brand" },
   { id: "effects", labelAr: "تأثيرات", labelEn: "Effects" },
   { id: "offers", labelAr: "💰 عروض وأسعار", labelEn: "💰 Offers" },
+  { id: "menu", labelAr: "📋 قائمة/منيو", labelEn: "📋 Menu" },
 ];
 
 // The 18 tools, organised into logical clusters so the panel reads as tidy
@@ -61,7 +63,7 @@ const TAB_GROUPS = [
   { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "logo", "social", "colors"] },
   { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "bg"] },
   { labelAr: "إضافة عناصر", labelEn: "Elements", ids: ["text", "shapes", "icons", "symbols", "deco", "frames", "draw"] },
-  { labelAr: "العروض والأسعار", labelEn: "Offers & Pricing", ids: ["offers"] },
+  { labelAr: "العروض والأسعار", labelEn: "Offers & Pricing", ids: ["offers", "menu"] },
   { labelAr: "ترتيب",        labelEn: "Arrange",  ids: ["layers", "effects", "size"] },
 ];
 
@@ -250,6 +252,31 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     };
   });
   const updateOffers = (patch) => setOffers((o) => ({ ...o, ...patch }));
+
+  // Services menu (sibling of offers — a clean price list, no discounts).
+  const [menu, setMenu] = useState(() => {
+    if (initDraft?.menu) return initDraft.menu;
+    return {
+      show: false,
+      title: "قائمة الخدمات",
+      subtitle: "",
+      items: [
+        { name: "قص شعر", desc: "", price: "80" },
+        { name: "صبغة كاملة", desc: "مع الترطيب", price: "250" },
+        { name: "مكياج سهرة", desc: "", price: "300" },
+      ],
+      currency: "ريال",
+      accent: "#7c3aed",
+      textColor: "#1e1b3a",
+      bgColor: "#ffffff",
+      showDots: true,
+      footer: "",
+      fontFamily: "Tajawal",
+      fontScale: 1,
+      x: 50, y: 55, width: 70, rotation: 0,
+    };
+  });
+  const updateMenu = (patch) => setMenu((m) => ({ ...m, ...patch }));
 
   // Auto-persist the profile whenever the box changes. We exclude
   // positional fields (x/y/show) inside the store, so moving the box
@@ -506,7 +533,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     };
     // Strip thumbnails from pages before storing — base64 images fill up localStorage (5MB limit)
     const draftPages = pagesData.current.map(({ thumbnail, ...rest }) => rest);
-    const draft = { textLayers, shapes, images, logos, bg, groups, offers, pages: draftPages, currentPageIdx };
+    const draft = { textLayers, shapes, images, logos, bg, groups, offers, menu, pages: draftPages, currentPageIdx };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       setLastSavedAt(Date.now());
@@ -519,7 +546,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         setAutoSaveStatus("saved");
       } catch { setAutoSaveStatus("idle"); }
     }
-  }, [textLayers, shapes, images, logos, bg, groups, offers]);
+  }, [textLayers, shapes, images, logos, bg, groups, offers, menu]);
 
   // Tick to keep "Xs ago" label fresh
   const [, setTickCount] = useState(0);
@@ -1689,6 +1716,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             <div style={{ display: activeTab === "offers" ? "block" : "none" }}>
               <OffersPanel offers={offers} onChange={updateOffers} language={language} />
             </div>
+            <div style={{ display: activeTab === "menu" ? "block" : "none" }}>
+              <MenuPanel menu={menu} onChange={updateMenu} language={language} />
+            </div>
             <div style={{ display: activeTab === "text" ? "block" : "none" }}>
               <TextPanel
                 layers={textLayers}
@@ -1971,6 +2001,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               onUpdateSocialBox={(patch) => setSocialBox((s) => ({ ...s, ...patch }))}
               offers={offers}
               onUpdateOffers={updateOffers}
+              menu={menu}
+              onUpdateMenu={updateMenu}
               onAddShape={(payload) => {
                 const newShape = {
                   id: genId(),
