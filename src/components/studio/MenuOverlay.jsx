@@ -102,6 +102,12 @@ export default function MenuOverlay({ menu, selected, isExporting, cW, cH, onSta
         outline: isLuxe ? `${Math.max(1, sp * 0.2)}px solid ${accent}` : "none",
         outlineOffset: isLuxe ? `-${sp * 1.4}px` : 0,
       }}>
+        {menu.showLogo && menu.logoUrl ? (
+          <div style={{ textAlign: "center", marginBottom: `${sp * 2}px` }}>
+            <img src={menu.logoUrl} alt="" crossOrigin="anonymous"
+              style={{ width: `${menu.logoSize || 22}%`, maxHeight: `${u * 18}px`, objectFit: "contain", display: "inline-block" }} />
+          </div>
+        ) : null}
         {(titleTxt || subTxt) ? (
           <div style={{ textAlign: "center", marginBottom: `${sp * 2.6}px` }}>
             {titleTxt ? <div style={{ color: accent, fontWeight: 800, fontSize: `${u * 5.5}px`, lineHeight: 1.15, letterSpacing: isLuxe ? `${sp * 0.4}px` : 0 }}>{titleTxt}</div> : null}

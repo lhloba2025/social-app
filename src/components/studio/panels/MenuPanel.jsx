@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import StudioColorPicker from "../StudioColorPicker";
+import { loadLogo } from "@/utils/imagePrompt";
 
 const THEMES = [
   { name: "بنفسجي", accent: "#7c3aed", text: "#1e1b3a", bg: "#ffffff" },
@@ -44,6 +45,13 @@ export default function MenuPanel({ menu, onChange, language }) {
   const setItem = (si, ii, patch) => setSec(si, { items: sections[si].items.map((it, j) => j === ii ? { ...it, ...patch } : it) });
   const addItem = (si) => setSec(si, { items: [...(sections[si].items || []), { name: isRtl ? "خدمة جديدة" : "New item", nameEn: "", icon: "", desc: "", price: "0" }] });
   const removeItem = (si, ii) => setSec(si, { items: sections[si].items.filter((_, j) => j !== ii) });
+
+  const onPickLogo = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => onChange({ showLogo: true, logoUrl: String(r.result || "") });
+    r.readAsDataURL(f);
+  };
 
   const lang = m.lang || "ar";
   const showAr = lang === "ar" || lang === "both";
@@ -108,6 +116,38 @@ export default function MenuPanel({ menu, onChange, language }) {
           {showEn && <input value={m.titleEn || ""} onChange={(e) => onChange({ titleEn: e.target.value })} placeholder="Title (EN)" dir="ltr" className="hv-input w-full" />}
           {showAr && <input value={m.subtitle || ""} onChange={(e) => onChange({ subtitle: e.target.value })} placeholder={isRtl ? "العنوان الفرعي (شريط)" : "Subtitle pill (AR)"} className="hv-input w-full" />}
           {showEn && <input value={m.subtitleEn || ""} onChange={(e) => onChange({ subtitleEn: e.target.value })} placeholder="Subtitle (EN)" dir="ltr" className="hv-input w-full" />}
+
+          {/* Logo */}
+          <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+            <label className="flex items-center gap-2 cursor-pointer text-[11px] font-bold" style={{ color: "var(--hv-text)" }}>
+              <input type="checkbox" checked={!!m.showLogo} onChange={(e) => {
+                const on = e.target.checked;
+                const patch = { showLogo: on };
+                if (on && !m.logoUrl) { const bl = loadLogo(); if (bl) patch.logoUrl = bl; }
+                onChange(patch);
+              }} style={{ accentColor: "var(--hv-primary)" }} />
+              {isRtl ? "أضف الشعار أعلى المنيو" : "Add logo on top"}
+            </label>
+            {m.showLogo && (
+              <>
+                {m.logoUrl
+                  ? <img src={m.logoUrl} alt="logo" className="h-10 mx-auto object-contain rounded bg-slate-50 p-1" />
+                  : <p className="text-[10px]" style={{ color: "#b45309" }}>{isRtl ? "ما فيه شعار محفوظ — ارفع واحد أو استخدم شعار العلامة." : "No saved logo — upload one or use the brand logo."}</p>}
+                <div className="flex gap-1.5">
+                  <label className="hv-btn hv-btn-ghost flex-1 text-[10px] cursor-pointer !py-1.5">
+                    {isRtl ? "رفع شعار" : "Upload"}
+                    <input type="file" accept="image/png,image/*" className="hidden" onChange={onPickLogo} />
+                  </label>
+                  <button onClick={() => { const bl = loadLogo(); if (bl) onChange({ logoUrl: bl }); }}
+                    className="hv-btn hv-btn-soft flex-1 text-[10px] !py-1.5">{isRtl ? "شعار العلامة" : "Brand logo"}</button>
+                </div>
+                <div>
+                  <label className="text-[10px] block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "حجم الشعار" : "Logo size"}: {Math.round(m.logoSize || 22)}%</label>
+                  <input type="range" min="10" max="50" step="1" value={m.logoSize || 22} onChange={(e) => onChange({ logoSize: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "var(--hv-primary)" }} />
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Sections */}
           <div className="space-y-2">
