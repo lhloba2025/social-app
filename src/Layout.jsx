@@ -7,7 +7,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-slate-950 ${language === "ar" ? "dir-rtl" : ""}`} dir={language === "ar" ? "rtl" : "ltr"}>
+    <div className={`hv-app-bg flex h-screen overflow-hidden ${language === "ar" ? "dir-rtl" : ""}`} dir={language === "ar" ? "rtl" : "ltr"}>
       <Sidebar language={language} onLanguageChange={setLanguage} />
       <main className="flex-1 overflow-hidden">
         {React.cloneElement(children, { language, onLanguageChange: setLanguage })}

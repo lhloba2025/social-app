@@ -277,15 +277,15 @@ function FontPicker({ value, onChange, fonts, isRtl }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         style={{ fontFamily: value }}
-        className="w-full flex items-center justify-between gap-2 bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded px-2 py-1.5 text-sm text-white text-start transition"
+        className="w-full flex items-center justify-between gap-2 bg-[var(--hv-surface-2)] border border-[var(--hv-border)] hover:border-indigo-500 rounded px-2 py-1.5 text-sm text-[var(--hv-text)] text-start transition"
       >
         <span className="truncate">{current?.label || value}</span>
-        <span className="text-slate-400 text-xs flex-shrink-0">▾</span>
+        <span className="text-[var(--hv-text-soft)] text-xs flex-shrink-0">▾</span>
       </button>
 
       {open && (
         <div
-          className="absolute z-50 mt-1 max-h-72 overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl py-1"
+          className="absolute z-50 mt-1 max-h-72 overflow-y-auto bg-white border border-[var(--hv-border)] rounded-lg shadow-2xl py-1"
           style={{ width: "max(100%, 240px)", [isRtl ? "right" : "left"]: 0 }}
           onMouseLeave={() => {
             // Restore the committed value when the cursor leaves the dropdown
@@ -305,7 +305,7 @@ function FontPicker({ value, onChange, fonts, isRtl }) {
                 setOpen(false);
               }}
               className={`w-full px-3 py-1.5 text-sm text-start transition ${
-                f.name === value ? "bg-indigo-600 text-white" : "text-slate-200 hover:bg-slate-700"
+                f.name === value ? "bg-indigo-600 text-white" : "text-[var(--hv-text)] hover:bg-slate-100"
               }`}
             >
               {f.label}
@@ -2739,23 +2739,23 @@ export default function GreetingCardsPage({ language }) {
   }, {});
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="h-full bg-slate-950 text-white overflow-y-auto">
+    <div dir={isRtl ? "rtl" : "ltr"} className="hv-page" style={{ color: "var(--hv-text)" }}>
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-pink-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-pink-600 flex items-center justify-center text-white">
             <Type className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">{isRtl ? "بطاقات التهنئة" : "Greeting Cards"}</h1>
-            <p className="text-slate-400 text-xs">
+            <h1 className="hv-page-title">{isRtl ? "بطاقات التهنئة" : "Greeting Cards"}</h1>
+            <p className="hv-page-sub text-xs">
               {isRtl ? "ارفع قالباً وقائمة أسماء، ثم نزّل كل البطاقات دفعة واحدة" : "Upload a template + names list, download all cards in one click"}
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm mb-4">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-700 text-sm mb-4">
             {error}
           </div>
         )}
@@ -2764,7 +2764,7 @@ export default function GreetingCardsPage({ language }) {
           {/* ── LEFT: Controls ───────────────────────────────── */}
           <div className="flex flex-col gap-3 h-[calc(100vh-150px)] sticky top-4">
             {/* Tab bar — sticky at top, each tab opens its dedicated panel */}
-            <div className="grid grid-cols-8 gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 flex-shrink-0">
+            <div className="grid grid-cols-8 gap-1 bg-white border border-[var(--hv-border)] rounded-xl p-1 flex-shrink-0">
               {PANELS.map((p) => (
                 <button
                   key={p.id}
@@ -2773,7 +2773,7 @@ export default function GreetingCardsPage({ language }) {
                   className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-[10px] font-semibold transition ${
                     activePanel === p.id
                       ? "bg-indigo-600 text-white shadow-lg"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      : "text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] hover:bg-slate-100"
                   }`}
                 >
                   <span className="text-base leading-none">{p.icon}</span>
@@ -2786,7 +2786,7 @@ export default function GreetingCardsPage({ language }) {
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {/* ───── CARD tab: Template + Size ───── */}
             {activePanel === "card" && (<>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">1</span>
                 {isRtl ? "قالب البطاقة" : "Card template"}
@@ -2801,7 +2801,7 @@ export default function GreetingCardsPage({ language }) {
               </button>
               <input ref={templateInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleTemplate} />
               {templateW > 0 && (
-                <p className="text-[10px] text-slate-500 mt-1.5">{templateW} ?� {templateH} px</p>
+                <p className="text-[10px] text-[var(--hv-text-faint)] mt-1.5">{templateW} ?� {templateH} px</p>
               )}
             </div>
 
@@ -2809,7 +2809,7 @@ export default function GreetingCardsPage({ language }) {
                 Only meaningful once a template is uploaded; before then it's
                 a no-op so we hide it to keep the panel clean. */}
             {templateUrl && (
-              <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-cyan-500/30 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold flex items-center gap-2">
                     ↔�? {isRtl ? "تحريك القالب وتكبيره" : "Reframe template"}
@@ -2817,7 +2817,7 @@ export default function GreetingCardsPage({ language }) {
                   {(templateZoom !== 1 || templateOffsetX !== 0 || templateOffsetY !== 0) && (
                     <button
                       onClick={() => { setTemplateZoom(1); setTemplateOffsetX(0); setTemplateOffsetY(0); }}
-                      className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                      className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text-soft)]"
                     >
                       �? {isRtl ? "إعادة" : "Reset"}
                     </button>
@@ -2831,7 +2831,7 @@ export default function GreetingCardsPage({ language }) {
                   className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition ${
                     templatePanMode
                       ? "bg-cyan-500 text-slate-900 shadow-lg"
-                      : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                      : "bg-[var(--hv-surface-2)] text-[var(--hv-text)] hover:bg-slate-100"
                   }`}
                 >
                   {templatePanMode
@@ -2841,7 +2841,7 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Zoom — 0.5?� to 3?�, 1 = baseline (no zoom). */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block">
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">
                     {isRtl ? "تكبير" : "Zoom"}: {templateZoom.toFixed(2)}?�
                   </label>
                   <input type="range" min="0.5" max="3" step="0.01" value={templateZoom}
@@ -2854,7 +2854,7 @@ export default function GreetingCardsPage({ language }) {
                     a corner of the photo). */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block">
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">
                       {isRtl ? "أفقي" : "X"}: {templateOffsetX.toFixed(0)}%
                     </label>
                     <input type="range" min="-150" max="150" step="0.5" value={templateOffsetX}
@@ -2862,7 +2862,7 @@ export default function GreetingCardsPage({ language }) {
                       className="w-full accent-cyan-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">
                       {isRtl ? "عمودي" : "Y"}: {templateOffsetY.toFixed(0)}%
                     </label>
                     <input type="range" min="-150" max="150" step="0.5" value={templateOffsetY}
@@ -2871,14 +2871,14 @@ export default function GreetingCardsPage({ language }) {
                   </div>
                 </div>
 
-                <p className="text-[10px] text-slate-500 leading-relaxed">
+                <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                   {isRtl ? "💡 كبّر ثم اسحب الصورة لتختار أي جزء يظهر — مثلاً حرّك الخروف يمين/يسار أو اقصّ الشجرة." : "💡 Zoom in then drag to choose what's visible — move the subject around or crop out unwanted parts."}
                 </p>
               </div>
             )}
 
             {/* Step 2: Output size / platform */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">2</span>
                 <Maximize2 className="w-4 h-4" />
@@ -2886,7 +2886,7 @@ export default function GreetingCardsPage({ language }) {
               </h3>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اختر مقاساً" : "Pick a size"}</label>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اختر مقاساً" : "Pick a size"}</label>
                 <select
                   value={outputSize?.id || ""}
                   onChange={(e) => {
@@ -2894,7 +2894,7 @@ export default function GreetingCardsPage({ language }) {
                     if (!v) setOutputSize(null);
                     else setOutputSize(SIZES.find((s) => s.id === v) || null);
                   }}
-                  className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-white"
+                  className="w-full bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded px-2 py-1.5 text-xs text-[var(--hv-text)]"
                 >
                   <option value="">{isRtl ? "أبعاد القالب الأصلية" : "Template's native size"}</option>
                   {Object.entries(sizesByPlatform).map(([platform, list]) => (
@@ -2908,7 +2908,7 @@ export default function GreetingCardsPage({ language }) {
                   ))}
                 </select>
                 {outputSize && (
-                  <p className="text-[10px] text-indigo-400 mt-1">
+                  <p className="text-[10px] text-indigo-600 mt-1">
                     📐 {outputSize.width}×{outputSize.height} px ({outputSize.ratio})
                   </p>
                 )}
@@ -2916,7 +2916,7 @@ export default function GreetingCardsPage({ language }) {
 
               {outputSize && (
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "كيف تُلائم الصورة المقاس؟" : "Fit mode"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "كيف تُلائم الصورة المقاس؟" : "Fit mode"}</label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
                       { id: "cover",   ar: "ملء (قص)",      en: "Cover" },
@@ -2924,16 +2924,16 @@ export default function GreetingCardsPage({ language }) {
                       { id: "fill",    ar: "تمديد",         en: "Stretch" },
                     ].map((m) => (
                       <button key={m.id} onClick={() => setFitMode(m.id)}
-                        className={`py-1.5 rounded text-[11px] font-semibold transition ${fitMode === m.id ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                        className={`py-1.5 rounded text-[11px] font-semibold transition ${fitMode === m.id ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                         {isRtl ? m.ar : m.en}
                       </button>
                     ))}
                   </div>
                   {fitMode === "contain" && (
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400">{isRtl ? "لون الإطار" : "Bar color"}</span>
+                      <span className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "لون الإطار" : "Bar color"}</span>
                       <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)}
-                        className="w-7 h-7 rounded cursor-pointer bg-slate-800" />
+                        className="w-7 h-7 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                     </div>
                   )}
                 </div>
@@ -2966,22 +2966,22 @@ export default function GreetingCardsPage({ language }) {
                 photo is uploaded (otherwise the template covers the bg).
                 Lets users start from a blank canvas with a solid/gradient. */}
             {!templateUrl && (
-              <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-cyan-500/30 rounded-xl p-4 space-y-3">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   🎨 {isRtl ? "خلفية البطاقة" : "Card background"}
                 </h3>
 
                 {/* Mode toggle */}
-                <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded p-1">
+                <div className="grid grid-cols-2 gap-1 bg-[var(--hv-surface-2)] rounded p-1">
                   <button onClick={() => { setBgTouched(true); setBgMode("solid"); }}
                     className={`py-1.5 rounded text-[11px] font-semibold transition ${
-                      bgMode === "solid" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
+                      bgMode === "solid" ? "bg-cyan-500 text-slate-900" : "text-[var(--hv-text-soft)] hover:bg-slate-100"
                     }`}>
                     {isRtl ? "لون واحد" : "Solid"}
                   </button>
                   <button onClick={() => { setBgTouched(true); setBgMode("gradient"); }}
                     className={`py-1.5 rounded text-[11px] font-semibold transition ${
-                      bgMode === "gradient" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
+                      bgMode === "gradient" ? "bg-cyan-500 text-slate-900" : "text-[var(--hv-text-soft)] hover:bg-slate-100"
                     }`}>
                     🌈 {isRtl ? "تدرّج" : "Gradient"}
                   </button>
@@ -2990,11 +2990,11 @@ export default function GreetingCardsPage({ language }) {
                 {/* Solid colour picker */}
                 {bgMode === "solid" && (
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون" : "Color"}</label>
                     <div className="flex items-center gap-2">
                       <input type="color" value={bgSolid}
                         onChange={(e) => { setBgTouched(true); setBgSolid(e.target.value); }}
-                        className="w-9 h-9 rounded cursor-pointer bg-slate-800" />
+                        className="w-9 h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                       <div className="flex flex-wrap gap-1 flex-1">
                         {QUICK_COLORS.map((c) => (
                           <button key={c} onClick={() => { setBgTouched(true); setBgSolid(c); }}
@@ -3011,20 +3011,20 @@ export default function GreetingCardsPage({ language }) {
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
+                        <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون" : "Color"}</label>
                         <input type="color" value={bgGrad1}
                           onChange={(e) => { setBgTouched(true); setBgGrad1(e.target.value); }}
-                          className="w-full h-9 rounded cursor-pointer bg-slate-800" />
+                          className="w-full h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون" : "Color"}</label>
+                        <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون" : "Color"}</label>
                         <input type="color" value={bgGrad2}
                           onChange={(e) => { setBgTouched(true); setBgGrad2(e.target.value); }}
-                          className="w-full h-9 rounded cursor-pointer bg-slate-800" />
+                          className="w-full h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {bgGradAngle}ذ</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {bgGradAngle}ذ</label>
                       <input type="range" min="0" max="360" step="5" value={bgGradAngle}
                         onChange={(e) => setBgGradAngle(parseInt(e.target.value))}
                         className="w-full accent-cyan-500" />
@@ -3034,7 +3034,7 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Themed gradient presets */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "خلفيات جاهزة" : "Ready backgrounds"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "خلفيات جاهزة" : "Ready backgrounds"}</label>
                   <div className="grid grid-cols-2 gap-1.5">
                     {BG_GRADIENT_PRESETS.map((p) => (
                       <button key={p.name}
@@ -3043,8 +3043,8 @@ export default function GreetingCardsPage({ language }) {
                           setBgMode("gradient");
                           setBgGrad1(p.c1); setBgGrad2(p.c2); setBgGradAngle(p.angle);
                         }}
-                        className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition">
-                        <span className="w-5 h-5 rounded border border-slate-600 flex-shrink-0"
+                        className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)] transition">
+                        <span className="w-5 h-5 rounded border border-[var(--hv-border)] flex-shrink-0"
                           style={{ background: `linear-gradient(${p.angle}deg, ${p.c1}, ${p.c2})` }} />
                         <span className="truncate">{isRtl ? p.ar : p.name}</span>
                       </button>
@@ -3054,7 +3054,7 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Soft luxe tones — creams / beiges / rose / nude */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "🤎 درجات ناعمة فاخرة" : "🤎 Soft Luxe Tones"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "🤎 درجات ناعمة فاخرة" : "🤎 Soft Luxe Tones"}</label>
                   <div className="grid grid-cols-5 gap-1.5">
                     {SOFT_TONE_PRESETS.map((p) => (
                       <button key={p.name}
@@ -3064,7 +3064,7 @@ export default function GreetingCardsPage({ language }) {
                           setBgGrad1(p.c1); setBgGrad2(p.c2); setBgGradAngle(p.angle);
                         }}
                         title={isRtl ? p.ar : p.name}
-                        className="h-9 rounded-lg border-2 border-slate-700 hover:border-amber-400 transition hover:scale-110 shadow"
+                        className="h-9 rounded-lg border-2 border-[var(--hv-border)] hover:border-amber-400 transition hover:scale-110 shadow"
                         style={{ background: `linear-gradient(${p.angle}deg, ${p.c1}, ${p.c2})` }}
                       />
                     ))}
@@ -3074,23 +3074,23 @@ export default function GreetingCardsPage({ language }) {
             )}
 
             {/* Gallery — every illustration in the library, click to add a copy */}
-            <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-amber-500/30 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 🐑 {isRtl ? "🐑 أضف شكلًا للبطاقة" : "🐑 Add a shape"}
               </h3>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl ? "كل شكل قابل للتلوين بأجزائه — لوّن الصوف، أو الباب الخشبي، أو الورد، كل جزء بمفرده." : "Each shape exposes its parts so you can colour them independently — the wool, the wooden door, the petals, etc."}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {STOCK_ILLUSTRATIONS.map((def) => (
                   <button key={def.id}
                     onClick={() => addStockObject(def.id)}
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-900 border border-slate-700 hover:border-amber-300 transition group"
+                    className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-amber-500 hover:text-slate-900 border border-[var(--hv-border)] hover:border-amber-300 transition group"
                     title={isRtl ? def.nameAr : def.nameEn}
                   >
                     {/* Live SVG thumbnail using the default palette — what
                         you see is exactly what gets added. */}
-                    <div className="w-full aspect-square bg-slate-900/40 rounded group-hover:bg-white/90 transition flex items-center justify-center p-1">
+                    <div className="w-full aspect-square bg-[var(--hv-surface-2)] rounded group-hover:bg-white/90 transition flex items-center justify-center p-1">
                       <div className="w-full h-full"
                         dangerouslySetInnerHTML={{ __html: def.svg(def.defaultColors) }} />
                     </div>
@@ -3107,11 +3107,11 @@ export default function GreetingCardsPage({ language }) {
                 tatweel flourishes, hooks, diamonds, dot clusters, rub el hizb.
                 Share the same stockObjects state + drag/colour UI, so once
                 placed they behave exactly like a regular shape. */}
-            <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-amber-500/30 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 🖋️ {isRtl ? "علامات كاليجرافي" : "Calligraphic marks"}
               </h3>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl
                   ? "الزخارف الصغيرة التي تلاحظها في الكاليجرافي العربي الفاخر (سواش، حلقات، نقاط، معينات، رب الحزب). أضفها فوق نصك أو حولها، حركها، لوّنها."
                   : "The little flourishes you see in premium Arabic calligraphy (swooshes, hooks, dots, diamonds, rub-el-hizb). Drop them around your text, move + colour freely."}
@@ -3120,10 +3120,10 @@ export default function GreetingCardsPage({ language }) {
                 {CALLIGRAPHIC_MARKS.map((def) => (
                   <button key={def.id}
                     onClick={() => addStockObject(def.id)}
-                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-900 border border-slate-700 hover:border-amber-300 transition group"
+                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-[var(--hv-surface-2)] hover:bg-amber-500 hover:text-slate-900 border border-[var(--hv-border)] hover:border-amber-300 transition group"
                     title={isRtl ? def.nameAr : def.nameEn}
                   >
-                    <div className="w-full aspect-square bg-slate-900/60 rounded group-hover:bg-slate-100 transition flex items-center justify-center p-1">
+                    <div className="w-full aspect-square bg-[var(--hv-surface-2)] rounded group-hover:bg-slate-100 transition flex items-center justify-center p-1">
                       <div className="w-full h-full"
                         dangerouslySetInnerHTML={{ __html: def.svg(def.defaultColors) }} />
                     </div>
@@ -3140,11 +3140,11 @@ export default function GreetingCardsPage({ language }) {
                 as calligraphic marks; the difference is each "thumbnail" is
                 a real Unicode glyph drawn by the loaded web font, not an
                 SVG path. */}
-            <div className="bg-slate-900 border border-teal-500/30 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-teal-500/30 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 ﺡ {isRtl ? "أحرف وأرقام عربية" : "Arabic letters & digits"}
               </h3>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl
                   ? "اختر حرفًا أو رقمًا أو لفظًا (مثل ﷲ، ﷺ) — يُضاف كبيرًا فوق البطاقة. حرّكه، كبّره، لوّنه."
                   : "Pick a letter, digit, or ligature (Allah, Sallam, etc.) — added as a large decorative glyph. Move, resize, recolour."}
@@ -3153,10 +3153,10 @@ export default function GreetingCardsPage({ language }) {
                 {ARABIC_LETTER_SHAPES.map((def) => (
                   <button key={def.id}
                     onClick={() => addStockObject(def.id)}
-                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-800 hover:bg-teal-500 hover:text-slate-900 border border-slate-700 hover:border-teal-300 transition group"
+                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-[var(--hv-surface-2)] hover:bg-teal-500 hover:text-slate-900 border border-[var(--hv-border)] hover:border-teal-300 transition group"
                     title={isRtl ? def.nameAr : def.nameEn}
                   >
-                    <div className="w-full aspect-square bg-slate-900/60 rounded group-hover:bg-slate-100 transition flex items-center justify-center overflow-hidden">
+                    <div className="w-full aspect-square bg-[var(--hv-surface-2)] rounded group-hover:bg-slate-100 transition flex items-center justify-center overflow-hidden">
                       {/* Render the glyph directly with the calligraphic font
                           rather than the inline SVG — gives the picker the
                           same visual the canvas export produces. */}
@@ -3180,7 +3180,7 @@ export default function GreetingCardsPage({ language }) {
 
             {/* Layers list — every stock object on this card */}
             {stockObjects.length > 0 && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+              <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-2">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   📚 {isRtl ? `الأشكال (${stockObjects.length})` : `Shapes (${stockObjects.length})`}
                 </h3>
@@ -3193,20 +3193,20 @@ export default function GreetingCardsPage({ language }) {
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition ${
                           activeStockId === obj.id
                             ? "bg-cyan-500/20 border border-cyan-500/60"
-                            : "bg-slate-800 hover:bg-slate-700 border border-transparent"
+                            : "bg-[var(--hv-surface-2)] hover:bg-slate-100 border border-transparent"
                         }`}
                       >
                         <div className="w-8 h-8 bg-white/90 rounded p-0.5 flex-shrink-0"
                           dangerouslySetInnerHTML={{ __html: def?.svg(obj.colors) || "" }} />
-                        <span className="flex-1 text-start text-slate-200 truncate text-[10px]">
+                        <span className="flex-1 text-start text-[var(--hv-text)] truncate text-[10px]">
                           #{i + 1} ط {isRtl ? def?.nameAr : def?.nameEn}
                         </span>
                         <span onClick={(e) => { e.stopPropagation(); duplicateStockObject(obj.id); }}
-                          className="text-slate-400 hover:text-white cursor-pointer">
+                          className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] cursor-pointer">
                           <Copy className="w-3 h-3" />
                         </span>
                         <span onClick={(e) => { e.stopPropagation(); deleteStockObject(obj.id); }}
-                          className="text-red-400 hover:text-red-300 cursor-pointer">
+                          className="text-red-600 hover:text-red-700 cursor-pointer">
                           <Trash2 className="w-3 h-3" />
                         </span>
                       </button>
@@ -3219,14 +3219,14 @@ export default function GreetingCardsPage({ language }) {
             {/* Active stock object editor — per-region colour pickers,
                 placement sliders, vintage palette presets. */}
             {activeStock && activeStockDef && (
-              <div className="bg-slate-900 border border-cyan-500/40 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-cyan-500/40 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold flex items-center gap-2">
                     🎨 {isRtl ? `تلوين: ${activeStockDef.nameAr}` : `Colour: ${activeStockDef.nameEn}`}
                   </h3>
                   <button
                     onClick={() => updateStockObject(activeStock.id, { colors: { ...activeStockDef.defaultColors } })}
-                    className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                    className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text-soft)]"
                     title={isRtl ? "ارجع للألوان الأصلية" : "Reset to defaults"}
                   >
                     �? {isRtl ? "افتراضي" : "Default"}
@@ -3238,15 +3238,15 @@ export default function GreetingCardsPage({ language }) {
                   {activeStockDef.regions.map((region) => {
                     const current = activeStock.colors[region.key] || activeStockDef.defaultColors[region.key];
                     return (
-                      <div key={region.key} className="bg-slate-800/60 rounded-lg p-2 space-y-1.5">
+                      <div key={region.key} className="bg-[var(--hv-surface-2)] rounded-lg p-2 space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-200 font-semibold flex-1">
+                          <span className="text-[11px] text-[var(--hv-text)] font-semibold flex-1">
                             {isRtl ? region.ar : region.en}
                           </span>
-                          <span className="text-[9px] text-slate-500 font-mono">{current}</span>
+                          <span className="text-[9px] text-[var(--hv-text-faint)] font-mono">{current}</span>
                           <input type="color" value={current}
                             onChange={(e) => updateStockColor(activeStock.id, region.key, e.target.value)}
-                            className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
+                            className="w-8 h-8 rounded cursor-pointer bg-white" />
                         </div>
                         {/* Quick palette — bright colours first row, vintage second */}
                         <div className="flex flex-wrap gap-1">
@@ -3257,8 +3257,8 @@ export default function GreetingCardsPage({ language }) {
                               title={c} />
                           ))}
                         </div>
-                        <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-700/50">
-                          <span className="text-[9px] text-amber-400/80 w-full">{isRtl ? "🏺 ألوان قديمة" : "🏺 Vintage"}</span>
+                        <div className="flex flex-wrap gap-1 pt-1 border-t border-[var(--hv-border)]/50">
+                          <span className="text-[9px] text-amber-600/80 w-full">{isRtl ? "🏺 ألوان قديمة" : "🏺 Vintage"}</span>
                           {VINTAGE_PALETTE.map((p) => (
                             <button key={p.color} onClick={() => updateStockColor(activeStock.id, region.key, p.color)}
                               className="w-4 h-4 rounded hover:scale-125 transition"
@@ -3272,22 +3272,22 @@ export default function GreetingCardsPage({ language }) {
                 </div>
 
                 {/* Placement — size / position / rotation / opacity */}
-                <div className="bg-slate-800/40 rounded-lg p-2 space-y-2">
+                <div className="bg-[var(--hv-surface-2)] rounded-lg p-2 space-y-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الحجم" : "Size"}: {activeStock.width.toFixed(1)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الحجم" : "Size"}: {activeStock.width.toFixed(1)}%</label>
                     <input type="range" min="5" max="100" step="0.5" value={activeStock.width}
                       onChange={(e) => updateStockObject(activeStock.id, { width: parseFloat(e.target.value) })}
                       className="w-full accent-cyan-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">X: {activeStock.x.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {activeStock.x.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeStock.x}
                         onChange={(e) => updateStockObject(activeStock.id, { x: parseFloat(e.target.value) })}
                         className="w-full accent-cyan-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Y: {activeStock.y.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {activeStock.y.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeStock.y}
                         onChange={(e) => updateStockObject(activeStock.id, { y: parseFloat(e.target.value) })}
                         className="w-full accent-cyan-500" />
@@ -3295,19 +3295,19 @@ export default function GreetingCardsPage({ language }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">{isRtl ? "دوران" : "Rotation"}: {activeStock.rotation}ذ</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "دوران" : "Rotation"}: {activeStock.rotation}ذ</label>
                       <input type="range" min="-180" max="180" value={activeStock.rotation}
                         onChange={(e) => updateStockObject(activeStock.id, { rotation: parseInt(e.target.value) })}
                         className="w-full accent-cyan-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((activeStock.opacity ?? 1) * 100)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((activeStock.opacity ?? 1) * 100)}%</label>
                       <input type="range" min="0.1" max="1" step="0.05" value={activeStock.opacity ?? 1}
                         onChange={(e) => updateStockObject(activeStock.id, { opacity: parseFloat(e.target.value) })}
                         className="w-full accent-cyan-500" />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-500">{isRtl ? "💡 يمكنك سحب الشكل بالماوس مباشرة على المعاينة." : "💡 Drag the shape directly on the preview."}</p>
+                  <p className="text-[10px] text-[var(--hv-text-faint)]">{isRtl ? "💡 يمكنك سحب الشكل بالماوس مباشرة على المعاينة." : "💡 Drag the shape directly on the preview."}</p>
                 </div>
               </div>
             )}
@@ -3316,9 +3316,9 @@ export default function GreetingCardsPage({ language }) {
             {/* ───── LOGO tab ───── */}
             {activePanel === "logo" && (<>
             {/* Logo overlay — optional brand logo on every card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-pink-400" />
+                <ImageIcon className="w-4 h-4 text-pink-600" />
                 {isRtl ? "🏷️ اللوقو (اختياري)" : "🏷️ Brand Logo (optional)"}
               </h3>
 
@@ -3326,7 +3326,7 @@ export default function GreetingCardsPage({ language }) {
                 <button
                   onClick={() => logoInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs font-semibold transition disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-indigo-600 text-[var(--hv-text)] text-xs font-semibold transition disabled:opacity-50"
                 >
                   {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                   {isRtl ? "رفع لوقو" : "Upload logo"}
@@ -3334,57 +3334,57 @@ export default function GreetingCardsPage({ language }) {
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <img src={logo.url} alt="logo" className="w-12 h-12 object-contain rounded bg-slate-800 border border-slate-700" />
-                    <div className="flex-1 text-[10px] text-slate-400">
+                    <img src={logo.url} alt="logo" className="w-12 h-12 object-contain rounded bg-[var(--hv-surface-2)] border border-[var(--hv-border)]" />
+                    <div className="flex-1 text-[10px] text-[var(--hv-text-soft)]">
                       {logo.naturalW}?�{logo.naturalH}
                     </div>
                     <button onClick={() => logoInputRef.current?.click()}
-                      className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">
+                      className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text)]">
                       {isRtl ? "تغيير" : "Change"}
                     </button>
                     <button onClick={() => { if (logo.url) URL.revokeObjectURL(logo.url); setLogo(null); }}
-                      className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-red-600 text-slate-200">
+                      className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-red-600 text-[var(--hv-text)]">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الحجم" : "Size"}: {logo.width.toFixed(1)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الحجم" : "Size"}: {logo.width.toFixed(1)}%</label>
                     <input type="range" min="3" max="50" step="0.5" value={logo.width}
                       onChange={(e) => updateLogo({ width: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">X: {logo.x.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {logo.x.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={logo.x}
                         onChange={(e) => updateLogo({ x: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Y: {logo.y.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {logo.y.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={logo.y}
                         onChange={(e) => updateLogo({ y: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((logo.opacity ?? 1) * 100)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((logo.opacity ?? 1) * 100)}%</label>
                     <input type="range" min="0.1" max="1" step="0.05" value={logo.opacity ?? 1}
                       onChange={(e) => updateLogo({ opacity: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "🎨 تلوين الزخرفة" : "🎨 Recolor"}</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "🎨 تلوين الزخرفة" : "🎨 Recolor"}</label>
                     <div className="flex items-center gap-2 mb-1">
                       <input
                         type="color"
                         value={logo.color || "#ffffff"}
                         onChange={(e) => updateLogo({ color: e.target.value })}
-                        className="w-9 h-9 rounded cursor-pointer bg-slate-800"
+                        className="w-9 h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]"
                       />
                       {logo.color && (
                         <button onClick={() => updateLogo({ color: "" })}
-                          className="text-[10px] px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">
+                          className="text-[10px] px-2 py-1.5 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text-soft)]">
                           {isRtl ? "× أصلي" : "× Original"}
                         </button>
                       )}
@@ -3396,7 +3396,7 @@ export default function GreetingCardsPage({ language }) {
                           style={{ background: c, outline: logo.color === c ? "2px solid #818cf8" : "1px solid #475569" }} />
                       ))}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-[var(--hv-text-faint)] mt-1">
                       {isRtl ? "💡 التلوين يعمل أفضل مع شعارات بلون واحد (شفافية في الخلفية)." : "💡 Works best with single-colour logos (transparent background)."}
                     </p>
                   </div>
@@ -3409,10 +3409,10 @@ export default function GreetingCardsPage({ language }) {
             {/* ───── TEXTS tab: Static headings ───── */}
             {activePanel === "texts" && (<>
             {/* Headings — static text overlays (e.g. "عيد أضحى مبارك") */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Type className="w-4 h-4 text-amber-400" />
+                  <Type className="w-4 h-4 text-amber-600" />
                   {isRtl ? "📝 نصوص ثابتة" : "📝 Static Texts"}
                 </h3>
                 <button
@@ -3422,7 +3422,7 @@ export default function GreetingCardsPage({ language }) {
                   + {isRtl ? "إضافة نص" : "Add text"}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl
                   ? "اك🎨 نصوصاً تظهر على كل البطاقات (مثل ثع🎯 أضحى مبارك?�ٌ ثمن / إلى?�...). كل نص له تنسيقه الخاص."
                   : 'Add texts that appear on every card (e.g. "Eid Mubarak", "From / To"). Each has its own styling.'}
@@ -3436,13 +3436,13 @@ export default function GreetingCardsPage({ language }) {
                       key={h.id}
                       onClick={() => setActiveHeadingId(h.id)}
                       className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition ${
-                        activeHeadingId === h.id ? "bg-amber-500/20 border border-amber-500/60" : "bg-slate-800 hover:bg-slate-700 border border-transparent"
+                        activeHeadingId === h.id ? "bg-amber-500/20 border border-amber-500/60" : "bg-[var(--hv-surface-2)] hover:bg-slate-100 border border-transparent"
                       }`}
                     >
                       <span style={{ color: h.color, fontFamily: h.fontFamily }} className="flex-1 truncate text-start">
                         {h.text || (isRtl ? "(فارغ)" : "(empty)")}
                       </span>
-                      <span onClick={(e) => { e.stopPropagation(); deleteHeading(h.id); }} className="text-red-400 hover:text-red-300 cursor-pointer">
+                      <span onClick={(e) => { e.stopPropagation(); deleteHeading(h.id); }} className="text-red-600 hover:text-red-700 cursor-pointer">
                         <Trash2 className="w-3 h-3" />
                       </span>
                     </button>
@@ -3452,10 +3452,10 @@ export default function GreetingCardsPage({ language }) {
 
               {/* Active heading editor */}
               {activeHeading && (
-                <div className="bg-slate-800/60 border border-amber-500/30 rounded-lg p-2 space-y-2">
+                <div className="bg-[var(--hv-surface-2)] border border-amber-500/30 rounded-lg p-2 space-y-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">
-                      {isRtl ? "النص" : "Text"} <span className="text-slate-500">— {isRtl ? "اضغط Enter لسطر جديد" : "Enter for new line"}</span>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">
+                      {isRtl ? "النص" : "Text"} <span className="text-[var(--hv-text-faint)]">— {isRtl ? "اضغط Enter لسطر جديد" : "Enter for new line"}</span>
                     </label>
                     <textarea
                       rows={2}
@@ -3463,14 +3463,14 @@ export default function GreetingCardsPage({ language }) {
                       onChange={(e) => updateHeading(activeHeading.id, { text: e.target.value })}
                       placeholder={isRtl ? "مثلاً: عيد أضحى مبارك" : "e.g. Eid Mubarak"}
                       style={{ fontFamily: activeHeading.fontFamily, resize: "vertical" }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white"
+                      className="w-full bg-white border border-[var(--hv-border)] rounded px-2 py-1.5 text-[var(--hv-text)]"
                     />
                   </div>
 
                   {/* Multi-line controls — text box width + line spacing */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">
                         {isRtl ? "عرض الصندوق" : "Box width"}: {activeHeading.textWidth ? `${activeHeading.textWidth}%` : (isRtl ? "تلقائي" : "auto")}
                       </label>
                       <input type="range" min="0" max="100" value={activeHeading.textWidth || 0}
@@ -3478,7 +3478,7 @@ export default function GreetingCardsPage({ language }) {
                         className="w-full accent-amber-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">
                         {isRtl ? "تباعد السطور" : "Line spacing"}: {(activeHeading.lineHeight || 1.2).toFixed(2)}
                       </label>
                       <input type="range" min="0.8" max="2.5" step="0.05" value={activeHeading.lineHeight || 1.2}
@@ -3486,14 +3486,14 @@ export default function GreetingCardsPage({ language }) {
                         className="w-full accent-amber-500" />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">
+                  <p className="text-[10px] text-[var(--hv-text-faint)] leading-tight">
                     {isRtl
                       ? "💡 اجعل «عرض الصندوق» > 0 ليلتف النص لسطور تلقائياً عند تجاوز هذا العرض، أو اك🎨 Enter ???? النص لكسر السطر 🎯و??اً."
                       : '💡 Set "Box width" > 0 to auto-wrap when exceeding that width, or press Enter in the text for manual line breaks.'}
                   </p>
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">
-                      {isRtl ? "نوع الخط" : "Font"} <span className="text-amber-400">— {isRtl ? "مرّر للمعاينة" : "hover to preview"}</span>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">
+                      {isRtl ? "نوع الخط" : "Font"} <span className="text-amber-600">— {isRtl ? "مرّر للمعاينة" : "hover to preview"}</span>
                     </label>
                     <FontPicker
                       value={activeHeading.fontFamily}
@@ -3503,18 +3503,18 @@ export default function GreetingCardsPage({ language }) {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الحجم" : "Size"}: {activeHeading.fontSize}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الحجم" : "Size"}: {activeHeading.fontSize}%</label>
                     <input type="range" min="2" max="25" step="0.5" value={activeHeading.fontSize}
                       onChange={(e) => updateHeading(activeHeading.id, { fontSize: parseFloat(e.target.value) })}
                       className="w-full accent-amber-500" />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1 gap-1">
-                      <label className="text-[10px] text-slate-400">{isRtl ? "اللون" : "Color"}</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "اللون" : "Color"}</label>
                       <div className="flex gap-1">
                         <button
                           onClick={() => updateHeading(activeHeading.id, { useGradient: !activeHeading.useGradient, fillImage: null, useWordColors: false })}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.useGradient ? "bg-amber-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.useGradient ? "bg-amber-500 text-slate-900" : "bg-white text-[var(--hv-text-soft)]"}`}
                         >
                           {isRtl ? (activeHeading.useGradient ? "🌈 تدرّج" : "+ تدرّج") : (activeHeading.useGradient ? "🌈 Gradient" : "+ Gradient")}
                         </button>
@@ -3528,7 +3528,7 @@ export default function GreetingCardsPage({ language }) {
                             const url = await pickImageAsObjectUrl();
                             if (url) updateHeading(activeHeading.id, { fillImage: url, useGradient: false, useWordColors: false });
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.fillImage ? "bg-pink-600 text-white" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.fillImage ? "bg-pink-600 text-white" : "bg-white text-[var(--hv-text-soft)]"}`}
                           title={isRtl ? "اجعل الحروف مفرّغة وفيها صورة" : "Image-clipped text"}
                         >
                           {isRtl ? (activeHeading.fillImage ? "📌 صورة" : "+ 📌 صورة") : (activeHeading.fillImage ? "📌 Image" : "+ 📌 Image")}
@@ -3546,7 +3546,7 @@ export default function GreetingCardsPage({ language }) {
                               fillImage: null, useGradient: false,
                             });
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.useWordColors ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeHeading.useWordColors ? "bg-emerald-600 text-white" : "bg-white text-[var(--hv-text-soft)]"}`}
                           title={isRtl ? "لون مختلف لكل كلمة" : "Different color per word"}
                         >
                           {isRtl ? (activeHeading.useWordColors ? "🎨 لكل كلمة" : "+ 🎨 لكل كلمة") : (activeHeading.useWordColors ? "🎨 Per-word" : "+ 🎨 Per-word")}
@@ -3565,13 +3565,13 @@ export default function GreetingCardsPage({ language }) {
                         updateHeading(activeHeading.id, { wordColors: next });
                       };
                       if (words.length === 0) {
-                        return <div className="bg-slate-900/70 border border-emerald-500/30 rounded p-2 text-[10px] text-slate-400">
+                        return <div className="bg-white/70 border border-emerald-500/30 rounded p-2 text-[10px] text-[var(--hv-text-soft)]">
                           {isRtl ? "اكتب نصاً أولاً ثم لوّن كل كلمة منه" : "Type some text first, then color each word"}
                         </div>;
                       }
                       return (
-                        <div className="mb-2 bg-slate-900/80 border border-emerald-500/30 rounded p-2 space-y-2">
-                          <p className="text-[10px] text-emerald-200">{isRtl ? `🎨 ${words.length} كلمة — لوّن كل واحدة:` : `🎨 ${words.length} words — color each:`}</p>
+                        <div className="mb-2 bg-white/80 border border-emerald-500/30 rounded p-2 space-y-2">
+                          <p className="text-[10px] text-emerald-700">{isRtl ? `🎨 ${words.length} كلمة — لوّن كل واحدة:` : `🎨 ${words.length} words — color each:`}</p>
                           {words.map((w, i) => (
                             <div key={i} className="flex items-center gap-2">
                               <span style={{ color: colors[i] || activeHeading.color, fontFamily: activeHeading.fontFamily }}
@@ -3580,7 +3580,7 @@ export default function GreetingCardsPage({ language }) {
                               </span>
                               <input type="color" value={colors[i] || activeHeading.color || "#ffffff"}
                                 onChange={(e) => setWordColor(i, e.target.value)}
-                                className="w-7 h-7 rounded cursor-pointer bg-slate-800" />
+                                className="w-7 h-7 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                               <div className="flex gap-0.5">
                                 {QUICK_COLORS.slice(0, 6).map((c) => (
                                   <button key={c} onClick={() => setWordColor(i, c)}
@@ -3590,16 +3590,16 @@ export default function GreetingCardsPage({ language }) {
                               </div>
                             </div>
                           ))}
-                          <div className="flex gap-1 pt-1 border-t border-slate-700">
+                          <div className="flex gap-1 pt-1 border-t border-[var(--hv-border)]">
                             <button onClick={() => {
                               const palette = ["#dc2626", "#d4af37", "#16a34a", "#3b82f6", "#7c3aed", "#ec4899", "#14b8a6", "#f97316"];
                               updateHeading(activeHeading.id, { wordColors: words.map((_, i) => palette[i % palette.length]) });
-                            }} className="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">
+                            }} className="flex-1 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)]">
                               {isRtl ? "🎲 ألوان عشوائية" : "🎲 Random"}
                             </button>
                             <button onClick={() => {
                               updateHeading(activeHeading.id, { wordColors: words.map(() => activeHeading.color || "#ffffff") });
-                            }} className="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">
+                            }} className="flex-1 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)]">
                               {isRtl ? "↺ توحيد" : "↺ Reset"}
                             </button>
                           </div>
@@ -3609,7 +3609,7 @@ export default function GreetingCardsPage({ language }) {
                     {activeHeading.fillImage && (
                       <div className="mb-2 flex items-center gap-2 bg-pink-500/10 border border-pink-500/30 rounded p-1.5">
                         <img src={activeHeading.fillImage} alt="" className="w-9 h-9 object-cover rounded border border-pink-500/40" />
-                        <p className="flex-1 text-[10px] text-pink-200 leading-tight">
+                        <p className="flex-1 text-[10px] text-pink-700 leading-tight">
                           {isRtl ? "النص مفرّغ والصورة تظهر داخله" : "Text shows the image through the glyphs"}
                         </p>
                         <button onClick={async () => {
@@ -3623,7 +3623,7 @@ export default function GreetingCardsPage({ language }) {
                     <div className="flex items-center gap-2">
                       <input type="color" value={activeHeading.color}
                         onChange={(e) => updateHeading(activeHeading.id, { color: e.target.value })}
-                        className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
+                        className="w-8 h-8 rounded cursor-pointer bg-white" />
                       <div className="flex flex-wrap gap-1 flex-1">
                         {QUICK_COLORS.map((c) => (
                           <button key={c} onClick={() => updateHeading(activeHeading.id, { color: c })}
@@ -3635,11 +3635,11 @@ export default function GreetingCardsPage({ language }) {
                     {activeHeading.useGradient && (
                       <div className="mt-2 space-y-2">
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
                           <div className="flex items-center gap-2">
                             <input type="color" value={activeHeading.gradientColor2}
                               onChange={(e) => updateHeading(activeHeading.id, { gradientColor2: e.target.value })}
-                              className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
+                              className="w-8 h-8 rounded cursor-pointer bg-white" />
                             <div className="flex flex-wrap gap-1 flex-1">
                               {QUICK_COLORS.map((c) => (
                                 <button key={c} onClick={() => updateHeading(activeHeading.id, { gradientColor2: c })}
@@ -3650,7 +3650,7 @@ export default function GreetingCardsPage({ language }) {
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
                           <div className="grid grid-cols-2 gap-1">
                             {[
                               { name: isRtl ? "ذهبي" : "Gold",   c1: "#d4af37", c2: "#fde047", a: 90 },
@@ -3660,8 +3660,8 @@ export default function GreetingCardsPage({ language }) {
                             ].map((p) => (
                               <button key={p.name}
                                 onClick={() => updateHeading(activeHeading.id, { color: p.c1, gradientColor2: p.c2, gradientAngle: p.a })}
-                                className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-700 text-[10px] text-slate-200 transition">
-                                <span className="w-4 h-4 rounded border border-slate-600"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded bg-white hover:bg-slate-100 text-[10px] text-[var(--hv-text)] transition">
+                                <span className="w-4 h-4 rounded border border-[var(--hv-border)]"
                                   style={{ background: `linear-gradient(${p.a}deg, ${p.c1}, ${p.c2})` }} />
                                 {p.name}
                               </button>
@@ -3687,17 +3687,17 @@ export default function GreetingCardsPage({ language }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">X: {activeHeading.x.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {activeHeading.x.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeHeading.x}
                         onChange={(e) => updateHeading(activeHeading.id, { x: parseFloat(e.target.value) })} className="w-full accent-amber-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Y: {activeHeading.y.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {activeHeading.y.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeHeading.y}
                         onChange={(e) => updateHeading(activeHeading.id, { y: parseFloat(e.target.value) })} className="w-full accent-amber-500" />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-500">{isRtl ? "💡 يمكنك سحب النص بالماوس على المعاينة." : "💡 Drag the text directly on the preview."}</p>
+                  <p className="text-[10px] text-[var(--hv-text-faint)]">{isRtl ? "💡 يمكنك سحب النص بالماوس على المعاينة." : "💡 Drag the text directly on the preview."}</p>
 
                   {/* ─── 🎨 Text decoration effects ──────────────────────
                       Five independent toggles, each compact. Order is by
@@ -3706,7 +3706,7 @@ export default function GreetingCardsPage({ language }) {
                       section reads as "nothing active" until the user
                       opts in. */}
                   <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/40 rounded-lg p-2.5 space-y-2.5">
-                    <h4 className="text-[11px] font-bold flex items-center gap-1.5 text-purple-200">
+                    <h4 className="text-[11px] font-bold flex items-center gap-1.5 text-purple-700">
                       ✨ {isRtl ? "زخارف النص" : "Text decorations"}
                     </h4>
 
@@ -3733,7 +3733,7 @@ export default function GreetingCardsPage({ language }) {
                               className={`text-[10px] px-2.5 py-1 rounded font-bold transition ${
                                 isPaintingThis
                                   ? "bg-pink-500 text-white"
-                                  : "bg-slate-800 text-slate-300 hover:bg-pink-500 hover:text-white"
+                                  : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-pink-500 hover:text-[var(--hv-text)]"
                               }`}
                             >
                               {isPaintingThis
@@ -3751,13 +3751,13 @@ export default function GreetingCardsPage({ language }) {
                               </p>
 
                               {/* Paint / Erase toggle */}
-                              <div className="grid grid-cols-2 gap-1 bg-slate-900/60 rounded p-1">
+                              <div className="grid grid-cols-2 gap-1 bg-[var(--hv-surface-2)] rounded p-1">
                                 <button onClick={() => setTextPaintErase(false)}
-                                  className={`py-1.5 rounded text-[11px] font-bold transition ${!textPaintErase ? "bg-pink-500 text-white" : "text-slate-300 hover:bg-slate-700"}`}>
+                                  className={`py-1.5 rounded text-[11px] font-bold transition ${!textPaintErase ? "bg-pink-500 text-white" : "text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                                   🔍 {isRtl ? "قلم" : "Paint"}
                                 </button>
                                 <button onClick={() => setTextPaintErase(true)}
-                                  className={`py-1.5 rounded text-[11px] font-bold transition ${textPaintErase ? "bg-pink-500 text-white" : "text-slate-300 hover:bg-slate-700"}`}>
+                                  className={`py-1.5 rounded text-[11px] font-bold transition ${textPaintErase ? "bg-pink-500 text-white" : "text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                                   🧹 {isRtl ? "ممحاة" : "Eraser"}
                                 </button>
                               </div>
@@ -3768,8 +3768,8 @@ export default function GreetingCardsPage({ language }) {
                                   <div className="flex items-center gap-2">
                                     <input type="color" value={textPaintColor}
                                       onChange={(e) => setTextPaintColor(e.target.value)}
-                                      className="w-9 h-9 rounded cursor-pointer bg-slate-900" />
-                                    <span className="text-[10px] text-slate-300 flex-1 font-mono">{textPaintColor}</span>
+                                      className="w-9 h-9 rounded cursor-pointer bg-white" />
+                                    <span className="text-[10px] text-[var(--hv-text-soft)] flex-1 font-mono">{textPaintColor}</span>
                                   </div>
                                   <div className="flex flex-wrap gap-1">
                                     {["#dc2626", "#d4af37", "#fbbf24", "#16a34a", "#3b82f6", "#7c3aed", "#ec4899", "#06b6d4", "#000000", "#ffffff"].map((c) => (
@@ -3793,7 +3793,7 @@ export default function GreetingCardsPage({ language }) {
                                 const chars = getGlyphCodepoints(activeHeading.text);
                                 const baseColor = activeHeading.color || "#fff";
                                 return (
-                                  <div className="bg-slate-950/60 rounded p-2 space-y-1.5 border border-pink-500/30">
+                                  <div className="bg-white/60 rounded p-2 space-y-1.5 border border-pink-500/30">
                                     <p className="text-[10px] text-pink-100 font-semibold">
                                       {textPaintErase
                                         ? (isRtl ? "🧹 انقر لمسح اللون عن أي حرف/تشكيل:" : "🧹 Click any glyph to clear its colour:")
@@ -3835,7 +3835,7 @@ export default function GreetingCardsPage({ language }) {
                                         );
                                       })}
                                     </div>
-                                    <p className="text-[9px] text-slate-500 leading-tight">
+                                    <p className="text-[9px] text-[var(--hv-text-faint)] leading-tight">
                                       {isRtl
                                         ? "🟪 البنفسجي = تشكيل (فتحة، ضمة، شدّة...) — 🟦 الباقي = حرف"
                                         : "🟪 Purple = diacritic (fatha, damma, shadda…) — 🟦 Others = letter"}
@@ -3848,14 +3848,14 @@ export default function GreetingCardsPage({ language }) {
                               {paintedCount > 0 && (
                                 <button
                                   onClick={() => updateHeading(activeHeading.id, { glyphColors: {} })}
-                                  className="w-full py-1.5 rounded bg-slate-800 hover:bg-red-600 text-[10px] text-slate-200 font-semibold transition"
+                                  className="w-full py-1.5 rounded bg-[var(--hv-surface-2)] hover:bg-red-600 text-[10px] text-[var(--hv-text)] font-semibold transition"
                                 >
                                   🗑️ {isRtl ? `مسح كل التلوين (${paintedCount})` : `Clear all paint (${paintedCount})`}
                                 </button>
                               )}
                             </>
                           ) : (
-                            <p className="text-[10px] text-slate-400 leading-tight">
+                            <p className="text-[10px] text-[var(--hv-text-soft)] leading-tight">
                               {paintedCount > 0
                                 ? (isRtl
                                   ? `🎨 ${paintedCount} حرف/تشكيل ملوّن. اضغط «تفعيل القلم» للتعديل.`
@@ -3873,9 +3873,9 @@ export default function GreetingCardsPage({ language }) {
                         paints them in a separate colour. Disabled while
                         per-word colours are on — they own the splitting
                         logic and we don't combine the two. */}
-                    <div className="bg-slate-900/60 rounded p-2 space-y-1.5">
+                    <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className={`text-[10px] font-semibold flex items-center gap-1.5 cursor-pointer ${activeHeading.useWordColors ? "text-slate-500" : "text-slate-300"}`}>
+                        <label className={`text-[10px] font-semibold flex items-center gap-1.5 cursor-pointer ${activeHeading.useWordColors ? "text-[var(--hv-text-faint)]" : "text-[var(--hv-text-soft)]"}`}>
                           <input type="checkbox"
                             checked={!!activeHeading.useDiacriticColor}
                             disabled={activeHeading.useWordColors}
@@ -3889,8 +3889,8 @@ export default function GreetingCardsPage({ language }) {
                             <input type="color"
                               value={activeHeading.diacriticColor || "#dc2626"}
                               onChange={(e) => updateHeading(activeHeading.id, { diacriticColor: e.target.value })}
-                              className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
-                            <span className="text-[10px] text-slate-400 flex-1">
+                              className="w-7 h-7 rounded cursor-pointer bg-white" />
+                            <span className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                               {isRtl ? "انقر على أي حرف، فتحه، ضمه، شدّه، همزه، أو نقطه في المعاينة → تتلوّن باللون المختار." : "Click any letter, fatha, damma, shadda, hamza, or dot in the preview → painted with the chosen colour."}
                             </span>
                           </div>
@@ -3901,22 +3901,22 @@ export default function GreetingCardsPage({ language }) {
                                 style={{ background: c, outline: activeHeading.diacriticColor === c ? "2px solid #a855f7" : "1px solid #475569" }} />
                             ))}
                           </div>
-                          <p className="text-[9px] text-slate-500 leading-tight">
+                          <p className="text-[9px] text-[var(--hv-text-faint)] leading-tight">
                             {isRtl ? "💡 لون الحروف يبقى من «اللون / التعبئة». اكتب الحركات في نصك (مثل: عِيْد أَضْحَى مُبَارَك)." : "💡 Letters use the main fill colour. Type harakat in your text (e.g. عِيْد أَضْحَى مُبَارَك)."}
                           </p>
                         </div>
                       )}
                       {activeHeading.useWordColors && (
-                        <p className="text-[9px] text-amber-300/80 leading-tight">
+                        <p className="text-[9px] text-amber-700/80 leading-tight">
                           {isRtl ? "⚠️ معطّل — «لون لكل كلمة» مفعّل" : "⚠️ Disabled — Per-word colours is on"}
                         </p>
                       )}
                     </div>
 
                     {/* ── Outline ──────────────────────────────────────── */}
-                    <div className="bg-slate-900/60 rounded p-2 space-y-1.5">
+                    <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] text-slate-300 font-semibold flex items-center gap-1.5 cursor-pointer">
+                        <label className="text-[10px] text-[var(--hv-text-soft)] font-semibold flex items-center gap-1.5 cursor-pointer">
                           <input type="checkbox" checked={!!activeHeading.useOutline}
                             onChange={(e) => updateHeading(activeHeading.id, { useOutline: e.target.checked })} />
                           ✍️ {isRtl ? "حدّ خارجي (Outline)" : "Outline"}
@@ -3927,8 +3927,8 @@ export default function GreetingCardsPage({ language }) {
                           <div className="flex items-center gap-2">
                             <input type="color" value={activeHeading.outlineColor || "#000000"}
                               onChange={(e) => updateHeading(activeHeading.id, { outlineColor: e.target.value })}
-                              className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
-                            <label className="text-[10px] text-slate-400 flex-1">
+                              className="w-7 h-7 rounded cursor-pointer bg-white" />
+                            <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                               {isRtl ? "السماكة" : "Width"}: {activeHeading.outlineWidth || 3}%
                             </label>
                           </div>
@@ -3940,9 +3940,9 @@ export default function GreetingCardsPage({ language }) {
                     </div>
 
                     {/* ── Glow ────────────────────────────────────────── */}
-                    <div className="bg-slate-900/60 rounded p-2 space-y-1.5">
+                    <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] text-slate-300 font-semibold flex items-center gap-1.5 cursor-pointer">
+                        <label className="text-[10px] text-[var(--hv-text-soft)] font-semibold flex items-center gap-1.5 cursor-pointer">
                           <input type="checkbox" checked={!!activeHeading.useGlow}
                             onChange={(e) => updateHeading(activeHeading.id, { useGlow: e.target.checked })} />
                           ✨ {isRtl ? "توهج (Glow)" : "Glow"}
@@ -3953,8 +3953,8 @@ export default function GreetingCardsPage({ language }) {
                           <div className="flex items-center gap-2">
                             <input type="color" value={activeHeading.glowColor || "#ffd700"}
                               onChange={(e) => updateHeading(activeHeading.id, { glowColor: e.target.value })}
-                              className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
-                            <label className="text-[10px] text-slate-400 flex-1">
+                              className="w-7 h-7 rounded cursor-pointer bg-white" />
+                            <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                               {isRtl ? "القوة" : "Intensity"}: {activeHeading.glowSize || 12}%
                             </label>
                           </div>
@@ -3968,7 +3968,7 @@ export default function GreetingCardsPage({ language }) {
                                 style={{ background: c, outline: activeHeading.glowColor === c ? "1.5px solid #a855f7" : "1px solid #475569" }} />
                             ))}
                           </div>
-                          <p className="text-[9px] text-slate-500 leading-tight">
+                          <p className="text-[9px] text-[var(--hv-text-faint)] leading-tight">
                             {isRtl ? "💡 التوهج يحل محل الظل العادي عند تفعيله" : "💡 Glow replaces the basic shadow when on"}
                           </p>
                         </div>
@@ -3976,8 +3976,8 @@ export default function GreetingCardsPage({ language }) {
                     </div>
 
                     {/* ── Background shape ────────────────────────────── */}
-                    <div className="bg-slate-900/60 rounded p-2 space-y-1.5">
-                      <label className="text-[10px] text-slate-300 font-semibold">
+                    <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
+                      <label className="text-[10px] text-[var(--hv-text-soft)] font-semibold">
                         🎯 {isRtl ? "🎯 شكل خلف النص" : "🎯 Background shape"}
                       </label>
                       <div className="grid grid-cols-3 gap-1">
@@ -3994,7 +3994,7 @@ export default function GreetingCardsPage({ language }) {
                             className={`py-1 rounded text-[10px] font-semibold transition ${
                               (activeHeading.textBgShape || "none") === s.id
                                 ? "bg-purple-500 text-white"
-                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                                : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                             }`}>
                             {isRtl ? s.ar : s.en}
                           </button>
@@ -4005,8 +4005,8 @@ export default function GreetingCardsPage({ language }) {
                           <div className="flex items-center gap-2">
                             <input type="color" value={activeHeading.textBgColor || "#1e293b"}
                               onChange={(e) => updateHeading(activeHeading.id, { textBgColor: e.target.value })}
-                              className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
-                            <label className="text-[10px] text-slate-400 flex-1">
+                              className="w-7 h-7 rounded cursor-pointer bg-white" />
+                            <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                               {isRtl ? "مساحة" : "Padding"}: {activeHeading.textBgPadding ?? 30}%
                             </label>
                           </div>
@@ -4014,7 +4014,7 @@ export default function GreetingCardsPage({ language }) {
                             onChange={(e) => updateHeading(activeHeading.id, { textBgPadding: parseFloat(e.target.value) })}
                             className="w-full accent-purple-500" />
                           <div>
-                            <label className="text-[10px] text-slate-400 block">
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block">
                               {isRtl ? "الشفافية" : "Opacity"}: {Math.round((activeHeading.textBgOpacity ?? 1) * 100)}%
                             </label>
                             <input type="range" min="0.1" max="1" step="0.05" value={activeHeading.textBgOpacity ?? 1}
@@ -4026,8 +4026,8 @@ export default function GreetingCardsPage({ language }) {
                     </div>
 
                     {/* ── Ornament (decorative flourish around text) ──── */}
-                    <div className="bg-slate-900/60 rounded p-2 space-y-1.5">
-                      <label className="text-[10px] text-slate-300 font-semibold">
+                    <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
+                      <label className="text-[10px] text-[var(--hv-text-soft)] font-semibold">
                         ?ْ� {isRtl ? "💫 زخرفة جانبية" : "💫 Decorative ornament"}
                       </label>
                       <div className="grid grid-cols-2 gap-1">
@@ -4037,7 +4037,7 @@ export default function GreetingCardsPage({ language }) {
                             className={`py-1 px-1.5 rounded text-[10px] font-semibold transition truncate ${
                               (activeHeading.ornament || "none") === o.id
                                 ? "bg-purple-500 text-white"
-                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                                : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                             }`}>
                             {isRtl ? o.nameAr : o.nameEn}
                           </button>
@@ -4047,8 +4047,8 @@ export default function GreetingCardsPage({ language }) {
                         <div className="flex items-center gap-2 pt-1">
                           <input type="color" value={activeHeading.ornamentColor || activeHeading.color || "#d4af37"}
                             onChange={(e) => updateHeading(activeHeading.id, { ornamentColor: e.target.value })}
-                            className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
-                          <span className="text-[10px] text-slate-400 flex-1">
+                            className="w-7 h-7 rounded cursor-pointer bg-white" />
+                          <span className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                             {isRtl ? "لون الزخرفة" : "Ornament color"}
                           </span>
                         </div>
@@ -4059,8 +4059,8 @@ export default function GreetingCardsPage({ language }) {
               )}
 
               {headings.length === 0 && (
-                <div className="bg-slate-800/40 rounded-lg p-3 text-center">
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="bg-[var(--hv-surface-2)] rounded-lg p-3 text-center">
+                  <p className="text-[11px] text-[var(--hv-text-soft)] leading-relaxed">
                     {isRtl
                       ? "لا توجد نصوص بعد. اضغط «+ إضافة نص» لكتابة عبارة مثل ثع🎯 أضحى مبارك?� بخط مزخرف."
                       : 'No texts yet. Click "Add text" to add an ornate phrase like "Eid Mubarak".'}
@@ -4073,7 +4073,7 @@ export default function GreetingCardsPage({ language }) {
             {/* ───── DECOR tab: Decorations / Calligraphy ───── */}
             {/* ───── SOCIAL tab ───── */}
             {activePanel === "social" && (<>
-            <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-cyan-500/30 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   📱 {isRtl ? "بوكس التواصل الاجتماعي" : "Social contact box"}
@@ -4081,10 +4081,10 @@ export default function GreetingCardsPage({ language }) {
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" checked={socialBox.show}
                     onChange={(e) => updateSocial({ show: e.target.checked })} />
-                  <span className="text-[10px] text-slate-300">{isRtl ? "إظهار" : "Show"}</span>
+                  <span className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "إظهار" : "Show"}</span>
                 </label>
               </div>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl
                   ? "أضف منصاتك وحساباتك — يظهرون في بوكس واحد منسّق على البطاقة. اسحبه بالماوس لتغيير موقعه."
                   : "Add your platforms + handles — they show in one tidy box on the card. Drag it to reposition."}
@@ -4092,7 +4092,7 @@ export default function GreetingCardsPage({ language }) {
 
               {/* Platform picker — grid of brand-coloured chips */}
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1.5">
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1.5">
                   {isRtl ? "أضف منصة:" : "Add a platform:"}
                 </label>
                 <div className="grid grid-cols-6 gap-1.5">
@@ -4100,7 +4100,7 @@ export default function GreetingCardsPage({ language }) {
                     <button key={p.id}
                       onClick={() => addSocialItem(p.id)}
                       title={isRtl ? p.nameAr : p.nameEn}
-                      className="aspect-square rounded-lg overflow-hidden border border-slate-700 hover:scale-105 hover:border-cyan-300 transition"
+                      className="aspect-square rounded-lg overflow-hidden border border-[var(--hv-border)] hover:scale-105 hover:border-cyan-300 transition"
                     >
                       <div className="w-full h-full"
                         dangerouslySetInnerHTML={{ __html: p.svg(p.brandColor, "#ffffff") }} />
@@ -4112,7 +4112,7 @@ export default function GreetingCardsPage({ language }) {
               {/* Item list — each row: icon + handle input + delete + reorder */}
               {socialBox.items.length > 0 && (
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1.5">
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1.5">
                     {isRtl ? `الحسابات (${socialBox.items.length})` : `Accounts (${socialBox.items.length})`}
                   </label>
                   <div className="space-y-1.5">
@@ -4120,7 +4120,7 @@ export default function GreetingCardsPage({ language }) {
                       const p = findPlatform(it.platform);
                       if (!p) return null;
                       return (
-                        <div key={it.id} className="flex items-center gap-1.5 bg-slate-800/60 rounded p-1.5">
+                        <div key={it.id} className="flex items-center gap-1.5 bg-[var(--hv-surface-2)] rounded p-1.5">
                           <div className="w-8 h-8 flex-shrink-0"
                             dangerouslySetInnerHTML={{ __html: p.svg(p.brandColor, "#ffffff") }} />
                           <input
@@ -4129,17 +4129,17 @@ export default function GreetingCardsPage({ language }) {
                             onChange={(e) => updateSocialItem(it.id, { handle: e.target.value })}
                             placeholder={isRtl ? p.placeholderAr : p.placeholderEn}
                             dir="ltr"
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-white min-w-0"
+                            className="flex-1 bg-white border border-[var(--hv-border)] rounded px-2 py-1 text-[11px] text-[var(--hv-text)] min-w-0"
                           />
                           {/* Reorder arrows — useful in vertical layout */}
                           <button onClick={() => moveSocialItem(it.id, -1)}
                             disabled={idx === 0}
-                            className="text-slate-400 hover:text-white disabled:opacity-30 text-[14px] leading-none w-5 h-5">▲</button>
+                            className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] disabled:opacity-30 text-[14px] leading-none w-5 h-5">▲</button>
                           <button onClick={() => moveSocialItem(it.id, +1)}
                             disabled={idx === socialBox.items.length - 1}
-                            className="text-slate-400 hover:text-white disabled:opacity-30 text-[14px] leading-none w-5 h-5">▼</button>
+                            className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] disabled:opacity-30 text-[14px] leading-none w-5 h-5">▼</button>
                           <button onClick={() => removeSocialItem(it.id)}
-                            className="text-red-400 hover:text-red-300 w-5 h-5">
+                            className="text-red-600 hover:text-red-700 w-5 h-5">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -4152,14 +4152,14 @@ export default function GreetingCardsPage({ language }) {
 
             {/* Layout + style block — only meaningful once there's at least one item */}
             {socialBox.items.length > 0 && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-3">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   🎨 {isRtl ? "تنسيق البوكس" : "Box styling"}
                 </h3>
 
                 {/* Layout — 3 ways to arrange the chips */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "ترتيب" : "Layout"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "ترتيب" : "Layout"}</label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
                       { id: "vertical",   ar: "عمودي",  en: "Vertical" },
@@ -4169,7 +4169,7 @@ export default function GreetingCardsPage({ language }) {
                       <button key={m.id}
                         onClick={() => updateSocial({ layout: m.id })}
                         className={`py-1.5 rounded text-[10px] font-semibold transition ${
-                          socialBox.layout === m.id ? "bg-cyan-500 text-slate-900" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          socialBox.layout === m.id ? "bg-cyan-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                         }`}>
                         {isRtl ? m.ar : m.en}
                       </button>
@@ -4179,7 +4179,7 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Colour mode */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "نمط الألوان" : "Color mode"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "نمط الألوان" : "Color mode"}</label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
                       { id: "brand",   ar: "ألوان المنصات",  en: "Brand" },
@@ -4189,7 +4189,7 @@ export default function GreetingCardsPage({ language }) {
                       <button key={m.id}
                         onClick={() => updateSocial({ colorMode: m.id })}
                         className={`py-1.5 rounded text-[10px] font-semibold transition ${
-                          socialBox.colorMode === m.id ? "bg-cyan-500 text-slate-900" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          socialBox.colorMode === m.id ? "bg-cyan-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                         }`}>
                         {isRtl ? m.ar : m.en}
                       </button>
@@ -4199,22 +4199,22 @@ export default function GreetingCardsPage({ language }) {
 
                 {socialBox.colorMode === "mono" && (
                   <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-slate-400 flex-1">{isRtl ? "لون الأيقونات" : "Icon color"}</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">{isRtl ? "لون الأيقونات" : "Icon color"}</label>
                     <input type="color" value={socialBox.monoColor}
                       onChange={(e) => updateSocial({ monoColor: e.target.value })}
-                      className="w-8 h-8 rounded cursor-pointer bg-slate-800" />
+                      className="w-8 h-8 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                   </div>
                 )}
 
                 {/* Sizing */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "حجم الأيقونة" : "Icon size"}: {socialBox.iconSize}%</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "حجم الأيقونة" : "Icon size"}: {socialBox.iconSize}%</label>
                   <input type="range" min="3" max="20" step="0.5" value={socialBox.iconSize}
                     onChange={(e) => updateSocial({ iconSize: parseFloat(e.target.value) })}
                     className="w-full accent-cyan-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "المسافة بين الأيقونات" : "Spacing"}: {socialBox.spacing}%</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "المسافة بين الأيقونات" : "Spacing"}: {socialBox.spacing}%</label>
                   <input type="range" min="0" max="100" step="2" value={socialBox.spacing}
                     onChange={(e) => updateSocial({ spacing: parseFloat(e.target.value) })}
                     className="w-full accent-cyan-500" />
@@ -4226,41 +4226,41 @@ export default function GreetingCardsPage({ language }) {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={socialBox.showLabels}
                         onChange={(e) => updateSocial({ showLabels: e.target.checked })} />
-                      <span className="text-[10px] text-slate-300">{isRtl ? "إظهار النص بجانب الأيقونة" : "Show text labels"}</span>
+                      <span className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "إظهار النص بجانب الأيقونة" : "Show text labels"}</span>
                     </label>
                     {socialBox.showLabels && (
                       <div className="flex items-center gap-2">
-                        <label className="text-[10px] text-slate-400 flex-1">{isRtl ? "لون النص" : "Text color"}</label>
+                        <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">{isRtl ? "لون النص" : "Text color"}</label>
                         <input type="color" value={socialBox.textColor}
                           onChange={(e) => updateSocial({ textColor: e.target.value })}
-                          className="w-8 h-8 rounded cursor-pointer bg-slate-800" />
+                          className="w-8 h-8 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                       </div>
                     )}
                   </>
                 )}
 
                 {/* Background panel */}
-                <div className="bg-slate-800/60 rounded-lg p-2 space-y-2">
+                <div className="bg-[var(--hv-surface-2)] rounded-lg p-2 space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={socialBox.bgEnabled}
                       onChange={(e) => updateSocial({ bgEnabled: e.target.checked })} />
-                    <span className="text-[11px] text-slate-200 font-bold">{isRtl ? "خلفية مستديرة" : "Rounded background"}</span>
+                    <span className="text-[11px] text-[var(--hv-text)] font-bold">{isRtl ? "خلفية مستديرة" : "Rounded background"}</span>
                   </label>
                   {socialBox.bgEnabled && (
                     <>
                       {/* Solid vs gradient — sticks at the top of the bg
                           options because it changes which controls below
                           are meaningful (opacity vs color-2 + angle). */}
-                      <div className="grid grid-cols-2 gap-1 bg-slate-800/60 rounded p-1">
+                      <div className="grid grid-cols-2 gap-1 bg-[var(--hv-surface-2)] rounded p-1">
                         <button onClick={() => updateSocial({ bgMode: "solid" })}
                           className={`py-1 rounded text-[10px] font-bold transition ${
-                            (socialBox.bgMode || "solid") === "solid" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
+                            (socialBox.bgMode || "solid") === "solid" ? "bg-cyan-500 text-slate-900" : "text-[var(--hv-text-soft)] hover:bg-slate-100"
                           }`}>
                           {isRtl ? "لون واحد" : "Solid"}
                         </button>
                         <button onClick={() => updateSocial({ bgMode: "gradient" })}
                           className={`py-1 rounded text-[10px] font-bold transition ${
-                            socialBox.bgMode === "gradient" ? "bg-cyan-500 text-slate-900" : "text-slate-300 hover:bg-slate-700"
+                            socialBox.bgMode === "gradient" ? "bg-cyan-500 text-slate-900" : "text-[var(--hv-text-soft)] hover:bg-slate-100"
                           }`}>
                           🌈 {isRtl ? "تدرّج" : "Gradient"}
                         </button>
@@ -4269,8 +4269,8 @@ export default function GreetingCardsPage({ language }) {
                       <div className="flex items-center gap-2">
                         <input type="color" value={socialBox.bgColor}
                           onChange={(e) => updateSocial({ bgColor: e.target.value })}
-                          className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
-                        <label className="text-[10px] text-slate-400 flex-1">
+                          className="w-8 h-8 rounded cursor-pointer bg-white" />
+                        <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">
                           {socialBox.bgMode === "gradient" ? (isRtl ? "اللون 1" : "Color 1") : (isRtl ? "لون الخلفية" : "Background")}
                         </label>
                       </div>
@@ -4280,18 +4280,18 @@ export default function GreetingCardsPage({ language }) {
                           <div className="flex items-center gap-2">
                             <input type="color" value={socialBox.bgGradColor2 || "#1e293b"}
                               onChange={(e) => updateSocial({ bgGradColor2: e.target.value })}
-                              className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
-                            <label className="text-[10px] text-slate-400 flex-1">{isRtl ? "اللون 2" : "Color 2"}</label>
+                              className="w-8 h-8 rounded cursor-pointer bg-white" />
+                            <label className="text-[10px] text-[var(--hv-text-soft)] flex-1">{isRtl ? "اللون 2" : "Color 2"}</label>
                           </div>
                           <div>
-                            <label className="text-[10px] text-slate-400 block">{isRtl ? "اتجاه التدرّج" : "Angle"}: {socialBox.bgGradAngle || 135}°</label>
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "اتجاه التدرّج" : "Angle"}: {socialBox.bgGradAngle || 135}°</label>
                             <input type="range" min="0" max="360" step="5" value={socialBox.bgGradAngle || 135}
                               onChange={(e) => updateSocial({ bgGradAngle: parseInt(e.target.value) })}
                               className="w-full accent-cyan-500" />
                           </div>
                           {/* Curated gradient presets */}
                           <div>
-                            <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "تدرّجات جاهزة" : "Presets"}</label>
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "تدرّجات جاهزة" : "Presets"}</label>
                             <div className="grid grid-cols-3 gap-1">
                               {[
                                 { c1: "#ec4899", c2: "#8b5cf6", a: 135 },
@@ -4303,7 +4303,7 @@ export default function GreetingCardsPage({ language }) {
                               ].map((p, i) => (
                                 <button key={i}
                                   onClick={() => updateSocial({ bgColor: p.c1, bgGradColor2: p.c2, bgGradAngle: p.a })}
-                                  className="h-6 rounded border border-slate-600 hover:scale-105 transition"
+                                  className="h-6 rounded border border-[var(--hv-border)] hover:scale-105 transition"
                                   style={{ background: `linear-gradient(${p.a}deg, ${p.c1}, ${p.c2})` }} />
                               ))}
                             </div>
@@ -4316,20 +4316,20 @@ export default function GreetingCardsPage({ language }) {
                           colour pickers above. */}
                       {socialBox.bgMode !== "gradient" && (
                         <div>
-                          <label className="text-[10px] text-slate-400 block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round(socialBox.bgOpacity * 100)}%</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round(socialBox.bgOpacity * 100)}%</label>
                           <input type="range" min="0.1" max="1" step="0.05" value={socialBox.bgOpacity}
                             onChange={(e) => updateSocial({ bgOpacity: parseFloat(e.target.value) })}
                             className="w-full accent-cyan-500" />
                         </div>
                       )}
                       <div>
-                        <label className="text-[10px] text-slate-400 block">{isRtl ? "استدارة الزوايا" : "Corner radius"}: {socialBox.bgRadius}%</label>
+                        <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "استدارة الزوايا" : "Corner radius"}: {socialBox.bgRadius}%</label>
                         <input type="range" min="0" max="80" step="2" value={socialBox.bgRadius}
                           onChange={(e) => updateSocial({ bgRadius: parseFloat(e.target.value) })}
                           className="w-full accent-cyan-500" />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block">{isRtl ? "الحشو الداخلي" : "Padding"}: {socialBox.bgPadding}%</label>
+                        <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الحشو الداخلي" : "Padding"}: {socialBox.bgPadding}%</label>
                         <input type="range" min="0" max="100" step="2" value={socialBox.bgPadding}
                           onChange={(e) => updateSocial({ bgPadding: parseFloat(e.target.value) })}
                           className="w-full accent-cyan-500" />
@@ -4341,25 +4341,25 @@ export default function GreetingCardsPage({ language }) {
                 {/* Position */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block">X: {socialBox.x.toFixed(1)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {socialBox.x.toFixed(1)}%</label>
                     <input type="range" min="0" max="100" step="0.5" value={socialBox.x}
                       onChange={(e) => updateSocial({ x: parseFloat(e.target.value) })}
                       className="w-full accent-cyan-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Y: {socialBox.y.toFixed(1)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {socialBox.y.toFixed(1)}%</label>
                     <input type="range" min="0" max="100" step="0.5" value={socialBox.y}
                       onChange={(e) => updateSocial({ y: parseFloat(e.target.value) })}
                       className="w-full accent-cyan-500" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "دوران" : "Rotation"}: {socialBox.rotation}°</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "دوران" : "Rotation"}: {socialBox.rotation}°</label>
                   <input type="range" min="-180" max="180" value={socialBox.rotation}
                     onChange={(e) => updateSocial({ rotation: parseInt(e.target.value) })}
                     className="w-full accent-cyan-500" />
                 </div>
-                <p className="text-[10px] text-slate-500">{isRtl ? "💡 يمكنك سحب البوكس بالماوس على المعاينة." : "💡 You can drag the box directly on the preview."}</p>
+                <p className="text-[10px] text-[var(--hv-text-faint)]">{isRtl ? "💡 يمكنك سحب البوكس بالماوس على المعاينة." : "💡 You can drag the box directly on the preview."}</p>
               </div>
             )}
             </>)}
@@ -4370,18 +4370,18 @@ export default function GreetingCardsPage({ language }) {
                 between "I want realistic art" and "I have to find PNG files
                 manually". User clicks subject → external tab opens with
                 pre-filtered results → they save the image → upload below. */}
-            <div className="bg-slate-900 border border-emerald-500/40 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-emerald-500/40 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 🔍 {isRtl ? "🔍 ابحث عن صور حقيقيه (PNG شفاف)" : "🔍 Find realistic images (transparent PNG)"}
               </h3>
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2.5 text-[10px] text-emerald-200 leading-relaxed">
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2.5 text-[10px] text-emerald-700 leading-relaxed">
                 💡 {isRtl ? "اضغط على أي موضوع تبيه → يفتح بحث Google بصور PNG ذات خلفية شفافه فقط. احفظ الصوره (Right-click → Save Image) ثم ارفعها من زرّ «رفع زخرفه» تحت. هكذا تحصل على صور حقيقيه فعلاً (مو رسومات)." : "Click any subject → Google opens, pre-filtered to transparent-PNG results. Right-click → Save the image you like, then upload it via the 'Upload' button below. This gets you real photos (not illustrations)."}
               </div>
 
               <div className="space-y-2.5 max-h-[420px] overflow-y-auto pe-1">
                 {REAL_IMAGE_CATEGORIES.map((cat) => (
                   <div key={cat.en} className="space-y-1.5">
-                    <h4 className="text-[11px] font-bold text-emerald-300/90 sticky top-0 bg-slate-900 py-0.5">
+                    <h4 className="text-[11px] font-bold text-emerald-700/90 sticky top-0 bg-white py-0.5">
                       {isRtl ? cat.ar : cat.en}
                     </h4>
                     <div className="grid grid-cols-4 gap-1.5">
@@ -4391,7 +4391,7 @@ export default function GreetingCardsPage({ language }) {
                           href={googleImagesUrl(s.query)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex flex-col items-center gap-0.5 p-2 rounded-lg bg-slate-800 hover:bg-emerald-500 hover:text-slate-900 border border-slate-700 hover:border-emerald-300 transition group"
+                          className="flex flex-col items-center gap-0.5 p-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-emerald-500 hover:text-slate-900 border border-[var(--hv-border)] hover:border-emerald-300 transition group"
                           title={isRtl ? s.ar : s.en}
                         >
                           <span className="text-xl leading-none">{s.emoji}</span>
@@ -4405,23 +4405,23 @@ export default function GreetingCardsPage({ language }) {
                 ))}
               </div>
 
-              <p className="text-[10px] text-slate-500 leading-relaxed pt-1 border-t border-slate-800">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed pt-1 border-t border-[var(--hv-border)]">
                 {isRtl ? "📌 مواقع أخرى مفيدة: " : "📌 Other useful sources: "}
-                <a href="https://pngwing.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">pngwing.com</a>
+                <a href="https://pngwing.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">pngwing.com</a>
                 {" ط "}
-                <a href="https://pngegg.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">pngegg.com</a>
+                <a href="https://pngegg.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">pngegg.com</a>
                 {" ط "}
-                <a href="https://www.stickpng.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">stickpng.com</a>
+                <a href="https://www.stickpng.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">stickpng.com</a>
                 {" ط "}
-                <a href="https://www.freepik.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">freepik.com</a>
+                <a href="https://www.freepik.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">freepik.com</a>
               </p>
             </div>
 
             {/* Decorations — calligraphy / ornament images for that Photoshop-level look */}
-            <div className="bg-slate-900 border border-amber-500/20 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-amber-500/20 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-amber-400" />
+                  <ImageIcon className="w-4 h-4 text-amber-600" />
                   {isRtl ? "🎨 زخارف وكاليجرافي" : "🎨 Calligraphy & Decorations"}
                 </h3>
                 <button
@@ -4434,16 +4434,16 @@ export default function GreetingCardsPage({ language }) {
                 </button>
               </div>
 
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-[10px] text-amber-200 leading-relaxed">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-[10px] text-amber-700 leading-relaxed">
                 💡 {isRtl ? "خطوط الكاليجرافي الفنيّة (مثل «عيد أضحى مبارك» الفاخرة) ليست خطوطاً برمجية بل لوحات يدويّة. ابحث في Google عن «عيد مبارك png شفاف» أو «خط ديواني png»، نزّل الصورة بخلفية شفافة، ثم ارفعها هنا — يمكنك تلوينها وتدويرها وتغيير حجمها بحرية." : "Premium calligraphy (like the ornate Eid Mubarak you saw) isn't a programmatic font — it's hand-drawn art. Search 'Eid Mubarak png transparent' or 'Arabic calligraphy png', download a transparent PNG, then upload here. You can recolor, rotate, and resize it freely."}
               </div>
 
               {/* ⚡ Smart add — paste image (Ctrl+V) or an image URL, straight to canvas */}
               <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 space-y-2">
-                <p className="text-[11px] text-emerald-200 font-bold flex items-center gap-1">
+                <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
                   ⚡ {isRtl ? "إضافة ذكية — بدون تحميل ملفات" : "Smart add — no downloads"}
                 </p>
-                <p className="text-[10px] text-emerald-200/90 leading-relaxed">
+                <p className="text-[10px] text-emerald-700/90 leading-relaxed">
                   {isRtl
                     ? "في Google: كليك يمين على الصورة → «نسخ الصورة» ثم الصقها هنا بـ Ctrl+V وتنضاف فوراً. أو «نسخ عنوان الصورة» والصق الرابط في الخانة تحت."
                     : "In Google: right-click the image → \"Copy image\", then press Ctrl+V here to drop it on the canvas. Or \"Copy image address\" and paste the link below."}
@@ -4456,7 +4456,7 @@ export default function GreetingCardsPage({ language }) {
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddDecoUrl(); } }}
                     placeholder={isRtl ? "الصق رابط الصورة هنا…" : "Paste image URL here…"}
                     dir="ltr"
-                    className="flex-1 bg-slate-800 border border-emerald-500/40 rounded px-2 py-1.5 text-[11px] text-white placeholder-slate-500 outline-none focus:border-emerald-400"
+                    className="flex-1 bg-[var(--hv-surface-2)] border border-emerald-500/40 rounded px-2 py-1.5 text-[11px] text-[var(--hv-text)] placeholder-slate-400 outline-none focus:border-emerald-400"
                   />
                   <button
                     onClick={handleAddDecoUrl}
@@ -4476,19 +4476,19 @@ export default function GreetingCardsPage({ language }) {
                       key={d.id}
                       onClick={() => setActiveDecorationId(d.id)}
                       className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition ${
-                        activeDecorationId === d.id ? "bg-amber-500/20 border border-amber-500/60" : "bg-slate-800 hover:bg-slate-700 border border-transparent"
+                        activeDecorationId === d.id ? "bg-amber-500/20 border border-amber-500/60" : "bg-[var(--hv-surface-2)] hover:bg-slate-100 border border-transparent"
                       }`}
                     >
-                      <img src={d.url} alt="" className="w-8 h-8 object-contain rounded bg-slate-700 border border-slate-600" />
-                      <span className="flex-1 text-start text-slate-200 truncate text-[10px]">
+                      <img src={d.url} alt="" className="w-8 h-8 object-contain rounded bg-[var(--hv-surface-2)] border border-[var(--hv-border)]" />
+                      <span className="flex-1 text-start text-[var(--hv-text)] truncate text-[10px]">
                         {isRtl ? `#${i + 1}` : `#${i + 1}`} ط {d.naturalW}?�{d.naturalH}
                       </span>
                       <span onClick={(e) => { e.stopPropagation(); duplicateDecoration(d.id); }}
                         title={isRtl ? "تكرار (لقصّها لأجزاء مختلفة)" : "Duplicate (for splitting into pieces)"}
-                        className="text-slate-400 hover:text-white cursor-pointer">
+                        className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] cursor-pointer">
                         <Copy className="w-3 h-3" />
                       </span>
-                      <span onClick={(e) => { e.stopPropagation(); deleteDecoration(d.id); }} className="text-red-400 hover:text-red-300 cursor-pointer">
+                      <span onClick={(e) => { e.stopPropagation(); deleteDecoration(d.id); }} className="text-red-600 hover:text-red-700 cursor-pointer">
                         <Trash2 className="w-3 h-3" />
                       </span>
                     </button>
@@ -4498,12 +4498,12 @@ export default function GreetingCardsPage({ language }) {
 
               {/* Active decoration editor */}
               {activeDecoration && (
-                <div className="bg-slate-800/60 border border-amber-500/30 rounded-lg p-2 space-y-2">
+                <div className="bg-[var(--hv-surface-2)] border border-amber-500/30 rounded-lg p-2 space-y-2">
                   {/* Quick actions */}
                   <div className="flex gap-1">
                     <button
                       onClick={() => duplicateDecoration(activeDecoration.id)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded bg-slate-900 hover:bg-amber-500 hover:text-slate-900 text-[10px] text-slate-200 transition"
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded bg-white hover:bg-amber-500 hover:text-slate-900 text-[10px] text-[var(--hv-text)] transition"
                       title={isRtl ? "أنشئ نسخة لقصّ كلمة منها" : "Create a copy for cropping"}
                     >
                       <Copy className="w-3 h-3" />
@@ -4522,34 +4522,34 @@ export default function GreetingCardsPage({ language }) {
                   </div>
 
                   {/* 📱 Screen fit — drop this image onto a phone/laptop screen via 4 corners */}
-                  <div className={`rounded-lg p-2 space-y-2 ${activeDecoration.screenFit?.enabled ? "bg-emerald-500/15 border border-emerald-500/60" : "bg-slate-900/60 border border-emerald-500/30"}`}>
+                  <div className={`rounded-lg p-2 space-y-2 ${activeDecoration.screenFit?.enabled ? "bg-emerald-500/15 border border-emerald-500/60" : "bg-[var(--hv-surface-2)] border border-emerald-500/30"}`}>
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] text-emerald-200 font-bold flex items-center gap-1">
+                      <label className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
                         📱 {isRtl ? "تركيب على الشاشة (٤ زوايا)" : "Fit onto screen (4 corners)"}
                       </label>
                       <button
                         onClick={toggleScreenFit}
-                        className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${activeDecoration.screenFit?.enabled ? "bg-emerald-500 text-slate-900" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                        className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${activeDecoration.screenFit?.enabled ? "bg-emerald-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}
                       >
                         {activeDecoration.screenFit?.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "تفعيل" : "Enable")}
                       </button>
                     </div>
                     {activeDecoration.screenFit?.enabled ? (
                       <>
-                        <p className="text-[10px] text-emerald-200/90 leading-relaxed">
+                        <p className="text-[10px] text-emerald-700/90 leading-relaxed">
                           {isRtl
                             ? "اسحب النقاط الخضراء الأربع على المعاينة وحطّها على زوايا شاشة الجوال — الصورة تنحني وتتطابق مع الشاشة بالضبط ولا تطلع برّا."
                             : "Drag the 4 green dots onto the phone-screen corners. The image bends to fit the screen exactly and never overflows."}
                         </p>
                         <button
                           onClick={() => updateDecoration(activeDecoration.id, { screenFit: { ...activeDecoration.screenFit, corners: DEFAULT_SCREEN_CORNERS.map((c) => ({ ...c })) } })}
-                          className="w-full py-1 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-200 transition"
+                          className="w-full py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)] transition"
                         >
                           {isRtl ? "🔄 إعادة ضبط الزوايا" : "🔄 Reset corners"}
                         </button>
                       </>
                     ) : (
-                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                      <p className="text-[10px] text-[var(--hv-text-soft)] leading-relaxed">
                         {isRtl
                           ? "فعّلها لتضع هذه الصورة داخل شاشة جوال/لابتوب في القالب بزاوية مظبوطة."
                           : "Enable to place this image inside a phone/laptop screen at the right angle."}
@@ -4558,9 +4558,9 @@ export default function GreetingCardsPage({ language }) {
                   </div>
 
                   {/* 🔍 Paint by click — pick a color, click on a word/letter to flood-fill it */}
-                  <div className={`rounded-lg p-2 space-y-2 ${paintingDecorationId === activeDecoration.id ? "bg-pink-500/15 border border-pink-500/60" : "bg-slate-900/60 border border-pink-500/30"}`}>
+                  <div className={`rounded-lg p-2 space-y-2 ${paintingDecorationId === activeDecoration.id ? "bg-pink-500/15 border border-pink-500/60" : "bg-[var(--hv-surface-2)] border border-pink-500/30"}`}>
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] text-pink-200 font-bold flex items-center gap-1">
+                      <label className="text-[11px] text-pink-700 font-bold flex items-center gap-1">
                         🔍 {isRtl ? "🖌️ قلم تلوين بالنقر" : "🖌️ Paint by click"}
                       </label>
                       <button
@@ -4570,7 +4570,7 @@ export default function GreetingCardsPage({ language }) {
                         className={`text-[10px] px-2.5 py-1 rounded font-bold transition ${
                           paintingDecorationId === activeDecoration.id
                             ? "bg-pink-500 text-white"
-                            : "bg-slate-800 text-slate-300 hover:bg-pink-500 hover:text-white"
+                            : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-pink-500 hover:text-[var(--hv-text)]"
                         }`}
                       >
                         {paintingDecorationId === activeDecoration.id
@@ -4588,13 +4588,13 @@ export default function GreetingCardsPage({ language }) {
                         </p>
 
                         {/* Tool mode: Paint vs Erase */}
-                        <div className="grid grid-cols-2 gap-1 bg-slate-900/60 rounded p-1">
+                        <div className="grid grid-cols-2 gap-1 bg-[var(--hv-surface-2)] rounded p-1">
                           <button onClick={() => setEraserMode(false)}
-                            className={`py-1.5 rounded text-[11px] font-bold transition ${!eraserMode ? "bg-pink-500 text-white" : "text-slate-300 hover:bg-slate-700"}`}>
+                            className={`py-1.5 rounded text-[11px] font-bold transition ${!eraserMode ? "bg-pink-500 text-white" : "text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                             🔍 {isRtl ? "قلم" : "Paint"}
                           </button>
                           <button onClick={() => setEraserMode(true)}
-                            className={`py-1.5 rounded text-[11px] font-bold transition ${eraserMode ? "bg-pink-500 text-white" : "text-slate-300 hover:bg-slate-700"}`}>
+                            className={`py-1.5 rounded text-[11px] font-bold transition ${eraserMode ? "bg-pink-500 text-white" : "text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                             🧹 {isRtl ? "ممحاة" : "Eraser"}
                           </button>
                         </div>
@@ -4602,11 +4602,11 @@ export default function GreetingCardsPage({ language }) {
                         {/* Current color — only when in paint mode */}
                         {!eraserMode && (
                           <div>
-                            <label className="text-[10px] text-slate-300 block mb-1">{isRtl ? "اللون الحالي" : "Current color"}</label>
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون الحالي" : "Current color"}</label>
                             <div className="flex items-center gap-2">
                               <input type="color" value={paintColor}
                                 onChange={(e) => setPaintColor(e.target.value)}
-                                className="w-9 h-9 rounded cursor-pointer bg-slate-900" />
+                                className="w-9 h-9 rounded cursor-pointer bg-white" />
                               <div className="flex flex-wrap gap-1 flex-1">
                                 {QUICK_COLORS.map((c) => (
                                   <button key={c} onClick={() => setPaintColor(c)}
@@ -4620,46 +4620,46 @@ export default function GreetingCardsPage({ language }) {
 
                         {activeDecoration.paintMap && (
                           <button onClick={() => updateDecoration(activeDecoration.id, { paintMap: null })}
-                            className="w-full py-1.5 rounded bg-slate-800 hover:bg-red-600 text-[10px] text-slate-200 transition">
+                            className="w-full py-1.5 rounded bg-[var(--hv-surface-2)] hover:bg-red-600 text-[10px] text-[var(--hv-text)] transition">
                             🔍 {isRtl ? "إعادة الزخرفة لأصلها" : "Restore original"}
                           </button>
                         )}
                       </>
                     ) : (
-                      <p className="text-[10px] text-slate-400 leading-tight">
+                      <p className="text-[10px] text-[var(--hv-text-soft)] leading-tight">
                         {isRtl ? "🎯 أدق طريقة لتلوين كل كلمة بلون. اضغط «تفعيل القلم» ثم انقر على المعاينة." : "🎯 Most precise way to color each word. Click \"Start painting\" then click on the preview."}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الحجم" : "Size"}: {activeDecoration.width.toFixed(1)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الحجم" : "Size"}: {activeDecoration.width.toFixed(1)}%</label>
                     <input type="range" min="5" max="100" step="0.5" value={activeDecoration.width}
                       onChange={(e) => updateDecoration(activeDecoration.id, { width: parseFloat(e.target.value) })}
                       className="w-full accent-amber-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">X: {activeDecoration.x.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {activeDecoration.x.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeDecoration.x}
                         onChange={(e) => updateDecoration(activeDecoration.id, { x: parseFloat(e.target.value) })}
                         className="w-full accent-amber-500" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Y: {activeDecoration.y.toFixed(1)}%</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {activeDecoration.y.toFixed(1)}%</label>
                       <input type="range" min="0" max="100" step="0.5" value={activeDecoration.y}
                         onChange={(e) => updateDecoration(activeDecoration.id, { y: parseFloat(e.target.value) })}
                         className="w-full accent-amber-500" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "دوران" : "Rotation"}: {activeDecoration.rotation}ذ</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "دوران" : "Rotation"}: {activeDecoration.rotation}ذ</label>
                     <input type="range" min="-180" max="180" value={activeDecoration.rotation}
                       onChange={(e) => updateDecoration(activeDecoration.id, { rotation: parseInt(e.target.value) })}
                       className="w-full accent-amber-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((activeDecoration.opacity ?? 1) * 100)}%</label>
+                    <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((activeDecoration.opacity ?? 1) * 100)}%</label>
                     <input type="range" min="0.1" max="1" step="0.05" value={activeDecoration.opacity ?? 1}
                       onChange={(e) => updateDecoration(activeDecoration.id, { opacity: parseFloat(e.target.value) })}
                       className="w-full accent-amber-500" />
@@ -4667,44 +4667,44 @@ export default function GreetingCardsPage({ language }) {
 
                   {/* Crop — show only a rectangle of the source image. Use with Duplicate
                       to split a multi-word calligraphy PNG into independently-coloured pieces. */}
-                  <div className="bg-slate-900/60 border border-slate-700 rounded p-2 space-y-1.5">
+                  <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded p-2 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] text-slate-300 font-bold flex items-center gap-1">
+                      <label className="text-[10px] text-[var(--hv-text-soft)] font-bold flex items-center gap-1">
                         <Crop className="w-3 h-3" /> {isRtl ? "قصّ — لإظهار جزء فقط" : "Crop — show partial image"}
                       </label>
                       {((activeDecoration.cropTop || 0) + (activeDecoration.cropRight || 0) + (activeDecoration.cropBottom || 0) + (activeDecoration.cropLeft || 0)) > 0 && (
                         <button onClick={() => updateDecoration(activeDecoration.id, { cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
-                          className="text-[10px] text-slate-400 hover:text-white">
+                          className="text-[10px] text-[var(--hv-text-soft)] hover:text-[var(--hv-text)]">
                           �? {isRtl ? "إعادة" : "Reset"}
                         </button>
                       )}
                     </div>
-                    <p className="text-[9px] text-slate-500 leading-tight">
+                    <p className="text-[9px] text-[var(--hv-text-faint)] leading-tight">
                       {isRtl
                         ? "💡 كرّر الزخرفة 3 مرات، اقصّ كل نسخة لإظهار كلمة، لوّن كلاً بلون."
                         : "💡 Duplicate 3×, crop each to one word, color each separately."}
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
                       <div>
-                        <label className="text-[9px] text-slate-400 block">{isRtl ? "علوي" : "Top"}: {activeDecoration.cropTop ?? 0}%</label>
+                        <label className="text-[9px] text-[var(--hv-text-soft)] block">{isRtl ? "علوي" : "Top"}: {activeDecoration.cropTop ?? 0}%</label>
                         <input type="range" min="0" max="95" value={activeDecoration.cropTop ?? 0}
                           onChange={(e) => updateDecoration(activeDecoration.id, { cropTop: parseInt(e.target.value) })}
                           className="w-full accent-amber-500" />
                       </div>
                       <div>
-                        <label className="text-[9px] text-slate-400 block">{isRtl ? "سفلي" : "Bottom"}: {activeDecoration.cropBottom ?? 0}%</label>
+                        <label className="text-[9px] text-[var(--hv-text-soft)] block">{isRtl ? "سفلي" : "Bottom"}: {activeDecoration.cropBottom ?? 0}%</label>
                         <input type="range" min="0" max="95" value={activeDecoration.cropBottom ?? 0}
                           onChange={(e) => updateDecoration(activeDecoration.id, { cropBottom: parseInt(e.target.value) })}
                           className="w-full accent-amber-500" />
                       </div>
                       <div>
-                        <label className="text-[9px] text-slate-400 block">{isRtl ? "يسار" : "Left"}: {activeDecoration.cropLeft ?? 0}%</label>
+                        <label className="text-[9px] text-[var(--hv-text-soft)] block">{isRtl ? "يسار" : "Left"}: {activeDecoration.cropLeft ?? 0}%</label>
                         <input type="range" min="0" max="95" value={activeDecoration.cropLeft ?? 0}
                           onChange={(e) => updateDecoration(activeDecoration.id, { cropLeft: parseInt(e.target.value) })}
                           className="w-full accent-amber-500" />
                       </div>
                       <div>
-                        <label className="text-[9px] text-slate-400 block">{isRtl ? "يمين" : "Right"}: {activeDecoration.cropRight ?? 0}%</label>
+                        <label className="text-[9px] text-[var(--hv-text-soft)] block">{isRtl ? "يمين" : "Right"}: {activeDecoration.cropRight ?? 0}%</label>
                         <input type="range" min="0" max="95" value={activeDecoration.cropRight ?? 0}
                           onChange={(e) => updateDecoration(activeDecoration.id, { cropRight: parseInt(e.target.value) })}
                           className="w-full accent-amber-500" />
@@ -4713,31 +4713,31 @@ export default function GreetingCardsPage({ language }) {
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
-                      <label className="text-[10px] text-slate-400">{isRtl ? "🎨 تلوين الزخرفة" : "🎨 Recolor"}</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "🎨 تلوين الزخرفة" : "🎨 Recolor"}</label>
                       <div className="flex gap-1 flex-wrap">
                         <button
                           onClick={() => updateDecoration(activeDecoration.id, { tint: !activeDecoration.tint, useGradient: false, useMultiColor: false, color: activeDecoration.color || "#7c3aed" })}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.tint ? "bg-fuchsia-500 text-white" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.tint ? "bg-fuchsia-500 text-white" : "bg-white text-[var(--hv-text-soft)]"}`}
                           title={isRtl ? "غيّر لون صورة واقعية (سيارة/منتج) مع الحفاظ على الظل والتفاصيل" : "Recolor a real photo while keeping its shading/detail"}
                         >
                           {isRtl ? (activeDecoration.tint ? "🪄 تلوين واقعي ✓" : "🪄 تلوين واقعي") : (activeDecoration.tint ? "🪄 Tint ✓" : "🪄 Tint")}
                         </button>
                         <button
                           onClick={() => updateDecoration(activeDecoration.id, { useGradient: !activeDecoration.useGradient, useMultiColor: false, tint: false, color: activeDecoration.color || "#d4af37" })}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useGradient ? "bg-amber-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useGradient ? "bg-amber-500 text-slate-900" : "bg-white text-[var(--hv-text-soft)]"}`}
                         >
                           {isRtl ? (activeDecoration.useGradient ? "🌈 تدرّج" : "+ تدرّج") : (activeDecoration.useGradient ? "🌈 Gradient" : "+ Gradient")}
                         </button>
                         <button
                           onClick={() => updateDecoration(activeDecoration.id, { useMultiColor: !activeDecoration.useMultiColor, useGradient: false, tint: false })}
-                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useMultiColor ? "bg-emerald-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded transition ${activeDecoration.useMultiColor ? "bg-emerald-500 text-slate-900" : "bg-white text-[var(--hv-text-soft)]"}`}
                           title={isRtl ? "قسّم الزخرفة لمناطق ألوان" : "Split into colour zones"}
                         >
                           {isRtl ? (activeDecoration.useMultiColor ? "🎨 مناطق" : "+ 🎨 مناطق") : (activeDecoration.useMultiColor ? "🎨 Zones" : "+ 🎨 Zones")}
                         </button>
                         {(activeDecoration.color || activeDecoration.useGradient || activeDecoration.useMultiColor || activeDecoration.tint) && (
                           <button onClick={() => updateDecoration(activeDecoration.id, { color: "", useGradient: false, useMultiColor: false, tint: false })}
-                            className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-700 text-slate-300">
+                            className="text-[10px] px-2 py-0.5 rounded bg-white hover:bg-slate-100 text-[var(--hv-text-soft)]">
                             {isRtl ? "× أصلي" : "× Original"}
                           </button>
                         )}
@@ -4758,14 +4758,14 @@ export default function GreetingCardsPage({ language }) {
                       const removeZone = (i) => { if (zones.length > 2) setZones(zones.filter((_, j) => j !== i)); };
                       const updateZone = (i, patch) => setZones(zones.map((z, j) => j === i ? { ...z, ...patch } : z));
                       return (
-                        <div className="mt-1 bg-slate-900/80 border border-emerald-500/40 rounded p-2 space-y-2">
-                          <p className="text-[10px] text-emerald-200 leading-tight">
+                        <div className="mt-1 bg-white/80 border border-emerald-500/40 rounded p-2 space-y-2">
+                          <p className="text-[10px] text-emerald-700 leading-tight">
                             {isRtl ? "💡 الزخرفة تنقسم لمناطق بألوان حادّة. اسحب «الموضع» ليطابق حدود الكلمات." : "💡 The decoration is split into hard-edged colour bands. Drag positions to match word boundaries."}
                           </p>
 
                           {/* Direction */}
                           <div>
-                            <label className="text-[10px] text-slate-400 block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {activeDecoration.multiColorAngle}ذ</label>
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {activeDecoration.multiColorAngle}ذ</label>
                             <input type="range" min="0" max="360" step="5" value={activeDecoration.multiColorAngle}
                               onChange={(e) => updateDecoration(activeDecoration.id, { multiColorAngle: parseInt(e.target.value) })}
                               className="w-full accent-emerald-500" />
@@ -4777,7 +4777,7 @@ export default function GreetingCardsPage({ language }) {
                                 { l: isRtl ? "↗ مائل" : "↗ Diag", v: 45 },
                               ].map((d) => (
                                 <button key={d.v} onClick={() => updateDecoration(activeDecoration.id, { multiColorAngle: d.v })}
-                                  className={`flex-1 py-0.5 rounded text-[9px] ${activeDecoration.multiColorAngle === d.v ? "bg-emerald-500 text-slate-900" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                                  className={`flex-1 py-0.5 rounded text-[9px] ${activeDecoration.multiColorAngle === d.v ? "bg-emerald-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                                   {d.l}
                                 </button>
                               ))}
@@ -4787,12 +4787,12 @@ export default function GreetingCardsPage({ language }) {
                           {/* Zone list */}
                           <div className="space-y-1.5">
                             {zones.map((z, i) => (
-                              <div key={i} className="bg-slate-800/60 rounded p-1.5 space-y-1">
+                              <div key={i} className="bg-[var(--hv-surface-2)] rounded p-1.5 space-y-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-12 flex-shrink-0">{isRtl ? `منطقة ${i + 1}` : `Zone ${i + 1}`}</span>
+                                  <span className="text-[10px] text-[var(--hv-text-soft)] w-12 flex-shrink-0">{isRtl ? `منطقة ${i + 1}` : `Zone ${i + 1}`}</span>
                                   <input type="color" value={z.color}
                                     onChange={(e) => updateZone(i, { color: e.target.value })}
-                                    className="w-7 h-7 rounded cursor-pointer bg-slate-900" />
+                                    className="w-7 h-7 rounded cursor-pointer bg-white" />
                                   <div className="flex gap-0.5 flex-1">
                                     {QUICK_COLORS.slice(0, 6).map((c) => (
                                       <button key={c} onClick={() => updateZone(i, { color: c })}
@@ -4802,14 +4802,14 @@ export default function GreetingCardsPage({ language }) {
                                   </div>
                                   {zones.length > 2 && (
                                     <button onClick={() => removeZone(i)}
-                                      className="text-red-400 hover:text-red-300 px-1">
+                                      className="text-red-600 hover:text-red-700 px-1">
                                       <Trash2 className="w-3 h-3" />
                                     </button>
                                   )}
                                 </div>
                                 {i > 0 && (
                                   <div>
-                                    <label className="text-[9px] text-slate-400 block">{isRtl ? "حدّ البداية" : "Start at"}: {z.position}%</label>
+                                    <label className="text-[9px] text-[var(--hv-text-soft)] block">{isRtl ? "حدّ البداية" : "Start at"}: {z.position}%</label>
                                     <input type="range" min={i === 0 ? 0 : 1} max="99" value={z.position}
                                       onChange={(e) => updateZone(i, { position: parseInt(e.target.value) })}
                                       className="w-full accent-emerald-500" />
@@ -4822,26 +4822,26 @@ export default function GreetingCardsPage({ language }) {
                           {/* Add zone */}
                           {zones.length < 6 && (
                             <button onClick={addZone}
-                              className="w-full py-1 rounded bg-slate-800 hover:bg-emerald-500 hover:text-slate-900 text-[10px] text-emerald-300 transition">
+                              className="w-full py-1 rounded bg-[var(--hv-surface-2)] hover:bg-emerald-500 hover:text-slate-900 text-[10px] text-emerald-700 transition">
                               + {isRtl ? "إضافة منطقة" : "Add zone"}
                             </button>
                           )}
 
                           {/* Preset arrangements */}
                           <div>
-                            <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "تقسيمات سريعة" : "Quick presets"}</label>
+                            <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "تقسيمات سريعة" : "Quick presets"}</label>
                             <div className="grid grid-cols-3 gap-1">
                               <button onClick={() => setZones([
                                 { color: "#dc2626", position: 0 },
                                 { color: "#16a34a", position: 50 },
-                              ])} className="py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">
+                              ])} className="py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)]">
                                 {isRtl ? "كلمتين" : "2 zones"}
                               </button>
                               <button onClick={() => setZones([
                                 { color: "#dc2626", position: 0 },
                                 { color: "#d4af37", position: 33 },
                                 { color: "#16a34a", position: 66 },
-                              ])} className="py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">
+                              ])} className="py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)]">
                                 {isRtl ? "ثلاث" : "3 zones"}
                               </button>
                               <button onClick={() => setZones([
@@ -4849,7 +4849,7 @@ export default function GreetingCardsPage({ language }) {
                                 { color: "#d4af37", position: 25 },
                                 { color: "#16a34a", position: 50 },
                                 { color: "#3b82f6", position: 75 },
-                              ])} className="py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">
+                              ])} className="py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)]">
                                 {isRtl ? "أربع" : "4 zones"}
                               </button>
                             </div>
@@ -4860,7 +4860,7 @@ export default function GreetingCardsPage({ language }) {
                     <div className="flex items-center gap-2 mb-1">
                       <input type="color" value={activeDecoration.color || "#ffffff"}
                         onChange={(e) => updateDecoration(activeDecoration.id, { color: e.target.value })}
-                        className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
+                        className="w-8 h-8 rounded cursor-pointer bg-white" />
                       <div className="flex flex-wrap gap-1 flex-1">
                         {QUICK_COLORS.map((c) => (
                           <button key={c} onClick={() => updateDecoration(activeDecoration.id, { color: c })}
@@ -4872,13 +4872,13 @@ export default function GreetingCardsPage({ language }) {
 
                     {/* Gradient controls — only shown when gradient is enabled */}
                     {activeDecoration.useGradient && (
-                      <div className="mt-2 bg-slate-900/80 border border-slate-700 rounded p-2 space-y-2">
+                      <div className="mt-2 bg-white/80 border border-[var(--hv-border)] rounded p-2 space-y-2">
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
                           <div className="flex items-center gap-2">
                             <input type="color" value={activeDecoration.gradientColor2}
                               onChange={(e) => updateDecoration(activeDecoration.id, { gradientColor2: e.target.value })}
-                              className="w-8 h-8 rounded cursor-pointer bg-slate-900" />
+                              className="w-8 h-8 rounded cursor-pointer bg-white" />
                             <div className="flex flex-wrap gap-1 flex-1">
                               {QUICK_COLORS.map((c) => (
                                 <button key={c} onClick={() => updateDecoration(activeDecoration.id, { gradientColor2: c })}
@@ -4889,7 +4889,7 @@ export default function GreetingCardsPage({ language }) {
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {activeDecoration.gradientAngle}ذ</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {activeDecoration.gradientAngle}ذ</label>
                           <input type="range" min="0" max="360" step="5" value={activeDecoration.gradientAngle}
                             onChange={(e) => updateDecoration(activeDecoration.id, { gradientAngle: parseInt(e.target.value) })}
                             className="w-full accent-amber-500" />
@@ -4900,14 +4900,14 @@ export default function GreetingCardsPage({ language }) {
                               { l: "�?", v: 135 }, { l: "↗", v: 45 },
                             ].map((d) => (
                               <button key={d.v} onClick={() => updateDecoration(activeDecoration.id, { gradientAngle: d.v })}
-                                className={`flex-1 py-0.5 rounded text-[10px] ${activeDecoration.gradientAngle === d.v ? "bg-amber-500 text-slate-900" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                                className={`flex-1 py-0.5 rounded text-[10px] ${activeDecoration.gradientAngle === d.v ? "bg-amber-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                                 {d.l}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
+                          <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
                           <div className="grid grid-cols-2 gap-1">
                             {[
                               { name: isRtl ? "ذهبي" : "Gold",     c1: "#d4af37", c2: "#fde047", a: 90 },
@@ -4919,8 +4919,8 @@ export default function GreetingCardsPage({ language }) {
                             ].map((p) => (
                               <button key={p.name}
                                 onClick={() => updateDecoration(activeDecoration.id, { color: p.c1, gradientColor2: p.c2, gradientAngle: p.a })}
-                                className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition">
-                                <span className="w-4 h-4 rounded border border-slate-600"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)] transition">
+                                <span className="w-4 h-4 rounded border border-[var(--hv-border)]"
                                   style={{ background: `linear-gradient(${p.a}deg, ${p.c1}, ${p.c2})` }} />
                                 {p.name}
                               </button>
@@ -4940,7 +4940,7 @@ export default function GreetingCardsPage({ language }) {
             {/* ───── NAMES tab: Excel + Name styling ───── */}
             {activePanel === "names" && (<>
             {/* Step 3: Names */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">3</span>
                 {isRtl ? "قائمة الأسماء (Excel/CSV)" : "Names list (Excel/CSV)"}
@@ -4953,21 +4953,21 @@ export default function GreetingCardsPage({ language }) {
                 {names.length > 0 ? (isRtl ? `${names.length} اسم — تغيير` : `${names.length} names — change`) : (isRtl ? "رفع ملف Excel/CSV" : "Upload Excel/CSV")}
               </button>
               <input ref={namesInputRef} type="file" accept=".xlsx,.xls,.csv,.ods" className="hidden" onChange={handleNames} />
-              <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] mt-2 leading-relaxed">
                 {isRtl
                   ? "💡 أول عمود ??حو?? الأسماء — أو ضع عنواناً «الاسم» / «Name» ???? الصف الأول."
                   : '💡 First column = names — or use a header "Name" / "الاسم" in the first row.'}
               </p>
               {names.length > 0 && (
-                <div className="mt-2 max-h-28 overflow-y-auto bg-slate-800/50 rounded p-2 text-[11px] space-y-0.5">
+                <div className="mt-2 max-h-28 overflow-y-auto bg-[var(--hv-surface-2)] rounded p-2 text-[11px] space-y-0.5">
                   {names.slice(0, 8).map((n, i) => (
-                    <div key={i} className="text-slate-300 flex items-center gap-2">
-                      <span className="text-slate-500 text-[9px] w-5">{i + 1}.</span>
+                    <div key={i} className="text-[var(--hv-text-soft)] flex items-center gap-2">
+                      <span className="text-[var(--hv-text-faint)] text-[9px] w-5">{i + 1}.</span>
                       <span className="truncate">{n}</span>
                     </div>
                   ))}
-                  {names.length > 8 && <p className="text-slate-500 text-[10px]">+ {names.length - 8} {isRtl ? "آخر" : "more"}</p>}
-                  <button onClick={() => setNames([])} className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 mt-1">
+                  {names.length > 8 && <p className="text-[var(--hv-text-faint)] text-[10px]">+ {names.length - 8} {isRtl ? "آخر" : "more"}</p>}
+                  <button onClick={() => setNames([])} className="text-[10px] text-red-600 hover:text-red-700 flex items-center gap-1 mt-1">
                     <Trash2 className="w-3 h-3" /> {isRtl ? "مسح القائمة" : "Clear list"}
                   </button>
                 </div>
@@ -4975,7 +4975,7 @@ export default function GreetingCardsPage({ language }) {
             </div>
 
             {/* Step 4: Text styling */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">4</span>
@@ -4983,21 +4983,21 @@ export default function GreetingCardsPage({ language }) {
                 </h3>
                 <button
                   onClick={() => setShowName((v) => !v)}
-                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition ${showName ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition ${showName ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}
                   title={isRtl ? "إظهار/إخفاء اسم المستلم على البطاقة" : "Show/hide the recipient name on the card"}
                 >
                   {showName ? (isRtl ? "👁️ ظاهر" : "👁️ Shown") : (isRtl ? "🚫 مخفي" : "🚫 Hidden")}
                 </button>
               </div>
               {!showName && (
-                <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-800/60 rounded p-2">
+                <p className="text-[10px] text-[var(--hv-text-soft)] leading-relaxed bg-[var(--hv-surface-2)] rounded p-2">
                   {isRtl ? "اسم المستلم مخفي حالياً. فعّله من الزر فوق، أو ارفع قائمة أسماء في تبويب «أسماء» وبيظهر تلقائياً." : "The recipient name is hidden. Toggle it above, or upload a names list in the \"Names\" tab to reveal it automatically."}
                 </p>
               )}
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
-                  {isRtl ? "نوع الخط" : "Font"} <span className="text-indigo-400">— {isRtl ? "مرّر فوق الخط لرؤيته فوراً" : "hover to preview live"}</span>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">
+                  {isRtl ? "نوع الخط" : "Font"} <span className="text-indigo-600">— {isRtl ? "مرّر فوق الخط لرؤيته فوراً" : "hover to preview live"}</span>
                 </label>
                 <FontPicker
                   value={style.fontFamily}
@@ -5008,7 +5008,7 @@ export default function GreetingCardsPage({ language }) {
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "حجم الخط" : "Size"}: {style.fontSize}%</label>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "حجم الخط" : "Size"}: {style.fontSize}%</label>
                 <input type="range" min="2" max="20" step="0.5" value={style.fontSize}
                   onChange={(e) => updateStyle({ fontSize: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
               </div>
@@ -5016,14 +5016,14 @@ export default function GreetingCardsPage({ language }) {
               {/* Multi-line controls for the recipient name */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-slate-400 block">
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">
                     {isRtl ? "عرض الصندوق" : "Box width"}: {style.textWidth ? `${style.textWidth}%` : (isRtl ? "تلقائي" : "auto")}
                   </label>
                   <input type="range" min="0" max="100" value={style.textWidth || 0}
                     onChange={(e) => updateStyle({ textWidth: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">
                     {isRtl ? "تباعد السطور" : "Line spacing"}: {(style.lineHeight || 1.2).toFixed(2)}
                   </label>
                   <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight || 1.2}
@@ -5033,11 +5033,11 @@ export default function GreetingCardsPage({ language }) {
 
               <div>
                 <div className="flex items-center justify-between mb-1 gap-1">
-                  <label className="text-[10px] text-slate-400">{isRtl ? "اللون" : "Color"}</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)]">{isRtl ? "اللون" : "Color"}</label>
                   <div className="flex gap-1">
                     <button
                       onClick={() => updateStyle({ useGradient: !style.useGradient, fillImage: null })}
-                      className={`text-[10px] px-2 py-0.5 rounded transition ${style.useGradient ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300"}`}
+                      className={`text-[10px] px-2 py-0.5 rounded transition ${style.useGradient ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)]"}`}
                     >
                       {isRtl ? (style.useGradient ? "🌈 تدرّج" : "+ تدرّج") : (style.useGradient ? "🌈 Gradient" : "+ Gradient")}
                     </button>
@@ -5051,7 +5051,7 @@ export default function GreetingCardsPage({ language }) {
                         const url = await pickImageAsObjectUrl();
                         if (url) updateStyle({ fillImage: url, useGradient: false });
                       }}
-                      className={`text-[10px] px-2 py-0.5 rounded transition ${style.fillImage ? "bg-pink-600 text-white" : "bg-slate-800 text-slate-300"}`}
+                      className={`text-[10px] px-2 py-0.5 rounded transition ${style.fillImage ? "bg-pink-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)]"}`}
                       title={isRtl ? "اجعل الحروف مفرّغة وفيها صورة" : "Fill text with an image (image-clipped text)"}
                     >
                       {isRtl ? (style.fillImage ? "📌 صورة مفعّلة" : "📌 صورة داخل النص") : (style.fillImage ? "📌 Image on" : "📌 Image in text")}
@@ -5061,7 +5061,7 @@ export default function GreetingCardsPage({ language }) {
                 {style.fillImage && (
                   <div className="mb-2 flex items-center gap-2 bg-pink-500/10 border border-pink-500/30 rounded p-1.5">
                     <img src={style.fillImage} alt="" className="w-10 h-10 object-cover rounded border border-pink-500/40" />
-                    <p className="flex-1 text-[10px] text-pink-200 leading-tight">
+                    <p className="flex-1 text-[10px] text-pink-700 leading-tight">
                       {isRtl ? "النص الآن يظهر الصورة عبر شكل الحروف" : "Text now shows the image through the glyphs"}
                     </p>
                     <button onClick={async () => {
@@ -5074,7 +5074,7 @@ export default function GreetingCardsPage({ language }) {
                 )}
                 <div className="flex items-center gap-2">
                   <input type="color" value={style.color} onChange={(e) => updateStyle({ color: e.target.value })}
-                    className="w-9 h-9 rounded cursor-pointer bg-slate-800" />
+                    className="w-9 h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                   <div className="flex flex-wrap gap-1 flex-1">
                     {QUICK_COLORS.map((c) => (
                       <button key={c} onClick={() => updateStyle({ color: c })}
@@ -5086,13 +5086,13 @@ export default function GreetingCardsPage({ language }) {
 
                 {/* Gradient — second color + angle + ready-made combos */}
                 {style.useGradient && (
-                  <div className="mt-2 bg-slate-800/60 border border-slate-700 rounded p-2 space-y-2">
+                  <div className="mt-2 bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded p-2 space-y-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "اللون الثاني" : "Second color"}</label>
                       <div className="flex items-center gap-2">
                         <input type="color" value={style.gradientColor2}
                           onChange={(e) => updateStyle({ gradientColor2: e.target.value })}
-                          className="w-9 h-9 rounded cursor-pointer bg-slate-800" />
+                          className="w-9 h-9 rounded cursor-pointer bg-[var(--hv-surface-2)]" />
                         <div className="flex flex-wrap gap-1 flex-1">
                           {QUICK_COLORS.map((c) => (
                             <button key={c} onClick={() => updateStyle({ gradientColor2: c })}
@@ -5103,7 +5103,7 @@ export default function GreetingCardsPage({ language }) {
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {style.gradientAngle}ذ</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "اتجاه التقسيم" : "Direction"}: {style.gradientAngle}ذ</label>
                       <input type="range" min="0" max="360" step="5" value={style.gradientAngle}
                         onChange={(e) => updateStyle({ gradientAngle: parseInt(e.target.value) })}
                         className="w-full accent-indigo-500" />
@@ -5114,14 +5114,14 @@ export default function GreetingCardsPage({ language }) {
                           { l: "�?", v: 135 }, { l: "↗", v: 45 },
                         ].map((d) => (
                           <button key={d.v} onClick={() => updateStyle({ gradientAngle: d.v })}
-                            className={`flex-1 py-0.5 rounded text-[10px] ${style.gradientAngle === d.v ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                            className={`flex-1 py-0.5 rounded text-[10px] ${style.gradientAngle === d.v ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                             {d.l}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
+                      <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "مزائج جاهزة" : "Ready combos"}</label>
                       <div className="grid grid-cols-2 gap-1">
                         {[
                           { name: isRtl ? "ذهبي" : "Gold",     c1: "#d4af37", c2: "#fde047", a: 90 },
@@ -5133,8 +5133,8 @@ export default function GreetingCardsPage({ language }) {
                         ].map((p) => (
                           <button key={p.name}
                             onClick={() => updateStyle({ color: p.c1, gradientColor2: p.c2, gradientAngle: p.a })}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition">
-                            <span className="w-4 h-4 rounded border border-slate-600"
+                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[10px] text-[var(--hv-text)] transition">
+                            <span className="w-4 h-4 rounded border border-[var(--hv-border)]"
                               style={{ background: `linear-gradient(${p.a}deg, ${p.c1}, ${p.c2})` }} />
                             {p.name}
                           </button>
@@ -5146,11 +5146,11 @@ export default function GreetingCardsPage({ language }) {
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "محاذاة" : "Alignment"}</label>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "محاذاة" : "Alignment"}</label>
                 <div className="grid grid-cols-3 gap-1">
                   {["right", "center", "left"].map((a) => (
                     <button key={a} onClick={() => updateStyle({ align: a })}
-                      className={`py-1.5 rounded text-[11px] font-semibold transition ${style.align === a ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                      className={`py-1.5 rounded text-[11px] font-semibold transition ${style.align === a ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
                       {a === "right" ? (isRtl ? "يمين" : "Right") : a === "center" ? (isRtl ? "وسط" : "Center") : (isRtl ? "يسار" : "Left")}
                     </button>
                   ))}
@@ -5173,24 +5173,24 @@ export default function GreetingCardsPage({ language }) {
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "دوران" : "Rotation"}: {style.rotation}ذ</label>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block">{isRtl ? "دوران" : "Rotation"}: {style.rotation}ذ</label>
                 <input type="range" min="-45" max="45" value={style.rotation}
                   onChange={(e) => updateStyle({ rotation: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-slate-400 block">X: {style.x.toFixed(1)}%</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">X: {style.x.toFixed(1)}%</label>
                   <input type="range" min="0" max="100" step="0.5" value={style.x}
                     onChange={(e) => updateStyle({ x: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">Y: {style.y.toFixed(1)}%</label>
+                  <label className="text-[10px] text-[var(--hv-text-soft)] block">Y: {style.y.toFixed(1)}%</label>
                   <input type="range" min="0" max="100" step="0.5" value={style.y}
                     onChange={(e) => updateStyle({ y: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-[var(--hv-text-faint)]">
                 {isRtl ? "💡 يمكنك سحب الاسم بالماوس مباشرة على المعاينة." : "💡 You can also drag the name directly on the preview."}
               </p>
             </div>
@@ -5199,7 +5199,7 @@ export default function GreetingCardsPage({ language }) {
             {/* ───── EXPORT tab: Save / Library / Generate ───── */}
             {activePanel === "export" && (<>
             {/* Save & Library */}
-            <div className="bg-slate-900 border border-emerald-500/30 rounded-xl p-4 space-y-2">
+            <div className="bg-white border border-emerald-500/30 rounded-xl p-4 space-y-2">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 ?ْ� {isRtl ? "حفظ التصميم" : "Save design"}
               </h3>
@@ -5212,18 +5212,18 @@ export default function GreetingCardsPage({ language }) {
               </button>
               <button
                 onClick={() => setShowLibraryModal(true)}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition"
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text)] text-sm font-semibold transition"
               >
                 📌 {isRtl ? `مك🎨ة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}
               </button>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl ? "💡 الحفظ يخزّن البطاقة في متصفحك (localStorage). لن تختفي بعد إعادة التشغيل." : "💡 Saved cards live in your browser's localStorage — they survive a page reload."}
               </p>
             </div>
 
             {/* Quality controls — format + super-sampling factor.
                 These directly shape what `renderCard` produces (see its top). */}
-            <div className="bg-slate-900 border border-indigo-500/30 rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-indigo-500/30 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 🎯 {isRtl ? "جودة التصدير" : "Export quality"}
               </h3>
@@ -5231,14 +5231,14 @@ export default function GreetingCardsPage({ language }) {
               {/* Format toggle — PNG is lossless (kills banding + edge noise),
                   JPEG is opt-in for users who care about file size. */}
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "صيغة الملف" : "File format"}</label>
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">{isRtl ? "صيغة الملف" : "File format"}</label>
                 <div className="grid grid-cols-2 gap-1">
                   <button
                     onClick={() => setExportFormat("png")}
                     className={`py-2 rounded text-[11px] font-bold transition ${
                       exportFormat === "png"
                         ? "bg-indigo-600 text-white shadow-lg"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                     }`}
                   >
                     🏆 PNG
@@ -5251,7 +5251,7 @@ export default function GreetingCardsPage({ language }) {
                     className={`py-2 rounded text-[11px] font-bold transition ${
                       exportFormat === "jpeg"
                         ? "bg-indigo-600 text-white shadow-lg"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                     }`}
                   >
                     �?? JPEG
@@ -5266,9 +5266,9 @@ export default function GreetingCardsPage({ language }) {
                   2?� is the sweet spot (4 samples/pixel) — 3?� rarely buys more
                   but quadruples the memory/time. */}
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">
                   {isRtl ? "نعومة الحواف (Anti-Alias)" : "Edge smoothness (SSAA)"}
-                  <span className="text-indigo-400"> — {superSample}?�</span>
+                  <span className="text-indigo-600"> — {superSample}?�</span>
                 </label>
                 <div className="grid grid-cols-3 gap-1">
                   {[
@@ -5282,7 +5282,7 @@ export default function GreetingCardsPage({ language }) {
                       className={`py-1.5 rounded text-[11px] font-semibold transition ${
                         superSample === o.v
                           ? "bg-indigo-600 text-white"
-                          : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                       }`}
                     >
                       {o.l}
@@ -5292,13 +5292,13 @@ export default function GreetingCardsPage({ language }) {
                 </div>
               </div>
 
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl ? "💡 PNG + ممتاز = أوضح نتيجة للنصوص الذهبية والتدرجات. اختر JPEG فقط لو حجم الملف مهم." : "💡 PNG + Best = sharpest output for gold text and gradients. Use JPEG only if file size matters."}
               </p>
             </div>
 
             {/* Step 5: Generate */}
-            <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4">
+            <div className="bg-white border border-amber-500/30 rounded-xl p-4">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">5</span>
                 {isRtl ? "إنشاء وتنزيل" : "Generate & Download"}
@@ -5316,14 +5316,14 @@ export default function GreetingCardsPage({ language }) {
                     : (isRtl ? `???? إنشا?? ${names.length} بطاقة (ZIP)` : `???? Generate ${names.length} cards (ZIP)`)}
               </button>
               {generating && (
-                <div className="mt-2 h-1.5 bg-slate-800 rounded overflow-hidden">
+                <div className="mt-2 h-1.5 bg-[var(--hv-surface-2)] rounded overflow-hidden">
                   <div className="h-full bg-amber-500 transition-all" style={{ width: `${genProgress}%` }} />
                 </div>
               )}
               {names.length > 0 && (templateUrl || stockObjects.length > 0 || headings.length > 0) && !generating && (
                 <button
                   onClick={handleDownloadOne}
-                  className="w-full mt-2 flex items-center justify-center gap-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition"
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-1.5 rounded-lg bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text)] text-xs transition"
                 >
                   <Download className="w-3.5 h-3.5" />
                   {isRtl ? "تنزيل البطاقة الحالية فقط" : "Download current card only"}
@@ -5335,18 +5335,18 @@ export default function GreetingCardsPage({ language }) {
           </div>
 
           {/* ── RIGHT: Preview ──────────────────────────────── */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
+          <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold">{isRtl ? "👁️ معاينة" : "👁️ Preview"}</h3>
               {names.length > 0 && (
                 <div className="flex items-center gap-2">
                   <button onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} disabled={previewIdx <= 0}
-                    className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30">
+                    className="p-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 disabled:opacity-30">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-xs text-slate-300 font-mono w-20 text-center">{previewIdx + 1} / {names.length}</span>
+                  <span className="text-xs text-[var(--hv-text-soft)] font-mono w-20 text-center">{previewIdx + 1} / {names.length}</span>
                   <button onClick={() => setPreviewIdx((i) => Math.min(names.length - 1, i + 1))} disabled={previewIdx >= names.length - 1}
-                    className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30">
+                    className="p-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 disabled:opacity-30">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -5358,7 +5358,7 @@ export default function GreetingCardsPage({ language }) {
                   stock object, heading, or logo. Empty state is reserved for
                   the truly-blank card. */}
               {!templateUrl && stockObjects.length === 0 && headings.length === 0 && !logo && decorations.length === 0 && !bgTouched ? (
-                <div className="text-center text-slate-500 max-w-sm">
+                <div className="text-center text-[var(--hv-text-faint)] max-w-sm">
                   <Upload className="w-12 h-12 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">
                     {isRtl
@@ -5382,7 +5382,7 @@ export default function GreetingCardsPage({ language }) {
                       oy: templateOffsetY,
                     };
                   }}
-                  className="relative rounded-lg overflow-hidden shadow-2xl border border-slate-700"
+                  className="relative rounded-lg overflow-hidden shadow-2xl border border-[var(--hv-border)]"
                   style={{
                     width: "100%",
                     maxWidth: 720,
@@ -6000,8 +6000,8 @@ export default function GreetingCardsPage({ language }) {
       {/* Save card modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-slate-800 rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
-            <h3 className="font-bold text-base mb-3 text-white">?ْ� {isRtl ? "حفظ التصميم في المكتبة" : "Save design to library"}</h3>
+          <div className="bg-[var(--hv-surface-2)] rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
+            <h3 className="font-bold text-base mb-3 text-[var(--hv-text)]">?ْ� {isRtl ? "حفظ التصميم في المكتبة" : "Save design to library"}</h3>
             <input
               type="text"
               value={saveCardName}
@@ -6009,14 +6009,14 @@ export default function GreetingCardsPage({ language }) {
               placeholder={isRtl ? "أدخل اسماً للتصميم..." : "Enter a card name..."}
               autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveCard(); }}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white mb-3"
+              className="w-full bg-white border border-[var(--hv-border)] rounded px-3 py-2 text-[var(--hv-text)] mb-3"
             />
-            <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">
+            <p className="text-[11px] text-[var(--hv-text-soft)] mb-3 leading-relaxed">
               {isRtl ? "سيُحفظ القالب واللوقو والزخارف والنصوص وتنسيق الاسم. الأسماء (قائمة Excel) لا تُحفظ." : "Template, logo, decorations, headings, and name styling are saved. The Excel name list is not."}
             </p>
             <div className="flex gap-2">
               <button onClick={() => setShowSaveModal(false)}
-                className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm text-slate-200 transition">
+                className="flex-1 py-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-slate-100 text-sm text-[var(--hv-text)] transition">
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
               <button onClick={handleSaveCard} disabled={savingCard || !saveCardName.trim()}
@@ -6032,28 +6032,28 @@ export default function GreetingCardsPage({ language }) {
       {/* Library modal */}
       {showLibraryModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowLibraryModal(false)}>
-          <div className="bg-slate-800 rounded-2xl p-5 w-full max-w-3xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
+          <div className="bg-[var(--hv-surface-2)] rounded-2xl p-5 w-full max-w-3xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-base text-white">📌 {isRtl ? `مك🎨ة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}</h3>
-              <button onClick={() => setShowLibraryModal(false)} className="text-slate-400 hover:text-white text-xl leading-none">?�</button>
+              <h3 className="font-bold text-base text-[var(--hv-text)]">📌 {isRtl ? `مك🎨ة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}</h3>
+              <button onClick={() => setShowLibraryModal(false)} className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] text-xl leading-none">?�</button>
             </div>
             {savedCards.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">
+              <div className="text-center py-12 text-[var(--hv-text-faint)]">
                 <p className="text-sm mb-1">{isRtl ? "لا توجد بطاقات محفوظة بعد." : "No saved cards yet."}</p>
                 <p className="text-xs">{isRtl ? "صمّم بطاقة ثم اضغط «حفظ هذا التصميم»." : 'Design a card and click "Save current design".'}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {savedCards.map((c) => (
-                  <div key={c.id} className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden hover:border-emerald-500 transition group">
-                    <div className="aspect-square bg-slate-700 overflow-hidden flex items-center justify-center">
+                  <div key={c.id} className="bg-white border border-[var(--hv-border)] rounded-lg overflow-hidden hover:border-emerald-500 transition group">
+                    <div className="aspect-square bg-[var(--hv-surface-2)] overflow-hidden flex items-center justify-center">
                       {c.thumbnail
                         ? <img src={c.thumbnail} alt={c.name} className="w-full h-full object-cover" />
-                        : <div className="text-slate-500 text-xs">🔍</div>}
+                        : <div className="text-[var(--hv-text-faint)] text-xs">🔍</div>}
                     </div>
                     <div className="p-2 space-y-1.5">
-                      <p className="text-xs font-semibold text-white truncate" title={c.name}>{c.name}</p>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-xs font-semibold text-[var(--hv-text)] truncate" title={c.name}>{c.name}</p>
+                      <p className="text-[10px] text-[var(--hv-text-faint)]">
                         {new Date(c.savedAt).toLocaleDateString(isRtl ? "ar" : "en")}
                       </p>
                       <div className="flex gap-1">
@@ -6064,7 +6064,7 @@ export default function GreetingCardsPage({ language }) {
                         <button onClick={() => {
                           if (window.confirm(isRtl ? `حذ?? "${c.name}"??` : `Delete "${c.name}"?`)) handleDeleteCard(c.id);
                         }}
-                          className="px-2 py-1.5 rounded bg-slate-800 hover:bg-red-600 text-[11px] text-slate-300 hover:text-white transition">
+                          className="px-2 py-1.5 rounded bg-[var(--hv-surface-2)] hover:bg-red-600 text-[11px] text-[var(--hv-text-soft)] hover:text-white transition">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>

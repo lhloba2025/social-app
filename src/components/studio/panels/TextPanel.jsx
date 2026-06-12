@@ -315,30 +315,30 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
         <button
           onClick={() => setFindOpen(o => !o)}
           title={isRtl ? "بحث واستبدال" : "Find & Replace"}
-          className={`px-3 py-2 rounded-lg transition ${findOpen ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-300"}`}
+          className={`px-3 py-2 rounded-lg transition ${findOpen ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}
         >
           🔍
         </button>
       </div>
 
       {findOpen && (
-        <div className="bg-slate-900/60 border border-slate-700 rounded p-2 space-y-1.5">
+        <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded p-2 space-y-1.5">
           <input
             type="text"
             placeholder={isRtl ? "ابحث..." : "Find..."}
             value={findQuery}
             onChange={(e) => setFindQuery(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+            className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs text-[var(--hv-text)]"
           />
           <input
             type="text"
             placeholder={isRtl ? "استبدل بـ..." : "Replace with..."}
             value={replaceVal}
             onChange={(e) => setReplaceVal(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+            className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs text-[var(--hv-text)]"
           />
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 flex-1">
+            <span className="text-[10px] text-slate-500 flex-1">
               {findQuery ? (isRtl ? `${findMatchCount} تطابق` : `${findMatchCount} matches`) : ""}
             </span>
             <button
@@ -358,23 +358,23 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           <div
             key={l.id}
             onClick={() => onSelect(l.id)}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-              l.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
+            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border ${
+              l.id === selectedId ? "border-[var(--hv-primary)] bg-[rgba(79,70,229,0.08)]" : "bg-slate-50 hover:bg-slate-100 border-[var(--hv-border)]"
             }`}
           >
             <span
-              className="flex-1 truncate text-slate-200 text-[12px]"
-              style={{ fontFamily: l.fontFamily }}
+              className="flex-1 truncate text-[12px]"
+              style={{ fontFamily: l.fontFamily, color:'var(--hv-text)' }}
             >
               {l.richHtml
                 ? (() => { const d = document.createElement("div"); d.innerHTML = l.richHtml; return d.textContent || d.innerText || (isRtl ? "نص" : "Text"); })()
                 : (l.text || (isRtl ? "نص" : "Text"))
               }
             </span>
-            <button onClick={(e) => { e.stopPropagation(); onUpdate(l.id, { visible: !l.visible }); }} className="text-slate-400 hover:text-white">
+            <button onClick={(e) => { e.stopPropagation(); onUpdate(l.id, { visible: !l.visible }); }} className="text-slate-400 hover:text-[var(--hv-text)]">
               {l.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDuplicate(l.id); }} className="text-slate-400 hover:text-white">
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(l.id); }} className="text-slate-400 hover:text-[var(--hv-text)]">
               <Copy className="w-3 h-3" />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onDelete(l.id); }} className="text-red-400 hover:text-red-300">
@@ -386,11 +386,11 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
       {/* Layer settings */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
+        <div className="space-y-3 border-t border-[var(--hv-border)] pt-3">
 
           {/* Rich text editor — fixed size, never reflects canvas font sizes */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "✏️ حدّد نصاً لتلوينه" : "✏️ Select text to color it"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "✏️ حدّد نصاً لتلوينه" : "✏️ Select text to color it"}</label>
             <style>{`#studio-text-editor * { font-size: 13px !important; }`}</style>
             <div
               id="studio-text-editor"
@@ -407,26 +407,26 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 minHeight: 48,
                 lineHeight: selected.lineHeight || 1.4,
               }}
-              className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white outline-none focus:border-indigo-500"
+              className="w-full bg-slate-100 border border-slate-200 rounded p-2 text-[var(--hv-text)] outline-none focus:border-indigo-500"
             />
           </div>
 
           {/* Quick text color (word-level) */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🎨 لون النص المحدد" : "🎨 Selected text color"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "🎨 لون النص المحدد" : "🎨 Selected text color"}</label>
             <div className="flex items-center gap-2 mb-1.5">
               <input
                 type="text"
                 placeholder="#ffffff"
                 dir="ltr"
-                className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white font-mono"
+                className="flex-1 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs text-[var(--hv-text)] font-mono"
                 onChange={(e) => {
                   let v = e.target.value.trim();
                   if (!v.startsWith("#")) v = "#" + v;
                   if (/^#[0-9a-fA-F]{6}$/.test(v)) applyTextColor(v);
                 }}
               />
-              <div className="w-7 h-7 rounded border border-slate-500 relative overflow-hidden flex-shrink-0 cursor-pointer">
+              <div className="w-7 h-7 rounded border border-slate-300 relative overflow-hidden flex-shrink-0 cursor-pointer">
                 <input type="color" className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" onInput={(e) => applyTextColor(e.target.value)} />
                 <div className="w-full h-full bg-white" />
               </div>
@@ -442,20 +442,20 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
           {/* Highlight (word-level) */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🖊️ تظليل النص المحدد" : "🖊️ Highlight selected text"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "🖊️ تظليل النص المحدد" : "🖊️ Highlight selected text"}</label>
             <div className="flex items-center gap-2 mb-1.5">
               <input
                 type="text"
                 placeholder="#fef08a"
                 dir="ltr"
-                className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white font-mono"
+                className="flex-1 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs text-[var(--hv-text)] font-mono"
                 onChange={(e) => {
                   let v = e.target.value.trim();
                   if (!v.startsWith("#")) v = "#" + v;
                   if (/^#[0-9a-fA-F]{6}$/.test(v)) applyHighlight(v);
                 }}
               />
-              <div className="w-7 h-7 rounded border border-slate-500 relative overflow-hidden flex-shrink-0 cursor-pointer">
+              <div className="w-7 h-7 rounded border border-slate-300 relative overflow-hidden flex-shrink-0 cursor-pointer">
                 <input type="color" className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" onInput={(e) => applyHighlight(e.target.value)} />
                 <div className="w-full h-full bg-yellow-200" />
               </div>
@@ -473,13 +473,13 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
           {/* Selected text font size */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🔡 حجم النص المحدد" : "🔡 Selected Text Size"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "🔡 حجم النص المحدد" : "🔡 Selected Text Size"}</label>
             <div className="flex items-center gap-1 flex-wrap">
               {[10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64].map((sz) => (
                 <button
                   key={sz}
                   onMouseDown={withSelection(() => applySelectedFontSize(sz))}
-                  className="px-2 py-1 rounded text-[11px] font-semibold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition"
+                  className="px-2 py-1 rounded text-[11px] font-semibold bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white transition"
                 >
                   {sz}
                 </button>
@@ -489,7 +489,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 min="6"
                 max="300"
                 placeholder="px"
-                className="w-14 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-[11px]"
+                className="w-14 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)] text-[11px]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const val = parseInt(e.target.value);
@@ -502,13 +502,13 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
           {/* Font size (whole layer) */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط (الطبقة كلها)" : "Font Size (whole layer)"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "حجم الخط (الطبقة كلها)" : "Font Size (whole layer)"}</label>
             <div className="flex items-center gap-1 flex-wrap">
               {[12, 16, 20, 24, 32, 40, 48, 64, 80].map((sz) => (
                 <button
                   key={sz}
                   onMouseDown={(e) => { e.preventDefault(); applyFontSize(sz); }}
-                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fontSize === sz ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white"}`}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fontSize === sz ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white"}`}
                 >
                   {sz}
                 </button>
@@ -518,7 +518,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 min="6"
                 max="300"
                 value={selected.fontSize || 24}
-                className="w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-[11px]"
+                className="w-16 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)] text-[11px]"
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
                   if (val > 0) applyFontSize(val);
@@ -531,25 +531,25 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           <div className="flex gap-2">
             <button
               onMouseDown={withSelection(() => applyFormat("bold"))}
-              className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
+              className="flex-1 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-[var(--hv-text)] transition"
             >
               <Bold className="w-4 h-4 mx-auto" />
             </button>
             <button
               onMouseDown={withSelection(() => applyFormat("italic"))}
-              className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
+              className="flex-1 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-[var(--hv-text)] transition"
             >
               <Italic className="w-4 h-4 mx-auto" />
             </button>
             <button
               onMouseDown={withSelection(() => applyFormat("underline"))}
-              className="flex-1 py-1.5 rounded border border-slate-600 text-slate-400 hover:text-white transition"
+              className="flex-1 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-[var(--hv-text)] transition"
             >
               <Underline className="w-4 h-4 mx-auto" />
             </button>
             <button
               onMouseDown={(e) => { e.preventDefault(); update("shadow", !selected.shadow); }}
-              className={`flex-1 py-1.5 rounded border text-xs transition font-bold ${selected.shadow ? "bg-indigo-600 border-indigo-500 text-white" : "border-slate-600 text-slate-400 hover:text-white"}`}
+              className={`flex-1 py-1.5 rounded border text-xs transition font-bold ${selected.shadow ? "bg-indigo-600 border-indigo-500 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-[var(--hv-text)]"}`}
             >S</button>
           </div>
 
@@ -557,11 +557,11 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           <StudioColorPicker label={isRtl ? "لون النص الكامل" : "Whole Text Color"} value={selected.color} onChange={(v) => update("color", v)} />
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-slate-400">{isRtl ? "خلفية الطبقة" : "Layer Background"}</label>
+              <label className="text-xs text-slate-500">{isRtl ? "خلفية الطبقة" : "Layer Background"}</label>
               {selected.bgColor && selected.bgColor !== "transparent" && (
                 <button
                   onClick={() => update("bgColor", "transparent")}
-                  className="text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 transition"
+                  className="text-[10px] text-red-500 hover:text-red-400 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 transition"
                 >
                   {isRtl ? "✕ حذف الخلفية" : "✕ Remove"}
                 </button>
@@ -570,7 +570,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
             <StudioColorPicker value={selected.bgColor} onChange={(v) => update("bgColor", v)} />
             {selected.bgColor && selected.bgColor !== "transparent" && (
               <div className="mt-2">
-                <label className="text-slate-400 block mb-1">
+                <label className="text-slate-500 block mb-1">
                   {isRtl ? `شفافية الخلفية: ${Math.round((selected.bgOpacity ?? 1) * 100)}%` : `Background Opacity: ${Math.round((selected.bgOpacity ?? 1) * 100)}%`}
                 </label>
                 <input type="range" min="0" max="1" step="0.05"
@@ -583,7 +583,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "نوع الخط" : "Font Family"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "نوع الخط" : "Font Family"}</label>
             <select
               value={selected.fontFamily}
               onChange={(e) => {
@@ -592,7 +592,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                   editorRef.current.style.fontFamily = e.target.value;
                 }
               }}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+              className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
               style={{ fontFamily: selected.fontFamily }}
             >
               {FONTS.map((f) => (
@@ -601,43 +601,43 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
             </select>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "تباعد الحروف" : "Letter Spacing"}: {selected.letterSpacing || 0}px</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "تباعد الحروف" : "Letter Spacing"}: {selected.letterSpacing || 0}px</label>
             <input type="range" min="-5" max="20" step="0.5" value={selected.letterSpacing || 0}
               onChange={(e) => update("letterSpacing", parseFloat(e.target.value))} className="w-full" />
           </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "عرض البوكس" : "Text Box Width"}: {selected.textWidth || 90}%</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "عرض البوكس" : "Text Box Width"}: {selected.textWidth || 90}%</label>
             <input type="range" min="10" max="100" value={selected.textWidth || 90}
               onChange={(e) => update("textWidth", parseInt(e.target.value))} className="w-full" />
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "تباعد السطور" : "Line Height"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "تباعد السطور" : "Line Height"}</label>
             <input
               type="number"
               step="0.1"
               value={selected.lineHeight || 1.4}
               onChange={(e) => update("lineHeight", parseFloat(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+              className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
             />
           </div>
 
           {/* Curved text */}
-          <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
+          <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded p-2 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300">{isRtl ? "🌀 نص منحني" : "🌀 Curved Text"}</label>
+              <label className="text-xs font-semibold" style={{color:'var(--hv-text)'}}>{isRtl ? "🌀 نص منحني" : "🌀 Curved Text"}</label>
               <button
                 onClick={() => update("curve", { ...(selected.curve || { angle: 180 }), enabled: !selected.curve?.enabled })}
-                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.curve?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.curve?.enabled ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
               >
                 {selected.curve?.enabled ? (isRtl ? "مفعّل" : "On") : (isRtl ? "إيقاف" : "Off")}
               </button>
             </div>
             {selected.curve?.enabled && (
               <>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "زاوية القوس" : "Arc angle"}: {selected.curve.angle || 180}°</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "زاوية القوس" : "Arc angle"}: {selected.curve.angle || 180}°</label>
                 <input
                   type="range"
                   min="-340"
@@ -650,7 +650,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                 <div className="flex flex-wrap gap-1">
                   {[60, 120, 180, 270, 360, -180].map(a => (
                     <button key={a} onClick={() => update("curve", { ...selected.curve, angle: a })}
-                      className="px-2 py-0.5 rounded text-[10px] bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+                      className="px-2 py-0.5 rounded text-[10px] bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white transition">
                       {a}°
                     </button>
                   ))}
@@ -660,7 +660,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "المحاذاة" : "Alignment"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "المحاذاة" : "Alignment"}</label>
             <div className="flex gap-1">
               {["right", "center", "left"].map((a) => {
                 const Icon = a === "right" ? AlignRight : a === "center" ? AlignCenter : AlignLeft;
@@ -668,7 +668,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
                   <button
                     key={a}
                     onClick={() => update("align", a)}
-                    className={`flex-1 py-1.5 rounded border transition ${selected.align === a ? "bg-indigo-600 border-indigo-500 text-white" : "border-slate-600 text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-1.5 rounded border transition ${selected.align === a ? "bg-indigo-600 border-indigo-500 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-[var(--hv-text)]"}`}
                   >
                     <Icon className="w-4 h-4 mx-auto" />
                   </button>
@@ -679,28 +679,28 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
               <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
                 onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
               <input type="number" value={selected.rotation || 0}
                 onChange={(e) => update("rotation", parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input type="number" value={Math.round(selected.x)} onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input type="number" value={Math.round(selected.y)} onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
@@ -712,7 +712,7 @@ export default function TextPanel({ layers, selectedId, onSelect, onAdd, onUpdat
               { label: "→", key: "x", delta: 1 },
             ].map(({ label, key, delta }) => (
               <button key={label} onClick={() => update(key, (selected[key] || 0) + delta)}
-                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded text-white text-sm">{label}</button>
+                className="w-8 h-8 bg-slate-100 hover:bg-slate-200 border border-[var(--hv-border)] rounded text-[var(--hv-text)] text-sm">{label}</button>
             ))}
           </div>
 

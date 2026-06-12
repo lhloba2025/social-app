@@ -160,7 +160,7 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
       {/* Canvas symbols */}
       {canvasSymbols.length > 0 && (
         <div className="space-y-1">
-          <p className="text-slate-400 font-semibold">{isRtl ? "🎭 رموزك على الكانفاس" : "🎭 Your Canvas Symbols"}</p>
+          <p className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "🎭 رموزك على الكانفاس" : "🎭 Your Canvas Symbols"}</p>
           <div className="space-y-1 max-h-36 overflow-y-auto">
             {canvasSymbols.map((sym) => {
               const template = SYMBOLS.find((s) => s.id === sym.symbolKey);
@@ -168,22 +168,22 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
                 <div
                   key={sym.id}
                   onClick={() => onSelect(sym.id, "image")}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                    sym.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border ${
+                    sym.id === selectedId ? "border-[var(--hv-primary)] bg-[rgba(79,70,229,0.08)]" : "bg-slate-50 hover:bg-slate-100 border-[var(--hv-border)]"
                   }`}
                 >
                   <span className="text-lg">{sym.text}</span>
-                  <span className="flex-1 truncate text-slate-200">{isRtl ? template?.nameAr : template?.name}</span>
+                  <span className="flex-1 truncate" style={{color:'var(--hv-text)'}}>{isRtl ? template?.nameAr : template?.name}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onUpdate(sym.id, { visible: sym.visible === false ? true : false });
                     }}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-[var(--hv-text)]"
                   >
                     {sym.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); onDuplicate(sym.id); }} className="text-slate-400 hover:text-white">
+                  <button onClick={(e) => { e.stopPropagation(); onDuplicate(sym.id); }} className="text-slate-400 hover:text-[var(--hv-text)]">
                     <Copy className="w-3 h-3" />
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); onDelete(sym.id); }} className="text-red-400 hover:text-red-300">
@@ -196,12 +196,13 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
         </div>
       )}
 
-      <h3 className="text-slate-400 font-semibold">{isRtl ? "🎭 مكتبة الرموز" : "🎭 Symbols Library"}</h3>
+      <h3 className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "🎭 مكتبة الرموز" : "🎭 Symbols Library"}</h3>
 
       {/* View toggle */}
       <button
         onClick={() => setGridView(!gridView)}
-        className="w-full flex items-center justify-center gap-2 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-white transition"
+        className="w-full flex items-center justify-center gap-2 py-1.5 rounded bg-slate-50 hover:bg-slate-100 border border-[var(--hv-border)] transition"
+        style={{color:'var(--hv-text)'}}
       >
         <Grid2X2 className="w-3.5 h-3.5" />
         {gridView ? (isRtl ? "عرض القائمة" : "List View") : (isRtl ? "عرض الشبكة" : "Grid View")}
@@ -214,7 +215,7 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
             <button
               key={sym.id}
               onClick={() => handleAddSymbol(sym)}
-              className="flex flex-col items-center gap-0.5 p-1.5 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="flex flex-col items-center gap-0.5 p-1.5 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-slate-600 hover:text-white"
               title={isRtl ? sym.nameAr : sym.name}
             >
               <span className="text-xl">{sym.icon}</span>
@@ -231,7 +232,7 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
             <button
               key={sym.id}
               onClick={() => handleAddSymbol(sym)}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-slate-600 hover:text-white"
             >
               <span className="text-lg">{sym.icon}</span>
               <span className="text-xs flex-1">{isRtl ? sym.nameAr : sym.name}</span>
@@ -242,8 +243,8 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
 
       {/* Edit selected symbol */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
-          <p className="text-slate-400 font-semibold">{isRtl ? "✏️ تعديل الرمز المحدد" : "✏️ Edit selected"}</p>
+        <div className="space-y-3 border-t border-[var(--hv-border)] pt-3">
+          <p className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "✏️ تعديل الرمز المحدد" : "✏️ Edit selected"}</p>
 
           <StudioColorPicker
             label={isRtl ? "🎨 لون الرمز" : "🎨 Symbol Color"}
@@ -253,48 +254,48 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "حجم الخط" : "Font Size"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "حجم الخط" : "Font Size"}</label>
               <input
                 type="number"
                 value={selected.fontSize || 48}
                 onChange={(e) => update("fontSize", parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
               />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
               <input
                 type="number"
                 value={Math.round(selected.width || 8)}
                 onChange={(e) => update("width", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input
                 type="number"
                 value={Math.round(selected.x || 0)}
                 onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
               />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input
                 type="number"
                 value={Math.round(selected.y || 0)}
                 onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
             <input
               type="range"
               min="0"
@@ -307,12 +308,12 @@ export default function SymbolsPanel({ onAdd, selectedId, onSelect, onDelete, on
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
             <input
               type="number"
               value={selected.rotation || 0}
               onChange={(e) => update("rotation", parseInt(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+              className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
             />
           </div>
         </div>

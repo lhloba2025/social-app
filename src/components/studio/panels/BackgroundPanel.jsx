@@ -182,7 +182,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
   return (
     <div className="space-y-3 text-xs">
       {/* Mode tabs */}
-      <div className="flex rounded-lg overflow-hidden border border-slate-600">
+      <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "var(--hv-border)" }}>
         {[
           { id: "color", labelAr: "لون", labelEn: "Color" },
           { id: "gradient", labelAr: "تدرج", labelEn: "Gradient" },
@@ -190,7 +190,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           { id: "image", labelAr: "صورة", labelEn: "Image" },
         ].map((m) => (
           <button key={m.id} onClick={() => update("mode", m.id)}
-            className={`flex-1 py-1.5 text-xs font-semibold transition ${bg.mode === m.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
+            className={`flex-1 py-1.5 text-xs font-semibold transition ${bg.mode === m.id ? "bg-indigo-600 text-white" : "bg-white text-slate-500 hover:text-indigo-600"}`}>
             {isRtl ? m.labelAr : m.labelEn}
           </button>
         ))}
@@ -200,12 +200,12 @@ export default function BackgroundPanel({ bg, onChange, language }) {
         <div className="space-y-3">
           <StudioColorPicker label={isRtl ? "لون الخلفية" : "Background Color"} value={bg.color} onChange={(v) => update("color", v)} />
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}: {Math.round((bg.opacity ?? 1) * 100)}%</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}: {Math.round((bg.opacity ?? 1) * 100)}%</label>
             <input type="range" min="0" max="1" step="0.05" value={bg.opacity ?? 1}
               onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
           </div>
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {bg.blur || 0}px</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {bg.blur || 0}px</label>
             <input type="range" min="0" max="40" value={bg.blur || 0}
               onChange={(e) => update("blur", parseInt(e.target.value))} className="w-full" />
           </div>
@@ -216,16 +216,17 @@ export default function BackgroundPanel({ bg, onChange, language }) {
         <div className="space-y-3">
           {/* Preview */}
           <div
-            className="h-16 rounded-xl border border-slate-600 shadow-inner"
+            className="h-16 rounded-xl border shadow-inner"
             style={{
               background: buildGradientPreview(),
               filter: bg.blur ? `blur(${bg.blur}px)` : undefined,
+              borderColor: "var(--hv-border)",
             }}
           />
 
           {/* Blur / Frosted Glass */}
-          <div className="bg-slate-800 rounded-lg p-2 border border-slate-600">
-            <label className="text-yellow-400 font-semibold block mb-1">
+          <div className="bg-[var(--hv-surface-2)] rounded-lg p-2 border" style={{ borderColor: "var(--hv-border)" }}>
+            <label className="text-amber-600 font-semibold block mb-1">
               {isRtl ? "🌫️ تغبيش (زجاج مثلج)" : "🌫️ Frosted Blur"}: {bg.blur || 0}px
             </label>
             <input type="range" min="0" max="40" value={bg.blur || 0}
@@ -244,7 +245,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
               { id: "radial", labelAr: "دائري (إضاءة)", labelEn: "Radial (Spotlight)" },
             ].map((t) => (
               <button key={t.id} onClick={() => update("gradientType", t.id)}
-                className={`flex-1 py-1 rounded text-[11px] font-semibold transition ${(bg.gradientType || "linear") === t.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
+                className={`flex-1 py-1 rounded text-[11px] font-semibold transition ${(bg.gradientType || "linear") === t.id ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600"}`}>
                 {isRtl ? t.labelAr : t.labelEn}
               </button>
             ))}
@@ -252,13 +253,13 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
           {(bg.gradientType || "linear") === "linear" && (
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الزاوية" : "Angle"}: {bg.gradientAngle || 135}°</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "الزاوية" : "Angle"}: {bg.gradientAngle || 135}°</label>
               <input type="range" min="0" max="360" step="5" value={bg.gradientAngle || 135}
                 onChange={(e) => update("gradientAngle", parseInt(e.target.value))} className="w-full mb-2" />
               <div className="flex gap-1 flex-wrap">
                 {GRADIENT_ANGLES.map((a) => (
                   <button key={a} onClick={() => update("gradientAngle", a)}
-                    className={`px-2 py-0.5 rounded text-[10px] transition ${bg.gradientAngle === a ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
+                    className={`px-2 py-0.5 rounded text-[10px] transition ${bg.gradientAngle === a ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600"}`}>
                     {a}°
                   </button>
                 ))}
@@ -268,11 +269,11 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
           {bg.gradientType === "radial" && (
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "موقع الإضاءة" : "Light Position"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "موقع الإضاءة" : "Light Position"}</label>
               <div className="flex gap-1 flex-wrap">
                 {RADIAL_POSITIONS.map((p) => (
                   <button key={p.value} onClick={() => update("radialPosition", p.value)}
-                    className={`px-2 py-0.5 rounded text-[10px] transition ${(bg.radialPosition || "center") === p.value ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}>
+                    className={`px-2 py-0.5 rounded text-[10px] transition ${(bg.radialPosition || "center") === p.value ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600"}`}>
                     {p.label}
                   </button>
                 ))}
@@ -282,22 +283,22 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
           {/* Color stops */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "نقاط اللون" : "Color Stops"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "نقاط اللون" : "Color Stops"}</label>
             {stops.map((stop, idx) => (
-              <div key={idx} className="mb-2 bg-slate-700/50 rounded p-2 space-y-1">
+              <div key={idx} className="mb-2 bg-[var(--hv-surface-2)] border rounded p-2 space-y-1" style={{ borderColor: "var(--hv-border)" }}>
                 <div className="flex items-center gap-1">
                   <input type="color" value={stop.color}
                     onChange={(e) => {
                       const ns = [...stops]; ns[idx] = { ...ns[idx], color: e.target.value };
                       update("gradientStops", ns);
                     }}
-                    className="w-7 h-7 rounded cursor-pointer border border-slate-600" />
+                    className="w-7 h-7 rounded cursor-pointer border border-slate-300" />
                   <input type="number" min="0" max="100" value={stop.position}
                     onChange={(e) => {
                       const ns = [...stops]; ns[idx] = { ...ns[idx], position: parseInt(e.target.value) };
                       update("gradientStops", ns);
                     }}
-                    className="w-14 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-white" />
+                    className="hv-input w-14 px-1 py-0.5" />
                   <span className="text-slate-500">%</span>
                   {stops.length > 2 && (
                     <button onClick={() => update("gradientStops", stops.filter((_, i) => i !== idx))}
@@ -315,16 +316,16 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           </div>
 
           {/* Preset categories — salon/luxury focused */}
-          <div className="space-y-4 border-t border-slate-700 pt-3">
-            <label className="text-slate-200 font-bold text-sm">{isRtl ? "🎨 خلفيات فاخرة جاهزة" : "🎨 Luxury Presets"}</label>
+          <div className="space-y-4 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+            <label className="font-bold text-sm" style={{ color: "var(--hv-text)" }}>{isRtl ? "🎨 خلفيات فاخرة جاهزة" : "🎨 Luxury Presets"}</label>
             {PRESET_CATEGORIES.map((cat) => (
               <div key={cat.label.en}>
-                <p className="text-slate-400 text-[11px] font-semibold mb-2">{isRtl ? cat.label.ar : cat.label.en}</p>
+                <p className="text-slate-500 text-[11px] font-semibold mb-2">{isRtl ? cat.label.ar : cat.label.en}</p>
                 <div className="grid grid-cols-6 gap-1.5">
                   {cat.presets.map((g) => (
                     <button key={g.name} onClick={() => applyPreset(g)}
                       title={g.name}
-                      className="h-9 rounded-lg border-2 border-slate-700 hover:border-yellow-400 transition-all hover:scale-110 shadow-md"
+                      className="h-9 rounded-lg border-2 border-slate-200 hover:border-indigo-500 transition-all hover:scale-110 shadow-md"
                       style={{ background: g.value }}
                     />
                   ))}
@@ -373,7 +374,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           <div className="space-y-3">
             {/* Layers list */}
             <div className="flex items-center justify-between">
-              <p className="text-slate-300 font-bold text-sm">{isRtl ? "🎨 الطبقات الفنية" : "🎨 SVG Layers"}</p>
+              <p className="font-bold text-sm" style={{ color: "var(--hv-text)" }}>{isRtl ? "🎨 الطبقات الفنية" : "🎨 SVG Layers"}</p>
               <button onClick={addLayer}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
                 <Plus className="w-3 h-3" />
@@ -388,13 +389,14 @@ export default function BackgroundPanel({ bg, onChange, language }) {
                 return (
                   <div key={layer.id}
                     onClick={() => setSvgSelId(layer.id)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                      layer.id === sel?.id ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
-                    }`}>
-                    <div className="w-8 h-6 bg-slate-900 rounded overflow-hidden relative flex-shrink-0">
+                    className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border"
+                    style={layer.id === sel?.id
+                      ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" }
+                      : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}>
+                    <div className="w-8 h-6 bg-slate-100 rounded overflow-hidden relative flex-shrink-0">
                       <div dangerouslySetInnerHTML={{ __html: prevSvg }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
                     </div>
-                    <span className="flex-1 text-slate-300 text-[11px] truncate">
+                    <span className="flex-1 text-slate-600 text-[11px] truncate">
                       {isRtl ? typeInfo?.nameAr : typeInfo?.nameEn} #{idx + 1}
                     </span>
                     {layers.length > 1 && (
@@ -409,8 +411,8 @@ export default function BackgroundPanel({ bg, onChange, language }) {
             </div>
 
             {sel && (
-              <div className="space-y-3 border-t border-slate-700 pt-3">
-                <p className="text-slate-400 font-semibold text-[11px]">{isRtl ? "تعديل الطبقة المحددة:" : "Edit Selected Layer:"}</p>
+              <div className="space-y-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+                <p className="text-slate-500 font-semibold text-[11px]">{isRtl ? "تعديل الطبقة المحددة:" : "Edit Selected Layer:"}</p>
 
                 {/* Shape type grid */}
                 <div className="grid grid-cols-5 gap-1.5">
@@ -424,12 +426,12 @@ export default function BackgroundPanel({ bg, onChange, language }) {
                           setLayers(updated);
                         }}
                         className={`flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition ${
-                          sel.svgType === type.id ? "border-indigo-500 bg-indigo-900/30" : "border-slate-600 hover:border-slate-400"
+                          sel.svgType === type.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-slate-400"
                         }`}>
-                        <div className="w-full aspect-square bg-slate-900 rounded overflow-hidden relative">
+                        <div className="w-full aspect-square bg-slate-100 rounded overflow-hidden relative">
                           <div dangerouslySetInnerHTML={{ __html: prevSvg }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
                         </div>
-                        <span className="text-[9px] text-slate-400 text-center leading-tight">
+                        <span className="text-[9px] text-slate-500 text-center leading-tight">
                           {isRtl ? type.nameAr : type.nameEn}
                         </span>
                       </button>
@@ -452,31 +454,31 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
                 {/* Size & shape position */}
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الحجم" : "Size"}: {sel.size ?? 50}%</label>
+                  <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "الحجم" : "Size"}: {sel.size ?? 50}%</label>
                   <input type="range" min="5" max="95" value={sel.size ?? 50}
                     onChange={(e) => updateSel("size", parseInt(e.target.value))} className="w-full" />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "انتشار الشكل" : "Shape Spread"}: {sel.position ?? 65}%</label>
+                  <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "انتشار الشكل" : "Shape Spread"}: {sel.position ?? 65}%</label>
                   <input type="range" min="0" max="100" value={sel.position ?? 65}
                     onChange={(e) => updateSel("position", parseInt(e.target.value))} className="w-full" />
                 </div>
 
                 {/* X / Y offset */}
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "تحريك أفقي ←→" : "Move X ←→"}: {sel.offsetX ?? 0}%</label>
+                  <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "تحريك أفقي ←→" : "Move X ←→"}: {sel.offsetX ?? 0}%</label>
                   <input type="range" min="-80" max="80" value={sel.offsetX ?? 0}
                     onChange={(e) => updateSel("offsetX", parseInt(e.target.value))} className="w-full" />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "تحريك عمودي ↑↓" : "Move Y ↑↓"}: {sel.offsetY ?? 0}%</label>
+                  <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "تحريك عمودي ↑↓" : "Move Y ↑↓"}: {sel.offsetY ?? 0}%</label>
                   <input type="range" min="-80" max="80" value={sel.offsetY ?? 0}
                     onChange={(e) => updateSel("offsetY", parseInt(e.target.value))} className="w-full" />
                 </div>
 
                 {/* Rotation */}
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الدوران" : "Rotation"}: {sel.angle ?? 0}°</label>
+                  <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "الدوران" : "Rotation"}: {sel.angle ?? 0}°</label>
                   <input type="range" min="-180" max="180" value={sel.angle ?? 0}
                     onChange={(e) => updateSel("angle", parseInt(e.target.value))} className="w-full" />
                 </div>
@@ -484,7 +486,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
                 {/* Opacity (only for additional layers) */}
                 {selIdx > 0 && (
                   <div>
-                    <label className="text-slate-400 block mb-1 text-[11px]">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((sel.layerOpacity ?? 1) * 100)}%</label>
+                    <label className="text-slate-500 block mb-1 text-[11px]">{isRtl ? "الشفافية" : "Opacity"}: {Math.round((sel.layerOpacity ?? 1) * 100)}%</label>
                     <input type="range" min="0" max="1" step="0.05" value={sel.layerOpacity ?? 1}
                       onChange={(e) => updateSel("layerOpacity", parseFloat(e.target.value))} className="w-full" />
                   </div>
@@ -492,7 +494,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
                 {/* Blur */}
                 <div>
-                  <label className="text-yellow-400 font-semibold block mb-1 text-[11px]">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {sel.blur || 0}px</label>
+                  <label className="text-amber-600 font-semibold block mb-1 text-[11px]">{isRtl ? "🌫️ تغبيش" : "🌫️ Blur"}: {sel.blur || 0}px</label>
                   <input type="range" min="0" max="40" value={sel.blur || 0}
                     onChange={(e) => updateSel("blur", parseInt(e.target.value))} className="w-full" />
                 </div>
@@ -513,7 +515,7 @@ export default function BackgroundPanel({ bg, onChange, language }) {
 
           {bg.imageUrl && (
             <div className="relative">
-              <img src={bg.imageUrl} alt="" className="w-full h-20 object-cover rounded border border-slate-600" />
+              <img src={bg.imageUrl} alt="" className="w-full h-20 object-cover rounded border border-slate-200" />
               <button onClick={() => update("imageUrl", null)}
                 className="absolute top-1 right-1 bg-red-600 rounded p-0.5 text-white hover:bg-red-500">
                 <Trash2 className="w-3 h-3" />
@@ -522,15 +524,15 @@ export default function BackgroundPanel({ bg, onChange, language }) {
           )}
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية الصورة" : "Image Opacity"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية الصورة" : "Image Opacity"}</label>
             <input type="range" min="0" max="1" step="0.05" value={bg.imageOpacity ?? 1}
               onChange={(e) => update("imageOpacity", parseFloat(e.target.value))} className="w-full" />
           </div>
 
-          <div className="border-t border-slate-700 pt-3">
-            <label className="text-slate-400 block mb-1">{isRtl ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</label>
+          <div className="border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+            <label className="text-slate-500 block mb-1">{isRtl ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</label>
             <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={2}
-              className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-xs resize-none"
+              className="hv-input w-full p-2 text-xs resize-none"
               placeholder={isRtl ? "صف الخلفية المطلوبة..." : "Describe the background..."} />
             <button onClick={() => alert("هذه الميزة غير متاحة في النسخة المحلية")} disabled={!aiPrompt.trim()}
               className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition disabled:opacity-50">

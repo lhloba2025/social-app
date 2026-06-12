@@ -1,88 +1,213 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   PRODUCT DESIGN SYSTEM  —  "INK + CORAL"
+   An INDEPENDENT identity for this content-studio product. Deliberately NOT
+   tied to any host system (not Hovera's purple, not the other system's colours)
+   so it sits neutrally inside any host.
+     • Base  : deep ink indigo  (#4F46E5 / #4338CA)
+     • Accent: warm coral       (#FB7185 / #F43F5E)
+     • Surface: light, clean, airy
+   ALL brand colours live HERE in one place. To re-theme, change only --hv-*.
+   ========================================================================== */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+    /* ---- Brand tokens (the ONLY place colours are defined) ---- */
+    --hv-primary: #4f46e5;          /* indigo — primary interactive */
+    --hv-primary-600: #4338ca;
+    --hv-primary-700: #3730a3;
+    --hv-secondary: #fb7185;        /* coral — accent / highlight */
+    --hv-secondary-600: #f43f5e;
+    --hv-accent: #fb7185;
 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Surfaces & text */
+    --hv-bg: #f4f5fb;               /* cool light app background */
+    --hv-bg-2: #eceefb;
+    --hv-surface: #ffffff;          /* cards */
+    --hv-surface-2: #f8f9fe;
+    --hv-border: #e8e9f5;
+    --hv-text: #1e1b3a;             /* deep ink */
+    --hv-text-soft: #5d5a76;        /* muted text */
+    --hv-text-faint: #9794ad;
+
+    /* Gradients */
+    --hv-grad: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);          /* primary buttons / sidebar */
+    --hv-grad-accent: linear-gradient(135deg, #6366f1 0%, #fb7185 100%);   /* headline emphasis / icon tiles */
+    --hv-grad-soft: linear-gradient(135deg, #eef0fe 0%, #ffeef2 100%);
+    --hv-sidebar-grad: linear-gradient(180deg, #4f46e5 0%, #4338ca 60%, #3b2fb0 100%);
+
+    /* Shadows (indigo-tinted) */
+    --hv-shadow-sm: 0 1px 2px rgba(67, 56, 202, 0.06), 0 1px 3px rgba(30, 27, 58, 0.05);
+    --hv-shadow: 0 4px 16px rgba(67, 56, 202, 0.09), 0 2px 6px rgba(30, 27, 58, 0.05);
+    --hv-shadow-lg: 0 14px 44px rgba(67, 56, 202, 0.16), 0 4px 12px rgba(30, 27, 58, 0.06);
+    --hv-ring: 0 0 0 3px rgba(79, 70, 229, 0.18);
+
+    /* ---- shadcn/ui variable bridge (kept so existing ui/* primitives work) ---- */
+    --background: 234 40% 97%;
+    --foreground: 249 35% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 249 35% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 249 35% 16%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 234 50% 96%;
+    --secondary-foreground: 249 35% 20%;
+    --muted: 234 40% 95%;
+    --muted-foreground: 250 12% 46%;
+    --accent: 350 95% 72%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 40% 93%;
+    --input: 240 40% 93%;
+    --ring: 243 75% 59%;
+    --chart-1: 243 75% 59%;
+    --chart-2: 350 95% 72%;
+    --chart-3: 199 89% 55%;
+    --chart-4: 43 90% 60%;
+    --chart-5: 160 60% 45%;
+    --radius: 0.85rem;
+    --sidebar-background: 245 55% 50%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 243 75% 50%;
+    --sidebar-accent: 245 45% 60%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 245 40% 62%;
+    --sidebar-ring: 350 95% 72%;
   }
 }
 
-
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+    outline-color: rgba(79, 70, 229, 0.4);
   }
 
   body {
-    @apply bg-background text-foreground;
+    background: var(--hv-bg);
+    color: var(--hv-text);
+    font-family: 'Tajawal', 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Elegant thin scrollbars that match the brand */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #cfd2ee;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #b9bdea; background-clip: content-box; }
+}
+
+/* ============================================================================
+   REUSABLE COMPONENT CLASSES  —  use these everywhere for consistency.
+   ========================================================================== */
+@layer components {
+
+  /* App background (the soft canvas behind pages) */
+  .hv-app-bg {
+    background:
+      radial-gradient(1200px 600px at 100% -10%, rgba(251, 113, 133, 0.07), transparent 60%),
+      radial-gradient(1000px 600px at -10% 110%, rgba(79, 70, 229, 0.08), transparent 55%),
+      var(--hv-bg);
+  }
+
+  /* Cards */
+  .hv-card {
+    background: var(--hv-surface);
+    border: 1px solid var(--hv-border);
+    border-radius: 1rem;
+    box-shadow: var(--hv-shadow-sm);
+  }
+  .hv-card-hover {
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .25s;
+  }
+  .hv-card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--hv-shadow-lg);
+    border-color: rgba(79, 70, 229, 0.25);
+  }
+
+  /* Buttons */
+  .hv-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    font-weight: 700; border-radius: .8rem; padding: .6rem 1.1rem;
+    font-size: .9rem; line-height: 1; cursor: pointer; white-space: nowrap;
+    transition: transform .15s, box-shadow .2s, background .2s, color .2s, border-color .2s;
+    user-select: none;
+  }
+  .hv-btn:active { transform: translateY(1px) scale(.99); }
+  .hv-btn-primary {
+    background: var(--hv-grad); color: #fff; border: none;
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.30);
+  }
+  .hv-btn-primary:hover { box-shadow: 0 10px 26px rgba(79, 70, 229, 0.42); filter: brightness(1.05); }
+  .hv-btn-accent {
+    background: var(--hv-secondary); color: #fff; border: none;
+    box-shadow: 0 6px 18px rgba(244, 63, 94, 0.28);
+  }
+  .hv-btn-accent:hover { background: var(--hv-secondary-600); }
+  .hv-btn-ghost {
+    background: var(--hv-surface); color: var(--hv-text);
+    border: 1px solid var(--hv-border);
+  }
+  .hv-btn-ghost:hover { background: var(--hv-surface-2); border-color: rgba(79,70,229,.3); color: var(--hv-primary-700); }
+  .hv-btn-soft {
+    background: rgba(79, 70, 229, 0.08); color: var(--hv-primary-700); border: none;
+  }
+  .hv-btn-soft:hover { background: rgba(79, 70, 229, 0.14); }
+  .hv-btn-danger { background: #fee2e2; color: #dc2626; border: none; }
+  .hv-btn-danger:hover { background: #fecaca; }
+
+  /* Page header (title + subtitle) — same on every page */
+  .hv-page { @apply h-full overflow-y-auto; }
+  .hv-page-inner { @apply max-w-6xl mx-auto px-5 md:px-8 py-6 md:py-8; }
+  .hv-page-title { font-weight: 800; font-size: 1.6rem; color: var(--hv-text); letter-spacing: -.01em; }
+  .hv-page-sub { color: var(--hv-text-soft); font-size: .92rem; margin-top: .2rem; }
+
+  /* Section / overline label */
+  .hv-overline {
+    font-size: .68rem; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--hv-text-faint);
+  }
+
+  /* Gradient text (for emphasis — indigo→coral) */
+  .hv-grad-text {
+    background: var(--hv-grad-accent); -webkit-background-clip: text;
+    background-clip: text; color: transparent;
+  }
+
+  /* Inputs */
+  .hv-input {
+    width: 100%; background: var(--hv-surface); color: var(--hv-text);
+    border: 1px solid var(--hv-border); border-radius: .7rem;
+    padding: .55rem .8rem; font-size: .9rem; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .hv-input::placeholder { color: var(--hv-text-faint); }
+  .hv-input:focus { border-color: var(--hv-primary); box-shadow: var(--hv-ring); }
+
+  /* Chips / pills */
+  .hv-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .25rem .7rem; border-radius: 9999px; font-size: .78rem; font-weight: 700;
+    background: rgba(79, 70, 229, 0.08); color: var(--hv-primary-700);
+  }
+  .hv-chip-accent { background: rgba(244, 63, 94, 0.10); color: var(--hv-secondary-600); }
+
+  /* Soft gradient icon tile (used on feature cards) */
+  .hv-icon-tile {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 3rem; height: 3rem; border-radius: .9rem; color: #fff;
+    background: var(--hv-grad-accent); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.28);
   }
 }

@@ -128,92 +128,93 @@ function CustomGen({ ar }) {
       {/* Left: form */}
       <div className="space-y-4">
         <div>
-          <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "فكرة المشهد / الوصف" : "Scene / description"}</label>
+          <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "فكرة المشهد / الوصف" : "Scene / description"}</label>
           <textarea value={scene} onChange={(e) => setScene(e.target.value)} rows={3}
             placeholder={ar ? "مثال: هاتف على رخام كريمي يعرض تطبيق حجز، وردة ناعمة بالخلفية، إضاءة دافئة." : "e.g. A phone on cream marble showing a booking app, warm light."}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 leading-relaxed" />
-          <p className="text-[10px] text-slate-500 mt-1">{ar ? "💡 وصف قصير فقط — قواعد الهوية تُضاف تلقائياً." : "💡 Short idea only — brand rules added automatically."}</p>
+            className="hv-input w-full leading-relaxed" />
+          <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "💡 وصف قصير فقط — قواعد الهوية تُضاف تلقائياً." : "💡 Short idea only — brand rules added automatically."}</p>
         </div>
 
         <div>
-          <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "نص الهوك (العنوان على الصورة)" : "Hook text"}</label>
+          <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "نص الهوك (العنوان على الصورة)" : "Hook text"}</label>
           <textarea value={hook} onChange={(e) => setHook(e.target.value)} rows={2} placeholder={ar ? "مثال: أديري صالونك من مكان واحد" : "e.g. Run your salon from one place"}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 leading-relaxed resize-none" />
-          <p className="text-[10px] text-slate-500 mt-1">{ar ? "💡 اضغط Enter لإنزال الكلام على سطر جديد." : "💡 Press Enter for a new line."}</p>
+            className="hv-input w-full leading-relaxed resize-none" />
+          <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "💡 اضغط Enter لإنزال الكلام على سطر جديد." : "💡 Press Enter for a new line."}</p>
         </div>
 
         <div>
-          <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "الكلمات المميزة — افصلها بفاصلة (اختياري)" : "Highlight words — comma-separated"}</label>
+          <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "الكلمات المميزة — افصلها بفاصلة (اختياري)" : "Highlight words — comma-separated"}</label>
           <input value={highlight} onChange={(e) => setHighlight(e.target.value)} placeholder={ar ? "مثال: صالونك، الأفضل، اليوم" : "e.g. salon, best, today"}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
-          <p className="text-[10px] text-slate-500 mt-1">{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Several words allowed — all get the highlight color."}</p>
+            className="hv-input w-full" />
+          <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Several words allowed — all get the highlight color."}</p>
         </div>
 
         {/* Notification card (logo + title + body) — like an app notification */}
-        <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 space-y-2">
-          <label className="flex items-center gap-2 text-[12px] font-bold text-slate-200 cursor-pointer">
-            <input type="checkbox" checked={!!layout.cardOn} onChange={(e) => setLayout((p) => ({ ...p, cardOn: e.target.checked }))} />
+        <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+          <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer" style={{ color: "var(--hv-text)" }}>
+            <input type="checkbox" checked={!!layout.cardOn} onChange={(e) => setLayout((p) => ({ ...p, cardOn: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
             {ar ? "🔔 بطاقة إشعار (شعار + عنوان + نص)" : "🔔 Notification card"}
           </label>
           {layout.cardOn && (
             <>
               <input value={layout.cardTitle || ""} onChange={(e) => setLayout((p) => ({ ...p, cardTitle: e.target.value }))}
                 placeholder={ar ? "عنوان البطاقة — مثال: هوفيرا" : "Card title — e.g. Hovera"}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+                className="hv-input w-full" />
               <textarea value={layout.cardBody || ""} onChange={(e) => setLayout((p) => ({ ...p, cardBody: e.target.value }))} rows={2}
                 placeholder={ar ? "نص البطاقة — مثال: تذكير: موعدك بعد ساعتين في الصالون" : "Card body — e.g. Reminder: your appointment in 2 hours"}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 resize-none leading-relaxed" />
-              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
-                <input type="checkbox" checked={layout.cardLogo !== false} onChange={(e) => setLayout((p) => ({ ...p, cardLogo: e.target.checked }))} />
+                className="hv-input w-full resize-none leading-relaxed" />
+              <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                <input type="checkbox" checked={layout.cardLogo !== false} onChange={(e) => setLayout((p) => ({ ...p, cardLogo: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
                 {ar ? "إظهار الشعار داخل البطاقة" : "Show logo in card"}
               </label>
-              <p className="text-[10px] text-slate-500">{ar ? "بعد التوليد، حرّكها وكبّرها من زر «تحرير»." : "After generating, move/resize it from Edit."}</p>
+              <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{ar ? "بعد التوليد، حرّكها وكبّرها من زر «تحرير»." : "After generating, move/resize it from Edit."}</p>
             </>
           )}
         </div>
 
         <div>
-          <label className="text-[12px] font-bold text-slate-300 block mb-1.5">{ar ? "المقاس" : "Size"}</label>
+          <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "المقاس" : "Size"}</label>
           <div className="grid grid-cols-3 gap-1.5">
             {ASPECTS.map((a) => (
               <button key={a.id} onClick={() => setAspect(a.id)}
-                className={`py-2 rounded-lg text-[11px] font-bold transition ${aspect === a.id ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+                className="py-2 rounded-lg text-[11px] font-bold transition border"
+                style={aspect === a.id ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>
                 {ar ? a.ar : a.en}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex items-start gap-2 bg-fuchsia-900/20 border border-fuchsia-500/40 rounded-lg p-2.5">
+        <div className="flex items-start gap-2 rounded-lg p-2.5 border" style={{ background: "rgba(251,113,133,0.08)", borderColor: "rgba(251,113,133,0.35)" }}>
           <span className="mt-0.5">🎯</span>
-          <span className="text-[12px] text-slate-100 leading-relaxed">
+          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
             {ar ? "النص يُطبع بدقة عالية بالخط الحقيقي" : "Text is composited in the real font (high precision)"}
-            <span className="block text-[10px] text-slate-400">{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك والشريط بدقة — والنص يتحدّث مباشرة وتقدر تحرّكه بزر «تحرير»." : "AI paints the scene; the app composites the real logo, hook & bar — text updates live and is editable."}</span>
+            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك والشريط بدقة — والنص يتحدّث مباشرة وتقدر تحرّكه بزر «تحرير»." : "AI paints the scene; the app composites the real logo, hook & bar — text updates live and is editable."}</span>
           </span>
         </div>
 
-        <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
-          <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} className="mt-0.5" />
-          <span className="text-[12px] text-slate-200 leading-relaxed">
+        <label className="flex items-start gap-2 rounded-lg p-2.5 cursor-pointer border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+          <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--hv-primary)" }} />
+          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
             {ar ? "🎨 وضع حر — لا تقيّد المشهد" : "🎨 Free scene (don't constrain)"}
-            <span className="block text-[10px] text-slate-500">{ar ? "يتبع وصفك حرفياً بدون فرض إضاءة فاتحة أو أثاث (كراسي/مرايا) — مناسب للأجواء الغامقة أو أي ستايل خاص." : "Follows your scene as-is — no forced bright lighting or props. Good for dark/moody styles."}</span>
+            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "يتبع وصفك حرفياً بدون فرض إضاءة فاتحة أو أثاث (كراسي/مرايا) — مناسب للأجواء الغامقة أو أي ستايل خاص." : "Follows your scene as-is — no forced bright lighting or props. Good for dark/moody styles."}</span>
           </span>
         </label>
 
-        <label className="flex items-start gap-2 bg-slate-800/40 border border-slate-700 rounded-lg p-2.5 cursor-pointer">
-          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" />
-          <span className="text-[12px] text-slate-200 leading-relaxed">
+        <label className="flex items-start gap-2 rounded-lg p-2.5 cursor-pointer border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--hv-primary)" }} />
+          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
             {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
-            <span className="block text-[10px] text-slate-500">{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
+            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
           </span>
         </label>
 
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
 
-        {error && <div className="bg-red-900/30 border border-red-500/40 rounded-lg px-3 py-2 text-[12px] text-red-200 leading-relaxed">{error}</div>}
+        {error && <div className="rounded-lg px-3 py-2 text-[12px] leading-relaxed border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
 
         <button onClick={handleGenerate} disabled={loading || !scene.trim()}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold transition disabled:opacity-50 flex items-center justify-center gap-2">
+          className="hv-btn hv-btn-primary w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
           {loading ? (ar ? "جارٍ التوليد…" : "Generating…") : (ar ? "ولّد الصورة" : "Generate")}
         </button>
@@ -221,15 +222,15 @@ function CustomGen({ ar }) {
 
       {/* Right: result */}
       <div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 min-h-[300px] flex items-center justify-center">
+        <div className="hv-card rounded-xl p-3 min-h-[300px] flex items-center justify-center" style={{ background: "#f1f0f8" }}>
           {loading ? (
-            <div className="text-center text-slate-500"><Loader2 className="w-10 h-10 animate-spin mx-auto mb-3 text-indigo-400" /><p className="text-sm">{ar ? "يرسم صورتك…" : "Drawing…"}</p></div>
+            <div className="text-center" style={{ color: "var(--hv-text-soft)" }}><Loader2 className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: "var(--hv-primary)" }} /><p className="text-sm">{ar ? "يرسم صورتك…" : "Drawing…"}</p></div>
           ) : result ? (
             <div className="w-full">
               <img src={result} alt="generated" className="w-full rounded-lg" />
               {bgUrl && showEdit && (
-                <div className="mt-3 bg-slate-900/60 border border-fuchsia-500/30 rounded-lg p-3 space-y-2">
-                  <p className="text-[11px] font-bold text-fuchsia-300">{ar ? "✦ تحرير سريع (يطبّق فوراً بدون إعادة توليد)" : "✦ Quick edit (live)"}</p>
+                <div className="mt-3 rounded-lg p-3 space-y-2 border" style={{ background: "var(--hv-surface)", borderColor: "rgba(251,113,133,0.35)" }}>
+                  <p className="text-[11px] font-bold" style={{ color: "var(--hv-secondary-600, var(--hv-secondary))" }}>{ar ? "✦ تحرير سريع (يطبّق فوراً بدون إعادة توليد)" : "✦ Quick edit (live)"}</p>
                   {[
                     { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.02, max: 0.92, step: 0.01 },
                     { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.1, max: 0.9, step: 0.01 },
@@ -249,37 +250,42 @@ function CustomGen({ ar }) {
                     ] : []),
                   ].map((s) => (
                     <div key={s.k} className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{s.label}</span>
-                      <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setLayoutField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
+                      <span className="text-[10px] w-14 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{s.label}</span>
+                      <input type="range" min={s.min} max={s.max} step={s.step} value={layout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setLayoutField(s.k, e.target.value)} className="flex-1" style={{ accentColor: "var(--hv-primary)" }} />
                     </div>
                   ))}
 
                   {/* Text alignment (like Word) — global default. Picking one
                       clears per-line overrides so it applies to every line. */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة الكل" : "Align all"}</span>
+                    <span className="text-[10px] w-14 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{ar ? "محاذاة الكل" : "Align all"}</span>
                     <div className="flex-1 grid grid-cols-3 gap-1">
-                      {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
+                      {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => {
+                        const active = (layout.hookAlign || "center") === o.v && !(layout.hookAligns || []).length;
+                        return (
                         <button key={o.v} onClick={() => setLayout((p) => ({ ...p, hookAlign: o.v, hookAligns: [] }))}
-                          className={`py-1 rounded text-[10px] font-bold transition ${(layout.hookAlign || "center") === o.v && !(layout.hookAligns || []).length ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
-                      ))}
+                          className="py-1 rounded text-[10px] font-bold transition border"
+                          style={active ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>{ar ? o.ar : o.en}</button>
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Per-line alignment — appears when the hook has >1 line (Enter). */}
                   {hook.split(/\r?\n/).length > 1 && (
-                    <div className="bg-slate-800/30 rounded-lg p-2 space-y-1">
-                      <span className="text-[10px] text-slate-400">{ar ? "محاذاة كل سطر على حدة:" : "Per-line align:"}</span>
+                    <div className="rounded-lg p-2 space-y-1" style={{ background: "var(--hv-surface-2)" }}>
+                      <span className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "محاذاة كل سطر على حدة:" : "Per-line align:"}</span>
                       {hook.split(/\r?\n/).map((seg, i) => {
                         const cur = (layout.hookAligns || [])[i] || layout.hookAlign || "center";
                         return (
                           <div key={i} className="flex items-center gap-1.5">
-                            <span className="text-[9px] text-slate-400 flex-1 truncate text-right" dir="rtl" title={seg}>{seg.trim() || `${ar ? "سطر" : "line"} ${i + 1}`}</span>
+                            <span className="text-[9px] flex-1 truncate text-right" style={{ color: "var(--hv-text-soft)" }} dir="rtl" title={seg}>{seg.trim() || `${ar ? "سطر" : "line"} ${i + 1}`}</span>
                             <div className="flex gap-0.5 flex-shrink-0">
                               {[{ v: "right", t: "يمين" }, { v: "center", t: "توسيط" }, { v: "left", t: "يسار" }].map((o) => (
                                 <button key={o.v} title={o.t}
                                   onClick={() => setLayout((p) => { const arr = [...(p.hookAligns || [])]; arr[i] = o.v; return { ...p, hookAligns: arr }; })}
-                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${cur === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{o.t}</button>
+                                  className="px-1.5 py-0.5 rounded text-[9px] font-bold transition border"
+                                  style={cur === o.v ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>{o.t}</button>
                               ))}
                             </div>
                           </div>
@@ -289,15 +295,15 @@ function CustomGen({ ar }) {
                   )}
 
                   {/* Light backdrop behind the logo (guarantees a clean near-white logo area) */}
-                  <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
-                    <input type="checkbox" checked={layout.logoScrim !== false} onChange={(e) => setLayout((p) => ({ ...p, logoScrim: e.target.checked }))} />
+                  <label className="flex items-center gap-1.5 text-[10px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                    <input type="checkbox" checked={layout.logoScrim !== false} onChange={(e) => setLayout((p) => ({ ...p, logoScrim: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
                     {ar ? "خلفية فاتحة خلف الشعار (تضمن منطقة شعار نظيفة)" : "Light backdrop behind logo"}
                   </label>
 
                   {/* Text background plate */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
-                      <input type="checkbox" checked={layout.hookBg !== false} onChange={(e) => setLayout((p) => ({ ...p, hookBg: e.target.checked }))} />
+                    <label className="flex items-center gap-1.5 text-[10px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                      <input type="checkbox" checked={layout.hookBg !== false} onChange={(e) => setLayout((p) => ({ ...p, hookBg: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
                       {ar ? "خلفية للنص" : "Text background"}
                     </label>
                     {layout.hookBg !== false && (
@@ -305,39 +311,40 @@ function CustomGen({ ar }) {
                         <input type="color" value={layout.hookBgColor || "#FFFFFF"} onChange={(e) => setLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" />
                         {["#FFFFFF", "#000000", "#1d2a6b", "#09007C", "#10203a", "#F7E8F4"].map((s) => (
                           <button key={s} type="button" onClick={() => setLayout((p) => ({ ...p, hookBgColor: s }))}
-                            className={`w-5 h-5 rounded-full border ${(layout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                            className="w-5 h-5 rounded-full border" style={{ backgroundColor: s, borderColor: (layout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "var(--hv-primary)" : "var(--hv-border)", boxShadow: (layout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "0 0 0 2px rgba(79,70,229,.35)" : "none" }} />
                         ))}
                       </div>
                     )}
                   </div>
 
-                  <p className="text-[10px] text-slate-500">{ar ? "الألوان والخط ولون/شكل الشريط من «هويتك» — تتحدّث هنا فوراً." : "Colors/font & bar style from your brand — update live."}</p>
-                  <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] text-indigo-400 hover:text-indigo-300 underline">{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
+                  <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{ar ? "الألوان والخط ولون/شكل الشريط من «هويتك» — تتحدّث هنا فوراً." : "Colors/font & bar style from your brand — update live."}</p>
+                  <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] underline" style={{ color: "var(--hv-primary)" }}>{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
                 </div>
               )}
               <div className="flex gap-2 mt-3">
                 <button onClick={handleSave} disabled={saving || saved}
-                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${saved ? "bg-emerald-600 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"} disabled:opacity-60`}>
+                  className={`hv-btn flex-1 py-2.5 disabled:opacity-60 ${saved ? "" : "hv-btn-primary"}`}
+                  style={saved ? { background: "#10b981", color: "#fff" } : undefined}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
                   {saved ? (ar ? "تم الحفظ" : "Saved") : (ar ? "احفظ في المكتبة" : "Save to library")}
                 </button>
-                <a href={result} download={`image_${Date.now()}.png`} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><Download className="w-4 h-4" /></a>
-                <button onClick={handleGenerate} disabled={loading} className="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center"><RefreshCw className="w-4 h-4" /></button>
+                <a href={result} download={`image_${Date.now()}.png`} className="hv-btn hv-btn-soft px-3 py-2.5 flex items-center"><Download className="w-4 h-4" /></a>
+                <button onClick={handleGenerate} disabled={loading} className="hv-btn hv-btn-ghost px-3 py-2.5 flex items-center"><RefreshCw className="w-4 h-4" /></button>
                 {bgUrl && (
                   <button onClick={() => setShowEdit((v) => !v)} title={ar ? "تحرير" : "Edit"}
-                    className={`px-3 py-2.5 rounded-lg transition flex items-center gap-1 text-sm font-bold ${showEdit ? "bg-fuchsia-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-200"}`}>
+                    className={`hv-btn px-3 py-2.5 flex items-center gap-1 ${showEdit ? "hv-btn-accent" : "hv-btn-ghost"}`}>
                     <Palette className="w-4 h-4" />{ar ? "تحرير" : "Edit"}
                   </button>
                 )}
               </div>
               <button onClick={handleEditInStudio} disabled={saving}
-                className="w-full mt-2 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm transition flex items-center justify-center gap-2 disabled:opacity-60">
+                className="hv-btn hv-btn-ghost w-full mt-2 py-2.5 disabled:opacity-60">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
                 {ar ? "✏️ افتح في منشئ التصاميم (لتعديل النص والشعار)" : "✏️ Open in Design Studio"}
               </button>
             </div>
           ) : (
-            <div className="text-center text-slate-600"><ImagePlus className="w-12 h-12 mx-auto mb-2 opacity-40" /><p className="text-sm">{ar ? "الصورة بتظهر هنا" : "Your image appears here"}</p></div>
+            <div className="text-center" style={{ color: "var(--hv-text-faint)" }}><ImagePlus className="w-12 h-12 mx-auto mb-2 opacity-40" /><p className="text-sm">{ar ? "الصورة بتظهر هنا" : "Your image appears here"}</p></div>
           )}
         </div>
       </div>
@@ -350,21 +357,23 @@ export default function ImageGenPage({ language }) {
   const [tab, setTab] = useState("custom");
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
-      <div className="border-b border-slate-800 bg-slate-900 px-6 pt-4">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-fuchsia-400" />
+    <div dir={ar ? "rtl" : "ltr"} className="hv-page">
+      <div className="border-b px-6 pt-5" style={{ borderColor: "var(--hv-border)", background: "var(--hv-surface)" }}>
+        <h1 className="hv-page-title flex items-center gap-2">
+          <Sparkles className="w-5 h-5" style={{ color: "var(--hv-secondary)" }} />
           {ar ? "توليد صورة بالذكاء" : "AI Image Generator"}
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">{ar ? "اكتب الفكرة → تطلع صورة بهويتك جاهزة للمكتبة." : "Describe it → on-brand image in your library."}</p>
+        <p className="hv-page-sub">{ar ? "اكتب الفكرة → تطلع صورة بهويتك جاهزة للمكتبة." : "Describe it → on-brand image in your library."}</p>
         {/* Tabs */}
         <div className="flex gap-1 mt-3 -mb-px">
           <button onClick={() => setTab("custom")}
-            className={`px-4 py-2 text-sm font-bold border-b-2 transition flex items-center gap-1.5 ${tab === "custom" ? "border-fuchsia-500 text-white" : "border-transparent text-slate-400 hover:text-white"}`}>
+            className="px-4 py-2 text-sm font-bold border-b-2 transition flex items-center gap-1.5"
+            style={tab === "custom" ? { borderColor: "var(--hv-primary)", color: "var(--hv-primary)" } : { borderColor: "transparent", color: "var(--hv-text-soft)" }}>
             <Layers className="w-4 h-4" /> {ar ? "مخصص" : "Custom"}
           </button>
           <button onClick={() => setTab("bulk")}
-            className={`px-4 py-2 text-sm font-bold border-b-2 transition flex items-center gap-1.5 ${tab === "bulk" ? "border-fuchsia-500 text-white" : "border-transparent text-slate-400 hover:text-white"}`}>
+            className="px-4 py-2 text-sm font-bold border-b-2 transition flex items-center gap-1.5"
+            style={tab === "bulk" ? { borderColor: "var(--hv-primary)", color: "var(--hv-primary)" } : { borderColor: "transparent", color: "var(--hv-text-soft)" }}>
             <FileSpreadsheet className="w-4 h-4" /> {ar ? "عام (دفعة من إكسل)" : "Bulk (Excel)"}
           </button>
         </div>
@@ -373,7 +382,7 @@ export default function ImageGenPage({ language }) {
       {tab === "custom" ? (
         <CustomGen ar={ar} />
       ) : (
-        <React.Suspense fallback={<div className="p-10 text-center text-slate-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>}>
+        <React.Suspense fallback={<div className="p-10 text-center" style={{ color: "var(--hv-text-soft)" }}><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>}>
           <BulkImageGen ar={ar} />
         </React.Suspense>
       )}

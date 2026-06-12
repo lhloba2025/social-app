@@ -369,47 +369,47 @@ export default function BulkImageGen({ ar }) {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-2 text-[12px] text-slate-300 leading-relaxed">
-          <p className="font-bold text-white">{ar ? "كيف يعمل تبويب «عام»:" : "How bulk works:"}</p>
-          <p className="text-amber-300/90">{ar ? "⚠️ عمود «العنوان» إجباري لكل صف — هو مُعرّف الموضوع الذي تُجمع به الصور وتُجدول سوا." : "⚠️ The «Title» column is required per row — it's the topic id that groups & schedules images together."}</p>
+        <div className="hv-card rounded-xl p-4 space-y-2 text-[12px] leading-relaxed" style={{ color: "var(--hv-text-soft)" }}>
+          <p className="font-bold" style={{ color: "var(--hv-text)" }}>{ar ? "كيف يعمل تبويب «عام»:" : "How bulk works:"}</p>
+          <p style={{ color: "#b45309" }}>{ar ? "⚠️ عمود «العنوان» إجباري لكل صف — هو مُعرّف الموضوع الذي تُجمع به الصور وتُجدول سوا." : "⚠️ The «Title» column is required per row — it's the topic id that groups & schedules images together."}</p>
           <p>{ar ? "كل صف = منشور. تكتب عمود لكل منصة وفيه مقاسها (مثل ملفك):" : "One row = a post. A column per platform with its size:"}</p>
-          <p className="text-slate-400">{ar ? "انستقرام · فيسبوك · تيك توك · تويتر · لينكدإن · استوري." : "instagram · facebook · tiktok · twitter · linkedin · story."}</p>
-          <p className="text-emerald-300/90">{ar ? "عمود «استوري» = ينشر ستوري (انستقرام + فيسبوك). الصور بنفس المقاس تُولّد مرة وحدة وتُستخدم لكل منصاتها (أوفر)." : "Same-size images are generated once and reused."}</p>
+          <p style={{ color: "var(--hv-text-faint)" }}>{ar ? "انستقرام · فيسبوك · تيك توك · تويتر · لينكدإن · استوري." : "instagram · facebook · tiktok · twitter · linkedin · story."}</p>
+          <p style={{ color: "#059669" }}>{ar ? "عمود «استوري» = ينشر ستوري (انستقرام + فيسبوك). الصور بنفس المقاس تُولّد مرة وحدة وتُستخدم لكل منصاتها (أوفر)." : "Same-size images are generated once and reused."}</p>
         </div>
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
       </div>
 
-      <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-3">
-        <p className="text-[13px] font-bold text-white">{ar ? "الخطوات:" : "Steps:"}</p>
+      <div className="hv-card rounded-xl p-4 space-y-3">
+        <p className="text-[13px] font-bold" style={{ color: "var(--hv-text)" }}>{ar ? "الخطوات:" : "Steps:"}</p>
         <div className="flex flex-wrap gap-2">
-          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm transition">
+          <button onClick={downloadTemplate} className="hv-btn hv-btn-ghost px-4 py-2.5">
             <Download className="w-4 h-4" /> {ar ? "١) نزّل النموذج (إكسل)" : "1) Download template"}
           </button>
-          <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-700/50 hover:bg-indigo-700/70 text-white font-semibold text-sm transition cursor-pointer">
+          <label className="hv-btn hv-btn-primary px-4 py-2.5 cursor-pointer">
             <Upload className="w-4 h-4" /> {ar ? "٢) ارفع الملف المعبّأ" : "2) Upload filled file"}
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onUpload} />
           </label>
         </div>
       </div>
 
-      {error && <div className="bg-red-900/30 border border-red-500/40 rounded-lg px-3 py-2 text-[12px] text-red-200">{error}</div>}
+      {error && <div className="rounded-lg px-3 py-2 text-[12px] border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
 
       {rows.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-sm text-slate-300 font-semibold">
+            <p className="text-sm font-semibold" style={{ color: "var(--hv-text-soft)" }}>
               {ar ? `${rows.length} منشور · ${totalImages} صورة · ${totalTargets} وجهة نشر` : `${rows.length} posts · ${totalImages} images · ${totalTargets} targets`}
             </p>
             <div className="flex items-center gap-2">
               {failedCount > 0 && !generating && (
                 <button onClick={retryFailed} disabled={retrying}
-                  className="px-3 py-2.5 rounded-lg bg-amber-700/50 hover:bg-amber-600 text-amber-100 font-bold text-sm transition disabled:opacity-50 flex items-center gap-2">
+                  className="hv-btn px-3 py-2.5 disabled:opacity-50" style={{ background: "#fef3c7", color: "#b45309" }}>
                   {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   {ar ? `إعادة الفاشلة (${failedCount})` : `Retry failed (${failedCount})`}
                 </button>
               )}
               <button onClick={generateAll} disabled={generating || retrying}
-                className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold text-sm transition disabled:opacity-50 flex items-center gap-2">
+                className="hv-btn hv-btn-primary px-4 py-2.5 disabled:opacity-50">
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {generating ? (ar ? `جارٍ التوليد… (${doneCount}/${totalImages})` : `Generating… (${doneCount}/${totalImages})`) : (ar ? `ولّد الصور (${totalImages})` : `Generate (${totalImages})`)}
               </button>
@@ -420,37 +420,37 @@ export default function BulkImageGen({ ar }) {
             const group = jobs.map((job, j) => ({ job, j })).filter(({ job }) => job.aspect === aspect);
             return (
               <div key={aspect} className="space-y-2">
-                <p className="text-[12px] font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-1">
+                <p className="text-[12px] font-bold flex items-center gap-2 border-b pb-1" style={{ color: "var(--hv-text)", borderColor: "var(--hv-border)" }}>
                   <span>{ASPECT_LABEL[aspect] || aspect}</span>
-                  <span className="text-slate-500 font-normal">({group.length})</span>
+                  <span className="font-normal" style={{ color: "var(--hv-text-faint)" }}>({group.length})</span>
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {group.map(({ job, j }) => {
                     const r = results[j];
                     const uses = job.row.targets.filter((t) => t.aspect === job.aspect).map((t) => t.labelAr).join("، ");
                     return (
-                      <div key={j} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700">
-                        <div className="bg-slate-950 flex items-center justify-center relative w-full overflow-hidden" style={{ aspectRatio: job.aspect.replace(":", "/") }}>
+                      <div key={j} className="rounded-lg overflow-hidden border" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
+                        <div className="flex items-center justify-center relative w-full overflow-hidden" style={{ aspectRatio: job.aspect.replace(":", "/"), background: "#f1f0f8" }}>
                           {r?.status === "done" ? <img src={r.dataUrl} alt="" className="w-full h-full object-cover" />
-                            : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-                            : r?.status === "error" ? <AlertCircle className="w-6 h-6 text-red-400" />
-                            : <ImagePlus className="w-6 h-6 text-slate-700" />}
+                            : r?.status === "pending" ? <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--hv-primary)" }} />
+                            : r?.status === "error" ? <AlertCircle className="w-6 h-6" style={{ color: "#dc2626" }} />
+                            : <ImagePlus className="w-6 h-6" style={{ color: "var(--hv-text-faint)" }} />}
                           <span className="absolute top-1.5 end-1.5 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full" dir="ltr">{job.aspect}</span>
                         </div>
                         <div className="p-2">
-                          <p className="text-[11px] text-white truncate font-semibold">{job.row.hook || job.row.scene || `#${job.rowIndex + 1}`}</p>
-                          <p className="text-[9px] text-slate-400 truncate">{uses}</p>
-                          {r?.status === "error" && <p className="text-[9px] text-red-300 truncate">{r.error}</p>}
+                          <p className="text-[11px] truncate font-semibold" style={{ color: "var(--hv-text)" }}>{job.row.hook || job.row.scene || `#${job.rowIndex + 1}`}</p>
+                          <p className="text-[9px] truncate" style={{ color: "var(--hv-text-soft)" }}>{uses}</p>
+                          {r?.status === "error" && <p className="text-[9px] truncate" style={{ color: "#dc2626" }}>{r.error}</p>}
                           {r?.status === "done" && (
                             <div className="flex gap-1 mt-1.5">
-                              <button onClick={() => setPreview(r.dataUrl)} className="flex-1 text-[10px] py-1 rounded bg-slate-700 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-1"><Eye className="w-3 h-3" /> {ar ? "معاينة" : "View"}</button>
-                              {r.bgUrl && <button onClick={() => openEdit(j)} title={ar ? "تحرير" : "Edit"} className="px-2 py-1 rounded bg-slate-700 hover:bg-fuchsia-600 text-white inline-flex items-center justify-center text-[10px] font-bold">🎨</button>}
-                              <a href={r.dataUrl} download={`${(job.row.hook || "image").slice(0, 30)}_${job.aspect.replace(":", "x")}.png`} title={ar ? "تحميل للكمبيوتر" : "Download"} className="px-2 py-1 rounded bg-slate-700 hover:bg-emerald-600 text-white inline-flex items-center justify-center"><Download className="w-3 h-3" /></a>
-                              <button onClick={() => regenerateOne(j)} title={ar ? "إعادة التوليد" : "Regenerate"} className="px-2 py-1 rounded bg-slate-700 hover:bg-fuchsia-600 text-white inline-flex items-center justify-center"><RefreshCw className="w-3 h-3" /></button>
+                              <button onClick={() => setPreview(r.dataUrl)} className="hv-btn hv-btn-soft flex-1 text-[10px] py-1 gap-1"><Eye className="w-3 h-3" /> {ar ? "معاينة" : "View"}</button>
+                              {r.bgUrl && <button onClick={() => openEdit(j)} title={ar ? "تحرير" : "Edit"} className="hv-btn hv-btn-ghost px-2 py-1 text-[10px]">🎨</button>}
+                              <a href={r.dataUrl} download={`${(job.row.hook || "image").slice(0, 30)}_${job.aspect.replace(":", "x")}.png`} title={ar ? "تحميل للكمبيوتر" : "Download"} className="hv-btn hv-btn-ghost px-2 py-1"><Download className="w-3 h-3" /></a>
+                              <button onClick={() => regenerateOne(j)} title={ar ? "إعادة التوليد" : "Regenerate"} className="hv-btn hv-btn-ghost px-2 py-1"><RefreshCw className="w-3 h-3" /></button>
                             </div>
                           )}
                           {r?.status === "error" && (
-                            <button onClick={() => regenerateOne(j)} className="w-full mt-1.5 text-[10px] py-1 rounded bg-amber-700/50 hover:bg-amber-600 text-amber-100 font-bold inline-flex items-center justify-center gap-1"><RefreshCw className="w-3 h-3" /> {ar ? "إعادة المحاولة" : "Retry"}</button>
+                            <button onClick={() => regenerateOne(j)} className="hv-btn w-full mt-1.5 text-[10px] py-1 gap-1" style={{ background: "#fef3c7", color: "#b45309" }}><RefreshCw className="w-3 h-3" /> {ar ? "إعادة المحاولة" : "Retry"}</button>
                           )}
                         </div>
                       </div>
@@ -463,45 +463,47 @@ export default function BulkImageGen({ ar }) {
 
           {doneCount > 0 && !generating && (
             <div className="space-y-4">
-              <div className="bg-slate-900/40 border border-indigo-500/30 rounded-xl p-4 space-y-3">
-                <p className="text-[13px] font-bold text-white flex items-center gap-1.5">
-                  <CalendarClock className="w-4 h-4 text-indigo-300" />
+              <div className="hv-card rounded-xl p-4 space-y-3" style={{ borderColor: "rgba(79,70,229,0.3)" }}>
+                <p className="text-[13px] font-bold flex items-center gap-1.5" style={{ color: "var(--hv-text)" }}>
+                  <CalendarClock className="w-4 h-4" style={{ color: "var(--hv-primary)" }} />
                   {ar ? "جدولة الكل — كل صورة على منصتها ونوعها" : "Schedule all"}
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "تاريخ البداية" : "Start date"}</label>
+                    <label className="text-[11px] block mb-1 font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "تاريخ البداية" : "Start date"}</label>
                     <input type="date" value={schedStart} min={todayISO()} onChange={(e) => setSchedStart(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+                      className="hv-input w-full" />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "كم منشور في اليوم؟" : "Posts per day?"}</label>
+                    <label className="text-[11px] block mb-1 font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "كم منشور في اليوم؟" : "Posts per day?"}</label>
                     <input type="number" min="1" max="10" value={perDay} onChange={(e) => setPerDay(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500" />
+                      className="hv-input w-full" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[11px] text-slate-300 block mb-1 font-semibold">{ar ? "أوقات النشر في اليوم" : "Times per day"}</label>
-                  <div className="space-y-1.5 bg-slate-800/40 rounded-lg p-2">
+                  <label className="text-[11px] block mb-1 font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "أوقات النشر في اليوم" : "Times per day"}</label>
+                  <div className="space-y-1.5 rounded-lg p-2" style={{ background: "var(--hv-surface-2)" }}>
                     {times.map((t, k) => (
                       <div key={k} className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-200 font-semibold w-16 flex-shrink-0">{ar ? `منشور ${k + 1}` : `Post ${k + 1}`}</span>
+                        <span className="text-[11px] font-semibold w-16 flex-shrink-0" style={{ color: "var(--hv-text)" }}>{ar ? `منشور ${k + 1}` : `Post ${k + 1}`}</span>
                         <input type="time" value={t} dir="ltr"
                           onChange={(e) => setTimes((prev) => { const n = prev.slice(); n[k] = e.target.value; return n; })}
-                          className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[12px] text-white outline-none focus:border-indigo-500" />
+                          className="hv-input flex-1 px-2 py-1 text-[12px]" />
                       </div>
                     ))}
                   </div>
                 </div>
                 <button onClick={scheduleAll} disabled={scheduling || scheduledCount > 0}
-                  className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${scheduledCount > 0 ? "bg-emerald-600 text-white" : "bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white"} disabled:opacity-60`}>
+                  className={`hv-btn w-full py-3 disabled:opacity-60 ${scheduledCount > 0 ? "" : "hv-btn-primary"}`}
+                  style={scheduledCount > 0 ? { background: "#10b981", color: "#fff" } : undefined}>
                   {scheduling ? <Loader2 className="w-5 h-5 animate-spin" /> : scheduledCount > 0 ? <Check className="w-5 h-5" /> : <CalendarClock className="w-5 h-5" />}
                   {scheduledCount > 0 ? (ar ? `تمت جدولة ${scheduledCount} منشور` : `Scheduled ${scheduledCount}`) : (ar ? `جدولة الكل (${totalTargets})` : `Schedule all (${totalTargets})`)}
                 </button>
               </div>
 
               <button onClick={transferAll} disabled={transferring || savedCount > 0}
-                className={`w-full py-2.5 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 ${savedCount > 0 ? "bg-emerald-700 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-100"} disabled:opacity-60`}>
+                className={`hv-btn w-full py-2.5 disabled:opacity-60 ${savedCount > 0 ? "" : "hv-btn-ghost"}`}
+                style={savedCount > 0 ? { background: "#059669", color: "#fff" } : undefined}>
                 {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : savedCount > 0 ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
                 {savedCount > 0 ? (ar ? `تم ترحيل ${savedCount} للمكتبة` : `Transferred ${savedCount}`) : (ar ? `أو رحّلها للمكتبة فقط` : `Or just save to library`)}
               </button>
@@ -514,31 +516,31 @@ export default function BulkImageGen({ ar }) {
       {preview && (
         <div className="fixed inset-0 bg-black/85 z-[80] flex items-center justify-center p-4" onClick={() => setPreview("")}>
           <img src={preview} alt="" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-          <button onClick={() => setPreview("")} className="absolute top-4 end-4 text-white bg-slate-800/80 hover:bg-slate-700 rounded-full p-2"><X className="w-5 h-5" /></button>
+          <button onClick={() => setPreview("")} className="absolute top-4 end-4 text-white bg-black/60 hover:bg-black/80 rounded-full p-2"><X className="w-5 h-5" /></button>
         </div>
       )}
 
       {/* Per-image full editor — text, colors, logo & contact bar, all for THIS image only */}
       {editing != null && results[editing] && (
         <div className="fixed inset-0 bg-black/85 z-[80] flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div className="bg-slate-900 rounded-xl p-4 max-w-md w-full border border-slate-700 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3 sticky top-0 bg-slate-900 -mt-1 pt-1 pb-1 z-10">
-              <p className="text-sm font-bold text-fuchsia-300">🎨 {ar ? "تحرير هذه الصورة فقط" : "Edit this image only"}</p>
-              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+          <div className="rounded-xl p-4 max-w-md w-full border max-h-[92vh] overflow-y-auto" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 sticky top-0 -mt-1 pt-1 pb-1 z-10" style={{ background: "var(--hv-surface)" }}>
+              <p className="text-sm font-bold" style={{ color: "var(--hv-secondary-600, var(--hv-secondary))" }}>🎨 {ar ? "تحرير هذه الصورة فقط" : "Edit this image only"}</p>
+              <button onClick={() => setEditing(null)} style={{ color: "var(--hv-text-soft)" }}><X className="w-5 h-5" /></button>
             </div>
-            <img src={results[editing].dataUrl} alt="" className="w-full rounded-lg mb-3 max-h-[40vh] object-contain bg-slate-950" />
+            <img src={results[editing].dataUrl} alt="" className="w-full rounded-lg mb-3 max-h-[40vh] object-contain" style={{ background: "#f1f0f8" }} />
 
             {/* Text content */}
             <div className="space-y-2 mb-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "النص (الهوك)" : "Text"}</label>
+                <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "النص (الهوك)" : "Text"}</label>
                 <textarea value={editOv.hook} onChange={(e) => setOvField("hook", e.target.value)} rows={2} dir="rtl"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-indigo-500 leading-relaxed" />
+                  className="hv-input w-full px-2 py-1.5 text-[13px] leading-relaxed" />
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">{ar ? "الكلمات المميزة — افصلها بفاصلة" : "Highlight words (comma-separated)"}</label>
+                <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الكلمات المميزة — افصلها بفاصلة" : "Highlight words (comma-separated)"}</label>
                 <input value={editOv.highlight} onChange={(e) => setOvField("highlight", e.target.value)} dir="rtl" placeholder={ar ? "مثال: صالونك، الأفضل" : "e.g. salon, best"}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-indigo-500" />
+                  className="hv-input w-full px-2 py-1.5 text-[12px]" />
               </div>
             </div>
 
@@ -549,16 +551,16 @@ export default function BulkImageGen({ ar }) {
                 { k: "highlightColor", label: ar ? "لون الكلمة المميزة" : "Highlight color" },
               ].map((c) => (
                 <div key={c.k}>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">{c.label}</label>
-                  <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1">
+                  <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{c.label}</label>
+                  <div className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 border" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
                     <input type="color" value={editOv[c.k]} onChange={(e) => setOvField(c.k, e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" />
-                    <input type="text" value={editOv[c.k]} onChange={(e) => setOvField(c.k, e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] text-white outline-none w-0" />
+                    <input type="text" value={editOv[c.k]} onChange={(e) => setOvField(c.k, e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] outline-none w-0" style={{ color: "var(--hv-text)" }} />
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {SWATCHES.map((s) => (
                       <button key={s} type="button" onClick={() => setOvField(c.k, s)} title={s}
-                        className={`w-4 h-4 rounded-full border ${String(editOv[c.k]).toLowerCase() === s.toLowerCase() ? "border-white ring-1 ring-white/70" : "border-slate-500"}`}
-                        style={{ backgroundColor: s }} />
+                        className="w-4 h-4 rounded-full border"
+                        style={{ backgroundColor: s, borderColor: String(editOv[c.k]).toLowerCase() === s.toLowerCase() ? "var(--hv-primary)" : "var(--hv-border)", boxShadow: String(editOv[c.k]).toLowerCase() === s.toLowerCase() ? "0 0 0 1px rgba(79,70,229,.4)" : "none" }} />
                     ))}
                   </div>
                 </div>
@@ -566,23 +568,23 @@ export default function BulkImageGen({ ar }) {
             </div>
 
             {/* Logo & contact toggles */}
-            <div className="space-y-2 mb-3 border-t border-slate-800 pt-3">
+            <div className="space-y-2 mb-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
               {logo && (
                 <>
-                  <label className="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
-                    <input type="checkbox" checked={editOv.showLogo} onChange={(e) => setOvField("showLogo", e.target.checked)} />
+                  <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--hv-text)" }}>
+                    <input type="checkbox" checked={editOv.showLogo} onChange={(e) => setOvField("showLogo", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
                     {ar ? "إظهار الشعار في هذه الصورة" : "Show logo on this image"}
                   </label>
                   {editOv.showLogo && (
                     <div className="ms-5 space-y-1.5">
-                      <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
-                        <input type="checkbox" checked={editOv.changeLogoColor} onChange={(e) => setOvField("changeLogoColor", e.target.checked)} />
+                      <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                        <input type="checkbox" checked={editOv.changeLogoColor} onChange={(e) => setOvField("changeLogoColor", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
                         {ar ? "غيّر لون الشعار لهذه الصورة" : "Recolor logo for this image"}
                       </label>
                       {editOv.changeLogoColor && (
-                        <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1 w-40">
+                        <div className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 w-40 border" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
                           <input type="color" value={editOv.logoColor} onChange={(e) => setOvField("logoColor", e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" />
-                          <input type="text" value={editOv.logoColor} onChange={(e) => setOvField("logoColor", e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] text-white outline-none w-0" />
+                          <input type="text" value={editOv.logoColor} onChange={(e) => setOvField("logoColor", e.target.value)} dir="ltr" className="flex-1 bg-transparent text-[11px] outline-none w-0" style={{ color: "var(--hv-text)" }} />
                         </div>
                       )}
                     </div>
@@ -590,16 +592,16 @@ export default function BulkImageGen({ ar }) {
                 </>
               )}
               {kit.showContact && (
-                <label className="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
-                  <input type="checkbox" checked={editOv.showContact} onChange={(e) => setOvField("showContact", e.target.checked)} />
+                <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--hv-text)" }}>
+                  <input type="checkbox" checked={editOv.showContact} onChange={(e) => setOvField("showContact", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
                   {ar ? "إظهار شريط التواصل في هذه الصورة" : "Show contact bar on this image"}
                 </label>
               )}
             </div>
 
             {/* Position & size sliders */}
-            <div className="space-y-2 border-t border-slate-800 pt-3">
-              <p className="text-[11px] font-semibold text-slate-400">{ar ? "المكان والحجم" : "Position & size"}</p>
+            <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "المكان والحجم" : "Position & size"}</p>
               {[
                 { k: "hookY", label: ar ? "النص ↕" : "Text ↕", min: 0.02, max: 0.92, step: 0.01 },
                 { k: "hookX", label: ar ? "النص ↔" : "Text ↔", min: 0.1, max: 0.9, step: 0.01 },
@@ -615,36 +617,41 @@ export default function BulkImageGen({ ar }) {
                 ] : []),
               ].map((s) => (
                 <div key={s.k} className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{s.label}</span>
-                  <input type="range" min={s.min} max={s.max} step={s.step} value={editLayout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setEditField(s.k, e.target.value)} className="flex-1 accent-fuchsia-500" />
+                  <span className="text-[10px] w-14 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{s.label}</span>
+                  <input type="range" min={s.min} max={s.max} step={s.step} value={editLayout[s.k] ?? DEFAULT_LAYOUT[s.k]} onChange={(e) => setEditField(s.k, e.target.value)} className="flex-1" style={{ accentColor: "var(--hv-primary)" }} />
                 </div>
               ))}
 
               {/* Text alignment — global default (clears per-line overrides). */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-14 flex-shrink-0">{ar ? "محاذاة الكل" : "Align all"}</span>
+                <span className="text-[10px] w-14 flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>{ar ? "محاذاة الكل" : "Align all"}</span>
                 <div className="flex-1 grid grid-cols-3 gap-1">
-                  {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => (
+                  {[{ v: "right", ar: "يمين", en: "Right" }, { v: "center", ar: "توسيط", en: "Center" }, { v: "left", ar: "يسار", en: "Left" }].map((o) => {
+                    const active = (editLayout.hookAlign || "center") === o.v && !(editLayout.hookAligns || []).length;
+                    return (
                     <button key={o.v} onClick={() => setEditLayout((p) => ({ ...p, hookAlign: o.v, hookAligns: [] }))}
-                      className={`py-1 rounded text-[10px] font-bold transition ${(editLayout.hookAlign || "center") === o.v && !(editLayout.hookAligns || []).length ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{ar ? o.ar : o.en}</button>
-                  ))}
+                      className="py-1 rounded text-[10px] font-bold transition border"
+                      style={active ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>{ar ? o.ar : o.en}</button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Per-line alignment — when this image's hook has >1 line. */}
               {(editOv.hook || "").split(/\r?\n/).length > 1 && (
-                <div className="bg-slate-800/30 rounded-lg p-2 space-y-1">
-                  <span className="text-[10px] text-slate-400">{ar ? "محاذاة كل سطر على حدة:" : "Per-line align:"}</span>
+                <div className="rounded-lg p-2 space-y-1" style={{ background: "var(--hv-surface-2)" }}>
+                  <span className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "محاذاة كل سطر على حدة:" : "Per-line align:"}</span>
                   {(editOv.hook || "").split(/\r?\n/).map((seg, i) => {
                     const cur = (editLayout.hookAligns || [])[i] || editLayout.hookAlign || "center";
                     return (
                       <div key={i} className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-slate-400 flex-1 truncate text-right" dir="rtl" title={seg}>{seg.trim() || `${ar ? "سطر" : "line"} ${i + 1}`}</span>
+                        <span className="text-[9px] flex-1 truncate text-right" style={{ color: "var(--hv-text-soft)" }} dir="rtl" title={seg}>{seg.trim() || `${ar ? "سطر" : "line"} ${i + 1}`}</span>
                         <div className="flex gap-0.5 flex-shrink-0">
                           {[{ v: "right", t: "يمين" }, { v: "center", t: "توسيط" }, { v: "left", t: "يسار" }].map((o) => (
                             <button key={o.v} title={o.t}
                               onClick={() => setEditLayout((p) => { const arr = [...(p.hookAligns || [])]; arr[i] = o.v; return { ...p, hookAligns: arr }; })}
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${cur === o.v ? "bg-fuchsia-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>{o.t}</button>
+                              className="px-1.5 py-0.5 rounded text-[9px] font-bold transition border"
+                              style={cur === o.v ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>{o.t}</button>
                           ))}
                         </div>
                       </div>
@@ -655,8 +662,8 @@ export default function BulkImageGen({ ar }) {
 
               {/* Text background plate */}
               <div className="flex items-center gap-2 flex-wrap">
-                <label className="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
-                  <input type="checkbox" checked={editLayout.hookBg !== false} onChange={(e) => setEditLayout((p) => ({ ...p, hookBg: e.target.checked }))} />
+                <label className="flex items-center gap-1.5 text-[10px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+                  <input type="checkbox" checked={editLayout.hookBg !== false} onChange={(e) => setEditLayout((p) => ({ ...p, hookBg: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
                   {ar ? "خلفية للنص" : "Text bg"}
                 </label>
                 {editLayout.hookBg !== false && (
@@ -664,15 +671,15 @@ export default function BulkImageGen({ ar }) {
                     <input type="color" value={editLayout.hookBgColor || "#FFFFFF"} onChange={(e) => setEditLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" />
                     {["#FFFFFF", "#000000", "#1d2a6b", "#09007C", "#10203a", "#F7E8F4"].map((s) => (
                       <button key={s} type="button" onClick={() => setEditLayout((p) => ({ ...p, hookBgColor: s }))}
-                        className={`w-5 h-5 rounded-full border ${(editLayout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "border-white ring-2 ring-white/70" : "border-slate-500"}`} style={{ backgroundColor: s }} />
+                        className="w-5 h-5 rounded-full border" style={{ backgroundColor: s, borderColor: (editLayout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "var(--hv-primary)" : "var(--hv-border)", boxShadow: (editLayout.hookBgColor || "#FFFFFF").toLowerCase() === s.toLowerCase() ? "0 0 0 2px rgba(79,70,229,.35)" : "none" }} />
                     ))}
                   </div>
                 )}
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button onClick={() => { setEditLayout(DEFAULT_LAYOUT); setEditOv(defaultOv(jobsRef.current[editing]?.row)); }} className="text-[11px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">↺ {ar ? "إعادة" : "Reset"}</button>
-                <button onClick={() => setEditing(null)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm">{ar ? "تم" : "Done"}</button>
+                <button onClick={() => { setEditLayout(DEFAULT_LAYOUT); setEditOv(defaultOv(jobsRef.current[editing]?.row)); }} className="hv-btn hv-btn-ghost text-[11px] px-3 py-2">↺ {ar ? "إعادة" : "Reset"}</button>
+                <button onClick={() => setEditing(null)} className="hv-btn hv-btn-primary flex-1 py-2 text-sm">{ar ? "تم" : "Done"}</button>
               </div>
             </div>
           </div>

@@ -54,6 +54,16 @@ const TABS = [
   { id: "offers", labelAr: "💰 عروض وأسعار", labelEn: "💰 Offers" },
 ];
 
+// The 18 tools, organised into logical clusters so the panel reads as tidy
+// groups instead of one crowded row.
+const TAB_GROUPS = [
+  { labelAr: "إضافة عناصر", labelEn: "Elements", ids: ["text", "shapes", "icons", "symbols", "deco", "frames", "draw"] },
+  { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "logo", "bg"] },
+  { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "social", "colors"] },
+  { labelAr: "ذكاء وقوالب",  labelEn: "Smart",    ids: ["templates", "ai", "offers"] },
+  { labelAr: "ترتيب",        labelEn: "Arrange",  ids: ["layers", "effects", "size"] },
+];
+
 function genId() { return Math.random().toString(36).slice(2, 9); }
 
 async function recolorToDataUrl(url, hexColor) {
@@ -1444,33 +1454,33 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   }
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="h-full flex flex-col bg-slate-900 text-white overflow-hidden">
+    <div dir={isRtl ? "rtl" : "ltr"} className="h-full flex flex-col bg-white overflow-hidden" style={{ color: "var(--hv-text)" }}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-slate-800 border-b border-slate-700 flex-shrink-0">
-        <button onClick={() => navigate("/")} title={isRtl ? "الرئيسية" : "Home"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-700 transition text-slate-300 hover:text-white">
+      <div className="flex items-center gap-3 px-4 py-2 bg-white border-b flex-shrink-0" style={{ borderColor: "var(--hv-border)" }}>
+        <button onClick={() => navigate("/")} title={isRtl ? "الرئيسية" : "Home"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-100 transition" style={{ color: "var(--hv-text-soft)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
           <span className="text-xs font-semibold hidden sm:block">{isRtl ? "الرئيسية" : "Home"}</span>
         </button>
-        <button onClick={() => navigate("/DesignLibraryPage")} title={isRtl ? "مكتبة التصاميم" : "Design Library"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-700 transition text-slate-300 hover:text-white">
+        <button onClick={() => navigate("/DesignLibraryPage")} title={isRtl ? "مكتبة التصاميم" : "Design Library"} className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-100 transition" style={{ color: "var(--hv-text-soft)" }}>
           <LayoutGrid className="w-4 h-4" />
           <span className="text-xs font-semibold hidden sm:block">{isRtl ? "المكتبة" : "Library"}</span>
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ background: "var(--hv-grad)" }}>
             <Sparkles className="w-4 h-4" />
           </div>
-          <span className="font-bold text-sm hidden sm:block">{isRtl ? "منشئ التصاميم" : "Design Studio"}</span>
+          <span className="font-bold text-sm hidden sm:block" style={{ color: "var(--hv-text)" }}>{isRtl ? "منشئ التصاميم" : "Design Studio"}</span>
         </div>
 
         <button
           onClick={() => setShowSizeSelector(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs transition"
+          className="flex items-center gap-1 px-2 py-1 rounded hv-chip text-xs transition"
         >
           {isRtl ? size.nameAr : size.nameEn}
-          <span className="text-slate-400">{size.width}×{size.height}</span>
+          <span style={{ color: "var(--hv-text-faint)" }}>{size.width}×{size.height}</span>
           <ChevronDown className="w-3 h-3" />
         </button>
 
@@ -1479,9 +1489,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         {/* Auto-save status */}
         <div className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${
           autoSaveStatus === "saving" ? "bg-amber-500/10 text-amber-400" :
-          autoSaveStatus === "saved" ? "bg-emerald-500/10 text-emerald-400" :
-          "text-slate-500"
-        }`} title={lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : ""}>
+          autoSaveStatus === "saved" ? "bg-emerald-500/10 text-emerald-600" :
+          ""
+        }`} style={autoSaveStatus === "idle" ? { color: "var(--hv-text-faint)" } : undefined} title={lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : ""}>
           {autoSaveStatus === "saving" ? (
             <>
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -1499,7 +1509,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         <button
           onClick={() => setShowGrid(g => !g)}
           title={isRtl ? "شبكة" : "Grid"}
-          className={`p-1.5 rounded transition ${showGrid ? "bg-indigo-600 text-white" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+          className="p-1.5 rounded transition hover:bg-slate-100"
+          style={showGrid ? { background: "var(--hv-primary)", color: "#fff" } : { color: "var(--hv-text-soft)" }}
         >
           <Grid3x3 className="w-4 h-4" />
         </button>
@@ -1507,7 +1518,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         <button
           onClick={() => setShowRulers(r => !r)}
           title={isRtl ? "مسطرة" : "Rulers"}
-          className={`p-1.5 rounded transition ${showRulers ? "bg-indigo-600 text-white" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+          className="p-1.5 rounded transition hover:bg-slate-100"
+          style={showRulers ? { background: "var(--hv-primary)", color: "#fff" } : { color: "var(--hv-text-soft)" }}
         >
           <Ruler className="w-4 h-4" />
         </button>
@@ -1517,7 +1529,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           onClick={handleUndo}
           disabled={historyIndexRef.current <= 0}
           title={isRtl ? "تراجع (Ctrl+Z)" : "Undo (Ctrl+Z)"}
-          className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition disabled:opacity-30"
+          className="p-1.5 rounded hover:bg-slate-100 transition disabled:opacity-30"
+          style={{ color: "var(--hv-text-soft)" }}
         >
           <Undo2 className="w-4 h-4" />
         </button>
@@ -1525,14 +1538,15 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           onClick={handleRedo}
           disabled={historyIndexRef.current >= historyRef.current.length - 1}
           title={isRtl ? "إعادة (Ctrl+Y)" : "Redo (Ctrl+Y)"}
-          className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition disabled:opacity-30"
+          className="p-1.5 rounded hover:bg-slate-100 transition disabled:opacity-30"
+          style={{ color: "var(--hv-text-soft)" }}
         >
           <Redo2 className="w-4 h-4" />
         </button>
 
         <button
           onClick={() => setShowCopyModal(true)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs transition"
+          className="hv-btn hv-btn-soft flex items-center gap-1 px-3 py-1.5 text-xs"
         >
           <Copy className="w-3.5 h-3.5" />
           <span className="hidden sm:block">{isRtl ? "نسخ لمقاس" : "Copy to Size"}</span>
@@ -1540,7 +1554,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
         <button
           onClick={() => { localStorage.removeItem(DRAFT_KEY); setTextLayers([]); setShapes([]); setImages([]); setLogos([]); setGroups([]); setBg({ mode: "color", color: "#1e293b" }); onBack(); }}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs transition"
+          className="hv-btn hv-btn-soft flex items-center gap-1 px-3 py-1.5 text-xs"
         >
           <Plus className="w-3.5 h-3.5" />
           <span className="hidden sm:block">{isRtl ? "جديد" : "New"}</span>
@@ -1558,7 +1572,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold transition disabled:opacity-50"
+          className="hv-btn hv-btn-primary flex items-center gap-1 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
         >
           <Download className="w-3.5 h-3.5" />
           {exporting ? (isRtl ? "جاري..." : "Exporting...") : "PNG"}
@@ -1567,19 +1581,32 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel */}
-        <div className="w-56 flex-shrink-0 bg-slate-800 border-e border-slate-700 flex flex-col overflow-hidden">
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-0.5 p-2 border-b border-slate-700">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-2 py-1 rounded text-xs font-semibold transition ${
-                  activeTab === tab.id ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-700"
-                }`}
-              >
-                {isRtl ? tab.labelAr : tab.labelEn}
-              </button>
+        <div className="w-60 flex-shrink-0 bg-white border-e flex flex-col overflow-hidden" style={{ borderColor: "var(--hv-border)" }}>
+          {/* Tabs — grouped into logical clusters */}
+          <div className="p-2.5 border-b space-y-2.5 overflow-y-auto" style={{ borderColor: "var(--hv-border)", maxHeight: "42%" }}>
+            {TAB_GROUPS.map((group) => (
+              <div key={group.labelEn}>
+                <p className="hv-overline mb-1.5 px-0.5">{isRtl ? group.labelAr : group.labelEn}</p>
+                <div className="flex flex-wrap gap-1">
+                  {group.ids.map((id) => {
+                    const tab = TABS.find((t) => t.id === id);
+                    if (!tab) return null;
+                    const active = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
+                        style={active
+                          ? { background: "var(--hv-grad)", color: "#fff" }
+                          : { background: "var(--hv-surface-2)", color: "var(--hv-text-soft)" }}
+                      >
+                        {isRtl ? tab.labelAr : tab.labelEn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
 
@@ -1780,7 +1807,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                 onReorderLogo={reorderLogos}
                 language={language}
               />
-              <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--hv-border)" }}>
                 <AlignmentTools
                   selectedElements={getMultiSelectedElements()}
                   onAlign={handleAlignElement}
@@ -1801,17 +1828,20 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             </div>
             <div style={{ display: activeTab === "size" ? "block" : "none" }}>
               <div className="space-y-2">
-                <p className="text-slate-400 text-xs">{isRtl ? "المقاس الحالي" : "Current Size"}: {size.width}×{size.height}</p>
-                <p className="text-indigo-400 text-xs">✨ {isRtl ? "Magic Resize: يضبط حجم الخطوط تلقائياً" : "Magic Resize: auto-scales fonts"}</p>
+                <p className="text-xs" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "المقاس الحالي" : "Current Size"}: {size.width}×{size.height}</p>
+                <p className="text-xs" style={{ color: "var(--hv-primary)" }}>✨ {isRtl ? "Magic Resize: يضبط حجم الخطوط تلقائياً" : "Magic Resize: auto-scales fonts"}</p>
                 <div className="space-y-1 max-h-96 overflow-y-auto">
                   {SIZES.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => { handleMagicResize(s); }}
-                      className={`w-full text-start px-3 py-2 rounded text-xs transition ${s.id === size.id ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-300"}`}
+                      className="w-full text-start px-3 py-2 rounded text-xs transition hover:opacity-90"
+                      style={s.id === size.id
+                        ? { background: "var(--hv-primary)", color: "#fff" }
+                        : { background: "var(--hv-surface-2)", color: "var(--hv-text-soft)" }}
                     >
                       <span className="font-semibold">{isRtl ? s.nameAr : s.nameEn}</span>
-                      <span className="text-slate-400 ms-2">{s.width}×{s.height}</span>
+                      <span className="ms-2" style={s.id === size.id ? { color: "rgba(255,255,255,0.7)" } : { color: "var(--hv-text-faint)" }}>{s.width}×{s.height}</span>
                     </button>
                   ))}
                 </div>
@@ -1821,13 +1851,13 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         </div>
 
         {/* Canvas area */}
-        <div className="flex-1 bg-slate-950 overflow-auto flex items-center justify-center p-4 relative">
+        <div className="flex-1 bg-[#ece9f7] overflow-auto flex items-center justify-center p-4 relative">
           {/* Saving overlay — hides visual glitches from thumbnail capture */}
           {saving && (
-            <div className="absolute inset-0 z-50 bg-slate-950 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ background: "rgba(236,233,247,0.9)" }}>
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                <span className="text-slate-300 text-sm">{isRtl ? "جاري الحفظ..." : "Saving..."}</span>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--hv-primary)" }} />
+                <span className="text-sm" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "جاري الحفظ..." : "Saving..."}</span>
               </div>
             </div>
           )}
@@ -1903,19 +1933,20 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       </div>
 
       {/* ─── شريط الصفحات (Multi-Page Strip) ─────────────────────────────── */}
-      <div className="flex-shrink-0 bg-slate-800 border-t border-slate-700 px-4 py-2 flex items-center gap-2 overflow-x-auto">
-        <span className="text-slate-400 text-xs font-semibold flex-shrink-0">
+      <div className="flex-shrink-0 bg-white border-t px-4 py-2 flex items-center gap-2 overflow-x-auto" style={{ borderColor: "var(--hv-border)" }}>
+        <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--hv-text-soft)" }}>
           {isRtl ? "الصفحات" : "Pages"}
         </span>
         {Array.from({ length: pagesCount }).map((_, i) => (
           <div key={i} className="relative flex-shrink-0 group">
             <button
               onClick={() => switchToPage(i)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition ${
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition"
+              style={
                 i === currentPageIdx
-                  ? "border-indigo-500 bg-indigo-900/60 text-indigo-300"
-                  : "border-slate-600 bg-slate-700 text-slate-400 hover:border-slate-500 hover:text-white"
-              }`}
+                  ? { borderColor: "var(--hv-primary)", background: "#eef0ff", color: "var(--hv-primary)" }
+                  : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)", color: "var(--hv-text-soft)" }
+              }
             >
               {i + 1}
             </button>
@@ -1930,7 +1961,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             <button
               onClick={(e) => { e.stopPropagation(); duplicatePage(i); }}
               title={isRtl ? "تكرار الصفحة" : "Duplicate page"}
-              className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-500 hover:bg-slate-400 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
+              className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-400 hover:bg-slate-500 rounded-full text-white text-xs hidden group-hover:flex items-center justify-center leading-none"
             >
               ⧉
             </button>
@@ -1948,18 +1979,19 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         <button
           onClick={addPage}
           title={isRtl ? "إضافة صفحة جديدة" : "Add page"}
-          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 text-lg flex items-center justify-center transition"
+          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-500 text-lg flex items-center justify-center transition"
+          style={{ color: "var(--hv-text-soft)" }}
         >
           +
         </button>
         <button
           onClick={copyCurrentPageAsNew}
           title={isRtl ? "نسخ الصفحة الحالية كصفحة جديدة" : "Copy current page as new page"}
-          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-indigo-700 hover:border-indigo-500 text-indigo-500 hover:text-indigo-300 text-sm flex items-center justify-center transition"
+          className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed border-indigo-300 hover:border-indigo-500 text-indigo-500 hover:text-indigo-600 text-sm flex items-center justify-center transition"
         >
           📋+
         </button>
-        <span className="text-slate-500 text-xs ms-2">
+        <span className="text-xs ms-2" style={{ color: "var(--hv-text-faint)" }}>
           {currentPageIdx + 1} / {pagesCount}
         </span>
       </div>
@@ -1967,20 +1999,20 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       {/* Save modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-slate-800 rounded-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">{isRtl ? "حفظ التصميم" : "Save Design"}</h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowSaveModal(false)}>
+          <div className="hv-card rounded-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-4" style={{ color: "var(--hv-text)" }}>{isRtl ? "حفظ التصميم" : "Save Design"}</h3>
             <input
               type="text"
               value={designName}
               onChange={(e) => setDesignName(e.target.value)}
               placeholder={isRtl ? "اسم التصميم..." : "Design name..."}
-              className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-white mb-4 outline-none focus:border-indigo-500"
+              className="hv-input w-full px-3 py-2 mb-4"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
             <div className="flex gap-2">
-              <button onClick={() => setShowSaveModal(false)} className="flex-1 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm transition">
+              <button onClick={() => setShowSaveModal(false)} className="hv-btn hv-btn-soft flex-1 py-2 text-sm">
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
               <button onClick={handleSaveClick} disabled={saving} className="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
@@ -1994,16 +2026,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       {/* Overwrite confirm modal */}
       {showOverwriteConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowOverwriteConfirm(false)}>
-          <div className="bg-slate-800 rounded-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-2">{isRtl ? "تأكيد الاستبدال" : "Confirm Overwrite"}</h3>
-            <p className="text-slate-400 text-sm mb-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowOverwriteConfirm(false)}>
+          <div className="hv-card rounded-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-2" style={{ color: "var(--hv-text)" }}>{isRtl ? "تأكيد الاستبدال" : "Confirm Overwrite"}</h3>
+            <p className="text-sm mb-5" style={{ color: "var(--hv-text-soft)" }}>
               {isRtl
                 ? `سيتم استبدال التصميم "${loadedDesign?.name}" بالتصميم الحالي. هل أنت متأكد؟`
                 : `This will overwrite "${loadedDesign?.name}". Are you sure?`}
             </p>
             <div className="flex gap-2">
-              <button onClick={() => setShowOverwriteConfirm(false)} className="flex-1 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm transition">
+              <button onClick={() => setShowOverwriteConfirm(false)} className="hv-btn hv-btn-soft flex-1 py-2 text-sm">
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
               <button onClick={() => handleSave("update")} disabled={saving} className="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
@@ -2034,8 +2066,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             top: Math.min(contextMenu.y, window.innerHeight - 280),
             left: Math.min(contextMenu.x, window.innerWidth - 200),
             zIndex: 9999,
+            borderColor: "var(--hv-border)",
           }}
-          className="bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 min-w-[180px]"
+          className="bg-white border rounded-lg shadow-2xl py-1 min-w-[180px]"
         >
           {[
             { id: "duplicate", label: isRtl ? "تكرار" : "Duplicate", hint: "Ctrl+D" },
@@ -2049,15 +2082,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             { id: "_sep2" },
             { id: "delete", label: isRtl ? "🗑️ حذف" : "🗑️ Delete", hint: "Del", danger: true },
           ].map((item) => item.id.startsWith("_sep") ? (
-            <div key={item.id} className="my-1 border-t border-slate-700" />
+            <div key={item.id} className="my-1 border-t" style={{ borderColor: "var(--hv-border)" }} />
           ) : (
             <button
               key={item.id}
               onClick={() => ctxAction(item.id)}
-              className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs transition ${item.danger ? "text-red-400 hover:bg-red-500/10" : "text-slate-200 hover:bg-slate-700"}`}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs transition ${item.danger ? "text-red-500 hover:bg-red-50" : "hover:bg-slate-100"}`}
+              style={item.danger ? undefined : { color: "var(--hv-text)" }}
             >
               <span>{item.label}</span>
-              {item.hint && <span className="text-[10px] text-slate-500">{item.hint}</span>}
+              {item.hint && <span className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{item.hint}</span>}
             </button>
           ))}
         </div>
@@ -2065,16 +2099,16 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       {/* Pro Export modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowExportModal(false)}>
-          <div className="bg-slate-800 rounded-2xl p-6 w-[480px] max-w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowExportModal(false)}>
+          <div className="hv-card rounded-2xl p-6 w-[480px] max-w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: "var(--hv-text)" }}>
               <Download className="w-5 h-5" />
               {isRtl ? "تصدير احترافي" : "Pro Export"}
             </h3>
 
             {/* Format */}
             <div className="mb-4">
-              <label className="text-xs text-slate-400 mb-2 block">{isRtl ? "صيغة الملف" : "Format"}</label>
+              <label className="text-xs mb-2 block" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "صيغة الملف" : "Format"}</label>
               <div className="grid grid-cols-4 gap-2">
                 {[
                   { id: "png",  label: "PNG",  hint: isRtl ? "شفاف" : "Transparent" },
@@ -2085,10 +2119,13 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                   <button
                     key={f.id}
                     onClick={() => setExportFormat(f.id)}
-                    className={`px-2 py-3 rounded-lg border text-center transition ${exportFormat === f.id ? "bg-indigo-600 border-indigo-500 text-white" : "bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-500"}`}
+                    className="px-2 py-3 rounded-lg border text-center transition"
+                    style={exportFormat === f.id
+                      ? { background: "var(--hv-primary)", borderColor: "var(--hv-primary)", color: "#fff" }
+                      : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}
                   >
                     <div className="font-bold text-sm">{f.label}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{f.hint}</div>
+                    <div className="text-[10px] mt-0.5" style={{ color: exportFormat === f.id ? "rgba(255,255,255,0.75)" : "var(--hv-text-faint)" }}>{f.hint}</div>
                   </button>
                 ))}
               </div>
@@ -2096,7 +2133,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
             {/* Scale multiplier */}
             <div className="mb-4">
-              <label className="text-xs text-slate-400 mb-2 block">
+              <label className="text-xs mb-2 block" style={{ color: "var(--hv-text-soft)" }}>
                 {isRtl ? "حجم التصدير" : "Export Size"} — {Math.round(size.width * exportScaleMul)}×{Math.round(size.height * exportScaleMul)} px
               </label>
               <div className="grid grid-cols-4 gap-2">
@@ -2109,7 +2146,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
                   <button
                     key={s.v}
                     onClick={() => setExportScaleMul(s.v)}
-                    className={`py-2 rounded-lg text-xs font-semibold transition ${exportScaleMul === s.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                    className="py-2 rounded-lg text-xs font-semibold transition hover:opacity-90"
+                    style={exportScaleMul === s.v
+                      ? { background: "var(--hv-primary)", color: "#fff" }
+                      : { background: "var(--hv-surface-2)", color: "var(--hv-text-soft)" }}
                   >
                     {s.label}
                   </button>
@@ -2120,7 +2160,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             {/* Quality slider (JPG / WebP only) */}
             {(exportFormat === "jpeg" || exportFormat === "webp") && (
               <div className="mb-4">
-                <label className="text-xs text-slate-400 mb-2 block">
+                <label className="text-xs mb-2 block" style={{ color: "var(--hv-text-soft)" }}>
                   {isRtl ? "الجودة" : "Quality"}: {Math.round(exportQuality * 100)}%
                 </label>
                 <input
@@ -2136,7 +2176,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             {(exportFormat === "png" || exportFormat === "webp" || exportFormat === "svg") && (
               <label className="flex items-center gap-2 mb-4 cursor-pointer text-sm">
                 <input type="checkbox" checked={exportTransparent} onChange={(e) => setExportTransparent(e.target.checked)} className="rounded" />
-                <span className="text-slate-300">{isRtl ? "خلفية شفافة" : "Transparent background"}</span>
+                <span style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "خلفية شفافة" : "Transparent background"}</span>
               </label>
             )}
 
@@ -2144,18 +2184,18 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             {pagesCount > 1 && (
               <label className="flex items-center gap-2 mb-4 cursor-pointer text-sm">
                 <input type="checkbox" checked={exportAllPages} onChange={(e) => setExportAllPages(e.target.checked)} className="rounded" />
-                <span className="text-slate-300">
+                <span style={{ color: "var(--hv-text-soft)" }}>
                   {isRtl ? `تصدير كل الصفحات (${pagesCount})` : `Export all pages (${pagesCount})`}
                 </span>
               </label>
             )}
 
             {/* Buttons */}
-            <div className="flex gap-2 pt-2 border-t border-slate-700">
-              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm transition">
+            <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--hv-border)" }}>
+              <button onClick={() => setShowExportModal(false)} className="hv-btn hv-btn-soft flex-1 py-2 text-sm">
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
-              <button onClick={runExport} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition flex items-center justify-center gap-2">
+              <button onClick={runExport} className="hv-btn hv-btn-primary flex-1 py-2 text-sm font-semibold flex items-center justify-center gap-2">
                 <Download className="w-4 h-4" />
                 {isRtl ? "تصدير" : "Export"}
               </button>
@@ -2166,18 +2206,19 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
 
       {/* Copy to size modal */}
       {showCopyModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowCopyModal(false)}>
-          <div className="bg-slate-800 rounded-2xl p-6 w-96 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">{isRtl ? "نسخ لمقاس آخر" : "Copy to Another Size"}</h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowCopyModal(false)}>
+          <div className="hv-card rounded-2xl p-6 w-96 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-4" style={{ color: "var(--hv-text)" }}>{isRtl ? "نسخ لمقاس آخر" : "Copy to Another Size"}</h3>
             <div className="space-y-2">
               {SIZES.filter(s => s.id !== size.id && !s.isCustom).map((s) => (
                 <button
                   key={s.id}
                   onClick={() => handleCopyToSize(s)}
-                  className="w-full text-start px-3 py-2 rounded-lg bg-slate-700 hover:bg-indigo-600 transition text-sm"
+                  className="w-full text-start px-3 py-2 rounded-lg transition text-sm hover:bg-slate-100"
+                  style={{ background: "var(--hv-surface-2)", color: "var(--hv-text)" }}
                 >
                   <span className="font-semibold">{isRtl ? s.nameAr : s.nameEn}</span>
-                  <span className="text-slate-400 ms-2 text-xs">{s.width}×{s.height}</span>
+                  <span className="ms-2 text-xs" style={{ color: "var(--hv-text-faint)" }}>{s.width}×{s.height}</span>
                 </button>
               ))}
             </div>

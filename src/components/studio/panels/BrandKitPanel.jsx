@@ -41,8 +41,8 @@ function ColorDot({ color, onClick, label, small }) {
     <button
       onClick={() => onClick(color)}
       title={label || color}
-      className={`rounded-full border-2 border-slate-600 hover:border-indigo-400 transition flex-shrink-0 ${small ? "w-6 h-6" : "w-8 h-8"}`}
-      style={{ backgroundColor: color }}
+      className={`rounded-full border-2 hover:border-indigo-400 transition flex-shrink-0 ${small ? "w-6 h-6" : "w-8 h-8"}`}
+      style={{ backgroundColor: color, borderColor: "var(--hv-border)" }}
     />
   );
 }
@@ -97,12 +97,12 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
     <div className="space-y-4 text-sm">
       {/* اسم العلامة */}
       <div>
-        <label className="text-slate-400 text-xs mb-1 block">اسم العلامة التجارية</label>
+        <label className="text-xs mb-1 block" style={{ color: "var(--hv-text-soft)" }}>اسم العلامة التجارية</label>
         <input
           type="text"
           value={brand.name}
           onChange={e => update("name", e.target.value)}
-          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-indigo-500"
+          className="hv-input w-full text-xs"
           placeholder="اسم العلامة..."
         />
       </div>
@@ -110,8 +110,8 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
       {/* لوحة الألوان */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-slate-300 text-xs font-semibold">🎨 ألوان العلامة</span>
-          <button onClick={addColor} className="text-indigo-400 text-xs hover:text-indigo-300">+ إضافة</button>
+          <span className="text-xs font-semibold" style={{ color: "var(--hv-text)" }}>🎨 ألوان العلامة</span>
+          <button onClick={addColor} className="text-indigo-600 text-xs hover:text-indigo-500">+ إضافة</button>
         </div>
         <div className="flex flex-wrap gap-2">
           {brand.colors.map((color, i) => (
@@ -123,8 +123,8 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
                 className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
               />
               <div
-                className="w-8 h-8 rounded-full border-2 border-slate-600 hover:border-indigo-400 cursor-pointer transition"
-                style={{ backgroundColor: color }}
+                className="w-8 h-8 rounded-full border-2 hover:border-indigo-400 cursor-pointer transition"
+                style={{ backgroundColor: color, borderColor: "var(--hv-border)" }}
                 title={color}
               />
               <button
@@ -139,13 +139,14 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
 
         {/* أزرار التطبيق السريع */}
         <div className="mt-2 space-y-1">
-          <p className="text-slate-500 text-xs">اضغط لتطبيق على العنصر المحدد:</p>
+          <p className="text-xs" style={{ color: "var(--hv-text-faint)" }}>اضغط لتطبيق على العنصر المحدد:</p>
           <div className="flex flex-wrap gap-1.5">
             {brand.colors.map((color, i) => (
               <button
                 key={i}
                 onClick={() => onApplyColor(color)}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs transition"
+                className="flex items-center gap-1 px-2 py-1 rounded bg-slate-50 hover:bg-slate-100 border text-xs transition"
+                style={{ borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}
               >
                 <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: color }} />
                 {color}
@@ -154,7 +155,8 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
           </div>
           <button
             onClick={() => onApplyBg(brand.bgColor)}
-            className="w-full px-2 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 text-start flex items-center gap-2 transition mt-1"
+            className="w-full px-2 py-1.5 rounded bg-slate-50 hover:bg-slate-100 border text-xs text-start flex items-center gap-2 transition mt-1"
+            style={{ borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}
           >
             <span className="w-3 h-3 rounded-sm inline-block flex-shrink-0" style={{ backgroundColor: brand.bgColor }} />
             تطبيق كخلفية
@@ -171,19 +173,19 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
 
       {/* الخطوط */}
       <div>
-        <p className="text-slate-300 text-xs font-semibold mb-2">🔤 خطوط العلامة</p>
+        <p className="text-xs font-semibold mb-2" style={{ color: "var(--hv-text)" }}>🔤 خطوط العلامة</p>
         <div className="space-y-2">
           {[
             { key: "primaryFont", label: "الخط الرئيسي" },
             { key: "secondaryFont", label: "الخط الثانوي" },
           ].map(({ key, label }) => (
             <div key={key}>
-              <label className="text-slate-400 text-xs mb-1 block">{label}</label>
+              <label className="text-xs mb-1 block" style={{ color: "var(--hv-text-soft)" }}>{label}</label>
               <div className="flex gap-1">
                 <select
                   value={brand[key]}
                   onChange={e => update(key, e.target.value)}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-xs outline-none focus:border-indigo-500"
+                  className="hv-input flex-1 text-xs"
                   style={{ fontFamily: brand[key] }}
                 >
                   {ARABIC_FONTS.map(f => (
@@ -194,7 +196,7 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
                 </select>
                 <button
                   onClick={() => onApplyFont(brand[key])}
-                  className="px-2 py-1 rounded bg-indigo-700 hover:bg-indigo-600 text-xs text-white transition"
+                  className="hv-btn hv-btn-primary px-2 py-1 text-xs"
                 >
                   تطبيق
                 </button>
@@ -207,8 +209,8 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
       {/* إزالة الخلفية API Key */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <p className="text-slate-300 text-xs font-semibold">✂️ إزالة الخلفية (remove.bg)</p>
-          <button onClick={() => setShowApiInput(p => !p)} className="text-slate-500 text-xs hover:text-slate-300">
+          <p className="text-xs font-semibold" style={{ color: "var(--hv-text)" }}>✂️ إزالة الخلفية (remove.bg)</p>
+          <button onClick={() => setShowApiInput(p => !p)} className="text-xs hover:text-indigo-500" style={{ color: "var(--hv-text-faint)" }}>
             {showApiInput ? "إخفاء" : "تعديل"}
           </button>
         </div>
@@ -218,10 +220,10 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
             value={brand.bgRemovalKey}
             onChange={e => update("bgRemovalKey", e.target.value)}
             placeholder="مفتاح API من remove.bg..."
-            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-indigo-500"
+            className="hv-input w-full text-xs"
           />
         ) : (
-          <p className="text-slate-500 text-xs">
+          <p className="text-xs" style={{ color: "var(--hv-text-faint)" }}>
             {brand.bgRemovalKey ? "✓ تم إضافة مفتاح API" : "لا يوجد مفتاح — احصل على مفتاح مجاني من remove.bg"}
           </p>
         )}
@@ -230,9 +232,8 @@ export default function BrandKitPanel({ onApplyColor, onApplyFont, onApplyBg, la
       {/* زر الحفظ */}
       <button
         onClick={handleSave}
-        className={`w-full py-2 rounded-xl text-sm font-semibold transition ${
-          saved ? "bg-green-600 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"
-        }`}
+        className={`hv-btn w-full py-2 text-sm font-semibold ${saved ? "" : "hv-btn-primary"}`}
+        style={saved ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : undefined}
       >
         {saved ? "✓ تم الحفظ" : "حفظ هوية العلامة"}
       </button>

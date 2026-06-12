@@ -39,50 +39,61 @@ export default function Sidebar({ language, onLanguageChange }) {
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className={`flex flex-col bg-slate-900 border-e border-slate-700 h-screen transition-all duration-300 flex-shrink-0 ${collapsed ? "w-14" : "w-56"}`}
+      style={{ background: "var(--hv-sidebar-grad)" }}
+      className={`flex flex-col h-screen transition-all duration-300 flex-shrink-0 text-white ${collapsed ? "w-16" : "w-60"}`}
     >
       {/* Logo / App Name */}
-      <div className={`flex items-center gap-2 px-3 py-4 border-b border-slate-700 ${collapsed ? "justify-center" : ""}`}>
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-          <Share2 className="w-4 h-4 text-white" />
+      <div className={`flex items-center gap-2.5 px-3.5 py-5 ${collapsed ? "justify-center" : ""}`}>
+        <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center flex-shrink-0 ring-1 ring-white/25">
+          <Share2 className="w-[18px] h-[18px] text-white" />
         </div>
         {!collapsed && (
           <div className="flex flex-col leading-tight overflow-hidden">
-            <span className="font-bold text-white text-xs truncate">
-              {isRtl ? "إدارة السوشيال ميديا" : "Social Media Manager"}
+            <span className="font-extrabold text-white text-sm truncate">
+              {isRtl ? "استوديو المحتوى" : "Content Studio"}
+            </span>
+            <span className="text-[10px] text-white/60 truncate">
+              {isRtl ? "تصميم ونشر" : "Design & Publish"}
             </span>
           </div>
         )}
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-2.5 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item, idx) => {
           if (item.divider) {
             return collapsed ? (
-              <div key={`div-${idx}`} className="my-2 border-t border-slate-700/50" />
+              <div key={`div-${idx}`} className="my-2.5 mx-2 border-t border-white/15" />
             ) : (
-              <div key={`div-${idx}`} className="pt-3 pb-1 px-2">
-                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+              <div key={`div-${idx}`} className="pt-4 pb-1.5 px-2.5">
+                <p className="text-[10px] font-extrabold text-white/55 uppercase tracking-[0.12em]">
                   {isRtl ? item.labelAr : item.labelEn}
                 </p>
               </div>
             );
           }
-          const { path, labelAr, labelEn, icon: Icon, exact } = item;
-          const active = exact ? location.pathname === path : location.pathname === path;
+          const { path, labelAr, labelEn, icon: Icon } = item;
+          const active = location.pathname === path;
           return (
             <Link
               key={path}
               to={path}
-              className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition text-sm font-medium ${
+              className={`group relative flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-all text-sm font-bold ${
                 active
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  ? "bg-white text-indigo-700 shadow-[0_6px_18px_rgba(0,0,0,0.16)]"
+                  : "text-white/80 hover:text-white hover:bg-white/12"
               } ${collapsed ? "justify-center" : ""}`}
               title={isRtl ? labelAr : labelEn}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
+              {/* coral active accent bar */}
+              {active && !collapsed && (
+                <span
+                  className="absolute top-1/2 -translate-y-1/2 h-5 w-1 rounded-full"
+                  style={{ background: "var(--hv-secondary)", insetInlineStart: "-2px" }}
+                />
+              )}
+              <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-indigo-600" : ""}`} />
               {!collapsed && <span className="truncate">{isRtl ? labelAr : labelEn}</span>}
             </Link>
           );
@@ -92,7 +103,7 @@ export default function Sidebar({ language, onLanguageChange }) {
       {/* Language Toggle */}
       <button
         onClick={toggleLanguage}
-        className={`flex items-center gap-2 px-3 py-2.5 border-t border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs ${collapsed ? "justify-center" : ""}`}
+        className={`mx-2.5 mt-2 flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-white/75 hover:text-white hover:bg-white/12 transition text-xs font-bold ${collapsed ? "justify-center" : ""}`}
         title={isRtl ? "Switch to English" : "تبديل للعربية"}
       >
         <Languages className="w-4 h-4 flex-shrink-0" />
@@ -102,15 +113,15 @@ export default function Sidebar({ language, onLanguageChange }) {
       {/* Collapse toggle */}
       <button
         onClick={toggleCollapse}
-        className={`flex items-center justify-center py-4 px-3 border-t border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition w-full ${collapsed ? "" : "gap-2"}`}
+        className={`m-2.5 mt-1 flex items-center justify-center py-2.5 rounded-xl text-white/75 hover:text-white hover:bg-white/12 transition ${collapsed ? "" : "gap-2"}`}
       >
-        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-700 hover:bg-indigo-600 transition">
+        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/15 hover:bg-white/25 transition">
           {isRtl
             ? (collapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)
             : (collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />)
           }
         </div>
-        {!collapsed && <span className="text-xs">{isRtl ? "طي القائمة" : "Collapse"}</span>}
+        {!collapsed && <span className="text-xs font-bold">{isRtl ? "طي القائمة" : "Collapse"}</span>}
       </button>
     </div>
   );

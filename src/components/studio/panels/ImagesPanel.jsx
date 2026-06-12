@@ -144,12 +144,12 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
         </button>
       )}
       {removingBg && (
-        <p className="text-[10px] text-slate-400 text-center">
+        <p className="text-[10px] text-slate-500 text-center">
           {isRtl ? "أول مرة تحتاج تنزيل نموذج الذكاء (~40MB) — تالياً يكون فورياً" : "First run downloads the AI model (~40MB) — instant afterwards"}
         </p>
       )}
       {justRemovedBg && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2 text-[10px] text-emerald-300 leading-relaxed">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-[10px] text-emerald-700 leading-relaxed">
           {isRtl
             ? "✅ تمت إزالة الخلفية! لوضع خلفية جديدة: افتح تبويب «خلفية» واختر لون/تدرج/صورة — أو ارفع صورة خلفية واجعلها خلف هذه الصورة من تبويب «طبقات»."
             : "✅ Background removed! To add a new background: open the \"BG\" tab and pick a color/gradient/image — or upload a background image and send it behind this one via the \"Layers\" tab."}
@@ -161,7 +161,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
         <button
           onClick={() => setShowCutout(true)}
           title={isRtl ? "حدّد نقاطاً حول منطقة لقصها أو تلوينها" : "Mark points around an area to cut or colorize"}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white text-xs font-semibold transition"
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-100 hover:bg-indigo-600 text-slate-700 hover:text-white text-xs font-semibold transition"
         >
           <Spline className="w-4 h-4" />
           {isRtl ? "✂️ قص يدوي بالنقاط" : "✂️ Manual Point Cutout"}
@@ -186,18 +186,19 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
           <div
             key={img.id}
             onClick={() => onSelect(img.id)}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-              img.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
-            }`}
+            className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border"
+            style={img.id === selectedId
+              ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" }
+              : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}
           >
-            <img src={img.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0 bg-slate-600" />
-            <span className="flex-1 text-slate-200 truncate text-[10px]">
+            <img src={img.url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0 bg-slate-100" />
+            <span className="flex-1 truncate text-[10px]" style={{ color: "var(--hv-text)" }}>
               {img.url?.split("/").pop() || "image"}
             </span>
-            <button onClick={(e) => { e.stopPropagation(); onUpdate(img.id, { visible: !img.visible }); }} className="text-slate-400 hover:text-white">
+            <button onClick={(e) => { e.stopPropagation(); onUpdate(img.id, { visible: !img.visible }); }} className="text-slate-400 hover:text-slate-700">
               {img.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDuplicate(img.id); }} className="text-slate-400 hover:text-white">
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(img.id); }} className="text-slate-400 hover:text-slate-700">
               <Copy className="w-3 h-3" />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onDelete(img.id); }} className="text-red-400 hover:text-red-300">
@@ -208,10 +209,10 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
       </div>
 
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
+        <div className="space-y-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
           {/* Sizing mode — fixes "image won't stretch" by giving real fit control */}
-          <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
-            <label className="text-xs font-semibold text-slate-300">{isRtl ? "📐 ملاءمة الصورة" : "📐 Image Fit"}</label>
+          <div className="bg-[var(--hv-surface-2)] border rounded p-2 space-y-2" style={{ borderColor: "var(--hv-border)" }}>
+            <label className="text-xs font-semibold" style={{ color: "var(--hv-text)" }}>{isRtl ? "📐 ملاءمة الصورة" : "📐 Image Fit"}</label>
             <div className="grid grid-cols-3 gap-1">
               {[
                 { id: "fill",    ar: "تمديد",  en: "Stretch" },
@@ -221,7 +222,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
                 <button
                   key={o.id}
                   onClick={() => update("objectFit", o.id)}
-                  className={`py-1.5 rounded text-[10px] font-semibold transition ${(selected.objectFit || "contain") === o.id ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                  className={`py-1.5 rounded text-[10px] font-semibold transition ${(selected.objectFit || "contain") === o.id ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"}`}
                 >
                   {isRtl ? o.ar : o.en}
                 </button>
@@ -229,7 +230,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
             </div>
             <button
               onClick={fitBoxToImage}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 text-slate-200 text-[11px] font-semibold transition"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded bg-white border border-slate-200 hover:bg-indigo-600 text-slate-700 hover:text-white text-[11px] font-semibold transition"
             >
               <Maximize2 className="w-3.5 h-3.5" />
               {isRtl ? "ضبط الإطار على أبعاد الصورة" : "Fit frame to image"}
@@ -243,47 +244,47 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
               <input type="number" value={Math.round(selected.width)} onChange={(e) => update("width", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
               <input type="number" value={Math.round(selected.height)} onChange={(e) => update("height", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input type="number" value={Math.round(selected.x)} onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input type="number" value={Math.round(selected.y)} onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
               onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "استدارة الحواف" : "Border Radius"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "استدارة الحواف" : "Border Radius"}</label>
             <input type="range" min="0" max="50" step="1" value={selected.borderRadius || 0}
               onChange={(e) => update("borderRadius", parseInt(e.target.value))} className="w-full" />
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
             <input type="number" value={selected.rotation || 0}
               onChange={(e) => update("rotation", parseInt(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+              className="hv-input w-full px-2 py-1" />
           </div>
 
           {/* Logo color - works on ALL image types including PNG/JPG */}
@@ -316,21 +317,21 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
 
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "تمويه" : "Blur"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "تمويه" : "Blur"}</label>
             <input type="range" min="0" max="20" step="0.5" value={selected.blur || 0}
               onChange={(e) => update("blur", parseFloat(e.target.value))} className="w-full" />
           </div>
 
           {/* Pro image filters */}
           {!isLogo && (
-            <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
+            <div className="bg-[var(--hv-surface-2)] border rounded p-2 space-y-2" style={{ borderColor: "var(--hv-border)" }}>
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">{isRtl ? "🎨 فلاتر احترافية" : "🎨 Pro Filters"}</label>
+                <label className="text-xs font-semibold" style={{ color: "var(--hv-text)" }}>{isRtl ? "🎨 فلاتر احترافية" : "🎨 Pro Filters"}</label>
                 <button
                   onClick={() => onUpdate(selected.id, {
                     brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hue: 0, invert: 0,
                   })}
-                  className="text-[10px] text-slate-400 hover:text-white"
+                  className="text-[10px] text-slate-500 hover:text-indigo-600"
                 >
                   {isRtl ? "إعادة" : "Reset"}
                 </button>
@@ -350,7 +351,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
                   <button
                     key={p.name}
                     onClick={() => onUpdate(selected.id, p.v)}
-                    className="text-[10px] py-1 rounded bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition"
+                    className="text-[10px] py-1 rounded bg-white border border-slate-200 hover:bg-indigo-600 text-slate-600 hover:text-white transition"
                   >
                     {p.name}
                   </button>
@@ -358,37 +359,37 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "السطوع" : "Brightness"}: {selected.brightness ?? 100}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "السطوع" : "Brightness"}: {selected.brightness ?? 100}%</label>
                 <input type="range" min="0" max="200" value={selected.brightness ?? 100}
                   onChange={(e) => update("brightness", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "التباين" : "Contrast"}: {selected.contrast ?? 100}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "التباين" : "Contrast"}: {selected.contrast ?? 100}%</label>
                 <input type="range" min="0" max="200" value={selected.contrast ?? 100}
                   onChange={(e) => update("contrast", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "التشبع" : "Saturation"}: {selected.saturate ?? 100}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "التشبع" : "Saturation"}: {selected.saturate ?? 100}%</label>
                 <input type="range" min="0" max="200" value={selected.saturate ?? 100}
                   onChange={(e) => update("saturate", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "تدرج اللون" : "Hue"}: {selected.hue ?? 0}°</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "تدرج اللون" : "Hue"}: {selected.hue ?? 0}°</label>
                 <input type="range" min="-180" max="180" value={selected.hue ?? 0}
                   onChange={(e) => update("hue", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "أبيض/أسود" : "Grayscale"}: {selected.grayscale ?? 0}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "أبيض/أسود" : "Grayscale"}: {selected.grayscale ?? 0}%</label>
                 <input type="range" min="0" max="100" value={selected.grayscale ?? 0}
                   onChange={(e) => update("grayscale", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "بُني سَيپيا" : "Sepia"}: {selected.sepia ?? 0}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "بُني سَيپيا" : "Sepia"}: {selected.sepia ?? 0}%</label>
                 <input type="range" min="0" max="100" value={selected.sepia ?? 0}
                   onChange={(e) => update("sepia", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block">{isRtl ? "عكس الألوان" : "Invert"}: {selected.invert ?? 0}%</label>
+                <label className="text-[10px] text-slate-500 block">{isRtl ? "عكس الألوان" : "Invert"}: {selected.invert ?? 0}%</label>
                 <input type="range" min="0" max="100" value={selected.invert ?? 0}
                   onChange={(e) => update("invert", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               </div>
@@ -397,34 +398,34 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
 
           {/* Crop tool - inset crop */}
           {!isLogo && (
-            <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
+            <div className="bg-[var(--hv-surface-2)] border rounded p-2 space-y-2" style={{ borderColor: "var(--hv-border)" }}>
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">{isRtl ? "✂️ قص الصورة" : "✂️ Crop"}</label>
+                <label className="text-xs font-semibold" style={{ color: "var(--hv-text)" }}>{isRtl ? "✂️ قص الصورة" : "✂️ Crop"}</label>
                 <button
                   onClick={() => onUpdate(selected.id, { cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
-                  className="text-[10px] text-slate-400 hover:text-white"
+                  className="text-[10px] text-slate-500 hover:text-indigo-600"
                 >
                   {isRtl ? "إعادة" : "Reset"}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "علوي" : "Top"}: {selected.cropTop ?? 0}%</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "علوي" : "Top"}: {selected.cropTop ?? 0}%</label>
                   <input type="range" min="0" max="49" value={selected.cropTop ?? 0}
                     onChange={(e) => update("cropTop", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "سفلي" : "Bottom"}: {selected.cropBottom ?? 0}%</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "سفلي" : "Bottom"}: {selected.cropBottom ?? 0}%</label>
                   <input type="range" min="0" max="49" value={selected.cropBottom ?? 0}
                     onChange={(e) => update("cropBottom", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "يسار" : "Left"}: {selected.cropLeft ?? 0}%</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "يسار" : "Left"}: {selected.cropLeft ?? 0}%</label>
                   <input type="range" min="0" max="49" value={selected.cropLeft ?? 0}
                     onChange={(e) => update("cropLeft", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "يمين" : "Right"}: {selected.cropRight ?? 0}%</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "يمين" : "Right"}: {selected.cropRight ?? 0}%</label>
                   <input type="range" min="0" max="49" value={selected.cropRight ?? 0}
                     onChange={(e) => update("cropRight", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
@@ -439,7 +440,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
                   { l: "21:9", v: { cropTop: 30, cropBottom: 30, cropLeft: 0, cropRight: 0 } },
                 ].map(p => (
                   <button key={p.l} onClick={() => onUpdate(selected.id, { cropTop: p.v.cropTop, cropBottom: p.v.cropBottom, cropLeft: p.v.cropLeft, cropRight: p.v.cropRight })}
-                    className="px-2 py-0.5 rounded text-[10px] bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+                    className="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-600 text-slate-600 hover:text-white transition">
                     {p.l}
                   </button>
                 ))}
@@ -456,7 +457,7 @@ export default function ImagesPanel({ images, selectedId, onSelect, onAdd, onUpd
                   onChange={(e) => update("phoneFrame", e.target.checked)}
                   className="rounded"
                 />
-                <span className="text-slate-300">{isRtl ? "إطار جوال" : "Phone Frame"}</span>
+                <span className="text-slate-600">{isRtl ? "إطار جوال" : "Phone Frame"}</span>
               </label>
             </div>
           )}

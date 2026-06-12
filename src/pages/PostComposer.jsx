@@ -52,8 +52,9 @@ function PlatformBadge({ p, selected, onToggle, ar = true }) {
   return (
     <button
       onClick={() => onToggle(p.id)}
+      style={selected ? { background: "var(--hv-primary)", borderColor: "var(--hv-primary)", color: "#fff" } : undefined}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition
-        ${selected ? `${p.bg} ring-1 ring-offset-1 ring-offset-slate-900` : "border-slate-700 text-slate-500 hover:border-slate-500"}`}
+        ${selected ? "ring-1 ring-offset-1 ring-offset-white" : "border-[var(--hv-border)] text-[var(--hv-text-soft)] hover:border-[var(--hv-primary)]"}`}
     >
       {selected && <CheckCircle2 className="w-3 h-3" />}
       {ar ? p.labelAr : p.labelEn}
@@ -67,8 +68,8 @@ function HashtagPill({ tag, added, onToggle }) {
       onClick={() => onToggle(tag)}
       className={`text-[11px] px-2.5 py-1 rounded-full border transition
         ${added
-          ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300"
-          : "border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300"}`}
+          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+          : "border-[var(--hv-border)] text-[var(--hv-text-soft)] hover:border-[var(--hv-primary)] hover:text-[var(--hv-text)]"}`}
     >
       {added ? <span className="mr-0.5">✓</span> : null}{tag}
     </button>
@@ -95,19 +96,19 @@ function DesignPickerModal({ onSelect, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-[680px] max-h-[80vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
-          <span className="font-bold text-white">{T.title}</span>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="hv-card w-[680px] max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--hv-border)]">
+          <span className="font-bold text-[var(--hv-text)]">{T.title}</span>
+          <button onClick={onClose} className="text-[var(--hv-text-faint)] hover:text-[var(--hv-text)] transition"><X className="w-5 h-5" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
             <div className="flex items-center justify-center h-40">
-              <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
             </div>
           ) : designs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-2 text-slate-500">
+            <div className="flex flex-col items-center justify-center h-40 gap-2 text-[var(--hv-text-faint)]">
               <BookImage className="w-8 h-8" />
               <p className="text-sm">{T.noDesigns}</p>
               <p className="text-xs">{T.hint}</p>
@@ -121,16 +122,16 @@ function DesignPickerModal({ onSelect, onClose }) {
                   <button
                     key={d.id}
                     onClick={() => onSelect({ type: "design", id: d.id, name: d.name, thumbnail: d.thumbnail, size: sizeLabel })}
-                    className="group rounded-xl overflow-hidden border border-slate-700 hover:border-indigo-500 transition"
+                    className="group rounded-xl overflow-hidden border border-[var(--hv-border)] hover:border-indigo-500 transition"
                   >
-                    <div className="aspect-square bg-slate-800 flex items-center justify-center">
+                    <div className="aspect-square bg-[var(--hv-surface-2)] flex items-center justify-center">
                       {d.thumbnail
                         ? <img src={d.thumbnail} className="w-full h-full object-cover" alt="" />
-                        : <LayoutGrid className="w-8 h-8 text-slate-600" />}
+                        : <LayoutGrid className="w-8 h-8 text-[var(--hv-text-faint)]" />}
                     </div>
                     <div className="px-2 py-1.5 text-left">
-                      <p className="text-[11px] text-slate-300 truncate">{d.name || (isAr ? "بدون عنوان" : "Untitled")}</p>
-                      {sizeLabel && <p className="text-[10px] text-slate-600">{sizeLabel}</p>}
+                      <p className="text-[11px] text-[var(--hv-text)] truncate">{d.name || (isAr ? "بدون عنوان" : "Untitled")}</p>
+                      {sizeLabel && <p className="text-[10px] text-[var(--hv-text-faint)]">{sizeLabel}</p>}
                     </div>
                   </button>
                 );
@@ -336,15 +337,18 @@ export default function PostComposer({ language }) {
   }, [platforms]);
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
+    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto text-[var(--hv-text)]">
       {/* Top bar */}
-      <div className="h-14 border-b border-slate-800 flex items-center px-6 gap-3 bg-slate-900">
-        <button onClick={() => navigate("/")} className="text-slate-400 hover:text-white transition">
+      <div className="h-14 border-b border-[var(--hv-border)] flex items-center px-6 gap-3 bg-[var(--hv-surface)]">
+        <button onClick={() => navigate("/")} className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] transition">
           <ArrowRight className="w-5 h-5" />
         </button>
-        <span className="font-bold text-lg">{T.title}</span>
+        <div className="flex flex-col">
+          <span className="hv-page-title text-lg">{T.title}</span>
+          <span className="hv-page-sub">{ar ? "اكتب وجهّز منشورك ثم جدوله أو انشره فوراً" : "Compose your post, then schedule or publish it now"}</span>
+        </div>
         {saved && (
-          <span className="flex items-center gap-1 text-green-400 text-sm ms-3">
+          <span className="flex items-center gap-1 text-green-600 text-sm ms-3">
             <CheckCircle2 className="w-4 h-4" /> {T.saved}
           </span>
         )}
@@ -357,18 +361,18 @@ export default function PostComposer({ language }) {
           {/* 1. Media selection */}
           <Section title={T.selectMedia} icon={<ImagePlus className="w-4 h-4" />}>
             {selectedMedia ? (
-              <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-xl border border-slate-700">
+              <div className="flex items-center gap-3 p-3 bg-[var(--hv-surface-2)] rounded-xl border border-[var(--hv-border)]">
                 {selectedMedia.thumbnail
                   ? <img src={selectedMedia.thumbnail} className="w-16 h-16 rounded-lg object-cover" alt="" />
-                  : <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center">
-                      <LayoutGrid className="w-6 h-6 text-slate-500" />
+                  : <div className="w-16 h-16 rounded-lg bg-[var(--hv-surface)] border border-[var(--hv-border)] flex items-center justify-center">
+                      <LayoutGrid className="w-6 h-6 text-[var(--hv-text-faint)]" />
                     </div>
                 }
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{selectedMedia.name}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{selectedMedia.size || selectedMedia.type}</p>
+                  <p className="text-sm font-medium text-[var(--hv-text)] truncate">{selectedMedia.name}</p>
+                  <p className="text-xs text-[var(--hv-text-soft)] mt-0.5">{selectedMedia.size || selectedMedia.type}</p>
                 </div>
-                <button onClick={() => setSelectedMedia(null)} className="text-slate-500 hover:text-red-400 transition">
+                <button onClick={() => setSelectedMedia(null)} className="text-[var(--hv-text-faint)] hover:text-red-500 transition">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -376,13 +380,13 @@ export default function PostComposer({ language }) {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPicker(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 transition text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-[var(--hv-border)] hover:border-indigo-500 text-[var(--hv-text-soft)] hover:text-indigo-500 transition text-sm"
                 >
                   <BookImage className="w-4 h-4" /> {T.fromLibrary}
                 </button>
                 <button
                   onClick={() => uploadRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-slate-600 hover:border-purple-500 text-slate-400 hover:text-purple-400 transition text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-[var(--hv-border)] hover:border-purple-500 text-[var(--hv-text-soft)] hover:text-purple-500 transition text-sm"
                 >
                   <ImagePlus className="w-4 h-4" /> {T.uploadMedia}
                 </button>
@@ -408,9 +412,9 @@ export default function PostComposer({ language }) {
               placeholder={T.captionPlaceholder}
               rows={4}
               dir="rtl"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 resize-none focus:outline-none focus:border-indigo-500 transition"
+              className="hv-input resize-none"
             />
-            <p className="text-xs text-slate-600 mt-1">{caption.length} / 2200</p>
+            <p className="text-xs text-[var(--hv-text-faint)] mt-1">{caption.length} / 2200</p>
           </Section>
 
           {/* 4. Hashtags */}
@@ -432,11 +436,11 @@ export default function PostComposer({ language }) {
                     onKeyDown={e => e.key === "Enter" && addCustomHashtag()}
                     placeholder={T.hashtagCustom}
                     dir="rtl"
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                    className="hv-input flex-1"
                   />
                   <button
                     onClick={addCustomHashtag}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center"
+                    className="hv-btn hv-btn-primary px-3 py-1.5"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -444,7 +448,7 @@ export default function PostComposer({ language }) {
 
                 {Object.entries(SALON_HASHTAGS).map(([cat, tags]) => (
                   <div key={cat}>
-                    <p className="text-[10px] text-slate-500 mb-1.5 uppercase tracking-widest">
+                    <p className="text-[10px] text-[var(--hv-text-faint)] mb-1.5 uppercase tracking-widest">
                       {T.hashtagCategories[cat]}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -455,8 +459,8 @@ export default function PostComposer({ language }) {
                   </div>
                 ))}
                 {hashtags.length > 0 && (
-                  <div className="pt-2 border-t border-slate-800">
-                    <p className="text-[10px] text-indigo-400 mb-1">{T.selected} ({hashtags.length})</p>
+                  <div className="pt-2 border-t border-[var(--hv-border)]">
+                    <p className="text-[10px] text-indigo-600 mb-1">{T.selected} ({hashtags.length})</p>
                     <div className="flex flex-wrap gap-1.5">
                       {hashtags.map(tag => (
                         <HashtagPill key={tag} tag={tag} added onToggle={toggleHashtag} />
@@ -475,7 +479,7 @@ export default function PostComposer({ language }) {
               <ToggleChip active={postType === "story"} onClick={() => setPostType("story")} label={ar ? "⭕ ستوري (الحالة)" : "⭕ Story"} />
             </div>
             {postType === "story" && (
-              <p className="text-[11px] text-amber-300/90 mt-2 leading-relaxed">
+              <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
                 {ar ? "ملاحظة: الستوري ينشر الصورة فقط بدون كابشن (انستقرام/فيسبوك لا يضيفان نصاً على الستوري عبر الـ API)." : "Note: stories publish the image only — caption isn't added to stories via the API."}
               </p>
             )}
@@ -491,22 +495,22 @@ export default function PostComposer({ language }) {
             {!postNow && (
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="text-[11px] text-slate-500 mb-1.5 block">{T.date}</label>
+                  <label className="text-[11px] text-[var(--hv-text-soft)] mb-1.5 block">{T.date}</label>
                   <input
                     type="date"
                     value={scheduleDate}
                     min={todayISO()}
                     onChange={e => setScheduleDate(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="hv-input"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[11px] text-slate-500 mb-1.5 block">{T.time}</label>
+                  <label className="text-[11px] text-[var(--hv-text-soft)] mb-1.5 block">{T.time}</label>
                   <input
                     type="time"
                     value={scheduleTime}
                     onChange={e => setScheduleTime(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="hv-input"
                   />
                 </div>
               </div>
@@ -518,17 +522,17 @@ export default function PostComposer({ language }) {
             <button
               onClick={() => handleSave(true)}
               disabled={saving}
-              className="flex-1 py-3 rounded-xl border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition text-sm font-semibold"
+              className="hv-btn hv-btn-ghost flex-1 py-3"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : T.saveDraft}
             </button>
             <button
               onClick={() => handleSave(false)}
               disabled={saving || platforms.length === 0}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2
+              className={`hv-btn flex-1 py-3
                 ${platforms.length === 0
-                  ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}
+                  ? "bg-[var(--hv-surface-2)] text-[var(--hv-text-faint)] cursor-not-allowed"
+                  : "hv-btn-primary"}`}
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> {T.schedule}</>}
             </button>
@@ -536,8 +540,8 @@ export default function PostComposer({ language }) {
         </div>
 
         {/* ── Right: Live preview ── */}
-        <div className="w-80 flex-shrink-0 border-s border-slate-800 bg-slate-900 p-5 overflow-y-auto hidden lg:block">
-          <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">{T.preview}</p>
+        <div className="w-80 flex-shrink-0 border-s border-[var(--hv-border)] bg-[var(--hv-surface-2)] p-5 overflow-y-auto hidden lg:block">
+          <p className="hv-overline mb-3">{T.preview}</p>
 
           {/* Platform tabs for preview */}
           {platforms.length > 0 && (
@@ -548,8 +552,9 @@ export default function PostComposer({ language }) {
                   <button
                     key={pid}
                     onClick={() => setPreviewPlatform(pid)}
+                    style={previewPlatform === pid ? { background: "var(--hv-primary)", borderColor: "var(--hv-primary)", color: "#fff" } : undefined}
                     className={`text-[10px] px-2.5 py-1 rounded-full border transition font-semibold
-                      ${previewPlatform === pid ? `${p.bg} ring-1 ring-offset-1 ring-offset-slate-900` : "border-slate-700 text-slate-500 hover:border-slate-500"}`}
+                      ${previewPlatform === pid ? "ring-1 ring-offset-1 ring-offset-white" : "border-[var(--hv-border)] text-[var(--hv-text-soft)] hover:border-[var(--hv-primary)]"}`}
                   >
                     {ar ? p.labelAr : p.labelEn}
                   </button>
@@ -571,14 +576,14 @@ export default function PostComposer({ language }) {
 
           {/* Schedule summary */}
           {!postNow && scheduleDate && (
-            <div className="mt-4 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold">
+            <div className="mt-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+              <div className="flex items-center gap-2 text-indigo-700 text-xs font-semibold">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>{scheduleDate}</span>
                 <Clock className="w-3.5 h-3.5 ms-2" />
                 <span>{scheduleTime}</span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-[var(--hv-text-soft)] mt-1">
                 {platforms.length > 0
                   ? (ar ? `سيُنشر على ${platforms.length} منصة` : `Will publish on ${platforms.length} platform(s)`)
                   : (ar ? "اختر منصة للنشر" : "Choose a platform")}
@@ -738,18 +743,18 @@ function PlatformPreview({ platform, platformConfig, thumbnail, caption, postNow
 // ─── Reusable section wrapper ─────────────────────────────────────────────────
 function Section({ title, icon, subtitle, children, collapsible, open, onToggle }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+    <div className="hv-card p-5">
       <div
         className={`flex items-center justify-between mb-4 ${collapsible ? "cursor-pointer" : ""}`}
         onClick={collapsible ? onToggle : undefined}
       >
         <div className="flex items-center gap-2">
-          <span className="text-indigo-400">{icon}</span>
-          <span className="font-semibold text-sm text-white">{title}</span>
-          {subtitle && <span className="text-xs text-slate-500">{subtitle}</span>}
+          <span className="text-indigo-500">{icon}</span>
+          <span className="font-semibold text-sm text-[var(--hv-text)]">{title}</span>
+          {subtitle && <span className="text-xs text-[var(--hv-text-soft)]">{subtitle}</span>}
         </div>
         {collapsible && (
-          open ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />
+          open ? <ChevronUp className="w-4 h-4 text-[var(--hv-text-faint)]" /> : <ChevronDown className="w-4 h-4 text-[var(--hv-text-faint)]" />
         )}
       </div>
       {children}
@@ -761,8 +766,9 @@ function ToggleChip({ active, onClick, label }) {
   return (
     <button
       onClick={onClick}
+      style={active ? { background: "var(--hv-primary)", color: "#fff" } : undefined}
       className={`px-4 py-2 rounded-lg text-sm font-medium transition
-        ${active ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"}`}
+        ${active ? "" : "bg-[var(--hv-surface)] text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] border border-[var(--hv-border)]"}`}
     >
       {label}
     </button>

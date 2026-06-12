@@ -378,33 +378,33 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
   };
 
   return (
-    <div className="space-y-3 text-xs">
+    <div className="space-y-3 text-xs" style={{ color: "var(--hv-text)" }}>
 
       {/* ── Freehand Pen Tool ───────────────────────────────────── */}
-      <div className={`border rounded-lg p-3 space-y-2 transition ${drawMode ? "border-indigo-500 bg-indigo-950/40 shadow-[0_0_0_1px_rgba(139,92,246,0.5)]" : "border-slate-600 bg-slate-800/50"}`}>
+      <div className="border rounded-lg p-3 space-y-2 transition" style={drawMode ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" } : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}>
         <div className="flex items-center justify-between">
-          <span className="font-bold text-[12px]">
+          <span className="font-bold text-[12px]" style={{ color: "var(--hv-text)" }}>
             {drawMode ? "✏️" : "🖊️"} {isRtl ? "ارسم بيدك على الكانفاس" : "Freehand draw on canvas"}
           </span>
           <button
             onClick={() => setDrawMode && setDrawMode(!drawMode)}
-            className={`px-3 py-1 rounded text-[11px] font-bold transition ${
+            className={`px-3 py-1 rounded text-[11px] font-bold transition text-white ${
               drawMode
-                ? "bg-rose-600 hover:bg-rose-500 text-white"
-                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                ? "bg-rose-500 hover:bg-rose-400"
+                : "bg-indigo-600 hover:bg-indigo-500"
             }`}
           >
             {drawMode ? (isRtl ? "إيقاف" : "Stop") : (isRtl ? "تفعيل" : "Activate")}
           </button>
         </div>
-        <p className="text-[10px] text-slate-400 leading-relaxed">
+        <p className="text-[10px] leading-relaxed" style={{ color: "var(--hv-text-soft)" }}>
           {isRtl
             ? "اضغط (تفعيل)، ثم اسحب الماوس على الكانفاس لرسم أي شكل بحرية. الأشكال المغلقة تقبل تعبئة بصورة وتغيير لون. ESC للخروج."
             : "Click Activate, then drag on canvas to draw any shape. Closed shapes accept image fills and colors. Press ESC to exit."}
         </p>
         {drawMode && (
-          <div className="text-[10px] text-indigo-300 font-semibold flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+          <div className="text-[10px] font-semibold flex items-center gap-1" style={{ color: "var(--hv-primary)" }}>
+            <span className="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             {isRtl ? "وضع الرسم نشط — ارسم على الكانفاس" : "Draw mode active — draw on the canvas"}
           </div>
         )}
@@ -413,24 +413,23 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
       {/* Canvas drawings list */}
       {canvasDrawings.length > 0 && (
         <div className="space-y-1">
-          <p className="text-slate-400 font-semibold">{isRtl ? "🖌️ رسوماتك في الكانفاس" : "🖌️ Your Canvas Drawings"}</p>
+          <p className="font-semibold" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "🖌️ رسوماتك في الكانفاس" : "🖌️ Your Canvas Drawings"}</p>
           <div className="space-y-1 max-h-36 overflow-y-auto">
             {canvasDrawings.map((d) => (
               <div
                 key={d.id}
                 onClick={() => onSelect(d.id, "image")}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                  d.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
-                }`}
+                className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border"
+                style={d.id === selectedId ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" } : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}
               >
-                <span className="flex-1 truncate text-slate-200">{getDrawLabel(d)}</span>
-                <button onClick={(e) => { e.stopPropagation(); onUpdate(d.id, { visible: d.visible === false ? true : false }); }} className="text-slate-400 hover:text-white">
+                <span className="flex-1 truncate" style={{ color: "var(--hv-text)" }}>{getDrawLabel(d)}</span>
+                <button onClick={(e) => { e.stopPropagation(); onUpdate(d.id, { visible: d.visible === false ? true : false }); }} className="text-slate-500 hover:text-slate-800">
                   {d.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onDuplicate(d.id); }} className="text-slate-400 hover:text-white">
+                <button onClick={(e) => { e.stopPropagation(); onDuplicate(d.id); }} className="text-slate-500 hover:text-slate-800">
                   <Copy className="w-3 h-3" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onDelete(d.id); }} className="text-red-400 hover:text-red-300">
+                <button onClick={(e) => { e.stopPropagation(); onDelete(d.id); }} className="text-red-500 hover:text-red-600">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -440,51 +439,54 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
       )}
 
       {/* ── Highlighters ── */}
-      <h3 className="text-slate-400 font-semibold">{isRtl ? "🖊️ هايلايتر / ماركر" : "🖊️ Highlighter / Marker"}</h3>
-      <p className="text-slate-500 text-[10px]">{isRtl ? "ضع خلف النص لتسليط الضوء عليه" : "Place behind text to highlight it"}</p>
+      <h3 className="font-semibold" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "🖊️ هايلايتر / ماركر" : "🖊️ Highlighter / Marker"}</h3>
+      <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{isRtl ? "ضع خلف النص لتسليط الضوء عليه" : "Place behind text to highlight it"}</p>
       <div className="grid grid-cols-2 gap-2">
         {BRUSH_HIGHLIGHTS.map((shape) => (
           <button
             key={shape.type}
             onClick={() => handleAddHighlighter(shape.type)}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-yellow-400 transition overflow-hidden"
+            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border hover:border-yellow-400 transition overflow-hidden"
+            style={{ borderColor: "var(--hv-border)" }}
           >
             <div
               className="w-full h-8 flex items-center justify-center"
               dangerouslySetInnerHTML={{ __html: generateHighlighterSvg(shape.type, "#facc15", 0.7).replace('<svg ', '<svg width="100%" height="100%" style="display:block" ') }}
             />
-            <span className="text-[9px] text-slate-300">{isRtl ? shape.labelAr : shape.labelEn}</span>
+            <span className="text-[9px]" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? shape.labelAr : shape.labelEn}</span>
           </button>
         ))}
       </div>
 
       {/* ── Hand Circles ── */}
-      <h3 className="text-slate-400 font-semibold pt-1">{isRtl ? "⭕ دوائر يدوية" : "⭕ Hand Circles"}</h3>
-      <p className="text-slate-500 text-[10px]">{isRtl ? "أحِط النص بدائرة مرسومة باليد" : "Surround text with a hand-drawn circle"}</p>
+      <h3 className="font-semibold pt-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "⭕ دوائر يدوية" : "⭕ Hand Circles"}</h3>
+      <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{isRtl ? "أحِط النص بدائرة مرسومة باليد" : "Surround text with a hand-drawn circle"}</p>
       <div className="grid grid-cols-3 gap-2">
         {BRUSH_CIRCLES.map((shape) => (
           <button
             key={shape.type}
             onClick={() => handleAddCircle(shape.type)}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-red-400 transition overflow-hidden"
+            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border hover:border-red-400 transition overflow-hidden"
+            style={{ borderColor: "var(--hv-border)" }}
           >
             <div
               className="w-full h-10 flex items-center justify-center"
               dangerouslySetInnerHTML={{ __html: generateHandCircleSvg(shape.type, "#ef4444", 3).replace('<svg ', '<svg width="100%" height="100%" style="display:block" ') }}
             />
-            <span className="text-[9px] text-slate-300">{isRtl ? shape.labelAr : shape.labelEn}</span>
+            <span className="text-[9px]" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? shape.labelAr : shape.labelEn}</span>
           </button>
         ))}
       </div>
 
       {/* ── Other Shapes ── */}
-      <h3 className="text-slate-400 font-semibold pt-1">{isRtl ? "✏️ رموز يدوية" : "✏️ Hand Symbols"}</h3>
+      <h3 className="font-semibold pt-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "✏️ رموز يدوية" : "✏️ Hand Symbols"}</h3>
       <div className="grid grid-cols-3 gap-2">
         {HAND_SHAPES.map((shape) => (
           <button
             key={shape.type}
             onClick={() => handleAdd(shape.type)}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+            className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-50 hover:bg-indigo-600 border transition text-slate-600 hover:text-white"
+            style={{ borderColor: "var(--hv-border)" }}
           >
             <span className="text-lg">{shape.icon}</span>
             <span className="text-[9px]">{isRtl ? shape.labelAr : shape.labelEn}</span>
@@ -494,8 +496,8 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
 
       {/* ── Edit selected ── */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
-          <p className="text-slate-400 font-semibold">{isRtl ? "✏️ تعديل العنصر" : "✏️ Edit Element"}</p>
+        <div className="space-y-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+          <p className="font-semibold" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "✏️ تعديل العنصر" : "✏️ Edit Element"}</p>
 
           {isHighlighter ? (
             <>
@@ -507,14 +509,14 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
               <div className="flex flex-wrap gap-1.5">
                 {HIGHLIGHT_COLORS.map(c => (
                   <button key={c} onClick={() => updateHighlighter("strokeColor", c)}
-                    style={{ background: c, border: selected.strokeColor === c ? "2px solid #818cf8" : "1px solid #475569" }}
+                    style={{ background: c, border: selected.strokeColor === c ? "2px solid var(--hv-primary)" : "1px solid var(--hv-border)" }}
                     className="w-6 h-6 rounded hover:scale-110 transition" />
                 ))}
               </div>
               <div>
-                <label className="text-slate-400 block mb-1">{isRtl ? "شفافية التضليل" : "Opacity"}: {Math.round((selected.brushOpacity ?? 0.55) * 100)}%</label>
+                <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "شفافية التضليل" : "Opacity"}: {Math.round((selected.brushOpacity ?? 0.55) * 100)}%</label>
                 <input type="range" min="0.1" max="0.95" step="0.05" value={selected.brushOpacity ?? 0.55}
-                  onChange={(e) => updateHighlighter("brushOpacity", parseFloat(e.target.value))} className="w-full" />
+                  onChange={(e) => updateHighlighter("brushOpacity", parseFloat(e.target.value))} className="w-full" style={{ accentColor: "var(--hv-primary)" }} />
               </div>
             </>
           ) : (
@@ -527,59 +529,59 @@ export default function HandDrawnPanel({ onAdd, selectedId, onSelect, onDelete, 
               <div className="flex flex-wrap gap-1.5">
                 {HIGHLIGHT_COLORS.map(c => (
                   <button key={c} onClick={() => updateShape("strokeColor", c)}
-                    style={{ background: c, border: selected.strokeColor === c ? "2px solid #818cf8" : "1px solid #475569" }}
+                    style={{ background: c, border: selected.strokeColor === c ? "2px solid var(--hv-primary)" : "1px solid var(--hv-border)" }}
                     className="w-6 h-6 rounded hover:scale-110 transition" />
                 ))}
               </div>
               <div>
-                <label className="text-slate-400 block mb-1">{isRtl ? "سماكة الخط" : "Stroke Width"}: {selected.strokeWidth || 3}</label>
+                <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "سماكة الخط" : "Stroke Width"}: {selected.strokeWidth || 3}</label>
                 <input type="range" min="1" max="80" step="1" value={selected.strokeWidth || 3}
-                  onChange={(e) => updateShape("strokeWidth", parseFloat(e.target.value))} className="w-full" />
+                  onChange={(e) => updateShape("strokeWidth", parseFloat(e.target.value))} className="w-full" style={{ accentColor: "var(--hv-primary)" }} />
               </div>
             </>
           )}
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "العرض%" : "Width%"}</label>
               <input type="number" value={Math.round(selected.width || 25)}
                 onChange={(e) => onUpdate(selected.id, { width: parseFloat(e.target.value) })}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full rounded px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
+              <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "الارتفاع%" : "Height%"}</label>
               <input type="number" value={Math.round(selected.height || 25)}
                 onChange={(e) => onUpdate(selected.id, { height: parseFloat(e.target.value) })}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full rounded px-2 py-1" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>X%</label>
               <input type="number" value={Math.round(selected.x || 0)}
                 onChange={(e) => onUpdate(selected.id, { x: parseFloat(e.target.value) })}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full rounded px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>Y%</label>
               <input type="number" value={Math.round(selected.y || 0)}
                 onChange={(e) => onUpdate(selected.id, { y: parseFloat(e.target.value) })}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full rounded px-2 py-1" />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+            <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "دوران" : "Rotation"}</label>
             <input type="number" value={selected.rotation || 0}
               onChange={(e) => onUpdate(selected.id, { rotation: parseInt(e.target.value) })}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+              className="hv-input w-full rounded px-2 py-1" />
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+            <label className="block mb-1" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "شفافية" : "Opacity"}</label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
-              onChange={(e) => onUpdate(selected.id, { opacity: parseFloat(e.target.value) })} className="w-full" />
+              onChange={(e) => onUpdate(selected.id, { opacity: parseFloat(e.target.value) })} className="w-full" style={{ accentColor: "var(--hv-primary)" }} />
           </div>
         </div>
       )}

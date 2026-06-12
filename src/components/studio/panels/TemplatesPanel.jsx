@@ -173,7 +173,7 @@ function TemplateCard({ template, onApply }) {
   return (
     <button
       onClick={() => onApply(template)}
-      className="group w-full rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-500 transition-all"
+      className="group w-full rounded-lg overflow-hidden border-2 border-slate-200 hover:border-indigo-500 transition-all"
     >
       <div
         className="w-full aspect-square flex items-center justify-center text-3xl font-bold text-white"
@@ -181,7 +181,7 @@ function TemplateCard({ template, onApply }) {
       >
         {preview.text}
       </div>
-      <div className="bg-slate-700 group-hover:bg-slate-600 px-2 py-1 text-xs text-slate-300 text-center transition">
+      <div className="bg-[var(--hv-surface-2)] group-hover:bg-slate-100 px-2 py-1 text-xs text-slate-600 text-center transition">
         {nameAr}
       </div>
     </button>
@@ -220,7 +220,7 @@ export default function TemplatesPanel({ onApply, language }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-slate-400 text-xs">اختر قالباً جاهزاً وعدّل عليه</p>
+      <p className="text-slate-500 text-xs">اختر قالباً جاهزاً وعدّل عليه</p>
 
       {/* فلتر الفئات */}
       <div className="flex flex-wrap gap-1">
@@ -231,7 +231,7 @@ export default function TemplatesPanel({ onApply, language }) {
             className={`px-2 py-0.5 rounded text-xs font-semibold transition ${
               cat === activeCategory
                 ? "bg-indigo-600 text-white"
-                : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
             }`}
           >
             {cat}
@@ -249,13 +249,13 @@ export default function TemplatesPanel({ onApply, language }) {
       {/* مودال التأكيد */}
       {confirmTemplate && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => setConfirmTemplate(null)}>
-          <div className="bg-slate-800 rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-base mb-2">تطبيق القالب</h3>
-            <p className="text-slate-400 text-sm mb-4">
-              سيتم استبدال محتوى الصفحة الحالية بقالب "<span className="text-white font-semibold">{confirmTemplate.nameAr}</span>". هل أنت متأكد؟
+          <div className="bg-white rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-base mb-2" style={{ color: "var(--hv-text)" }}>تطبيق القالب</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              سيتم استبدال محتوى الصفحة الحالية بقالب "<span className="font-semibold" style={{ color: "var(--hv-text)" }}>{confirmTemplate.nameAr}</span>". هل أنت متأكد؟
             </p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmTemplate(null)} className="flex-1 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm transition">
+              <button onClick={() => setConfirmTemplate(null)} className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition">
                 إلغاء
               </button>
               <button onClick={confirmApply} className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition">

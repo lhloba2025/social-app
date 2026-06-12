@@ -1,153 +1,144 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { LayoutGrid, MailPlus, BookImage, Share2, Sparkles, PenSquare, ArrowLeft, ArrowRight } from "lucide-react";
 
 const FEATURES = [
   {
     path: "/DesignStudio",
     titleAr: "منشئ التصاميم",
     titleEn: "Design Studio",
-    descAr: "صمم منشوراتك ورسوماتك للسوشيال ميديا",
+    descAr: "صمّم منشوراتك ورسوماتك للسوشيال ميديا باحترافية",
     descEn: "Design your posts and graphics for social media",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M9 9h6M9 12h6M9 15h4"/>
-      </svg>
-    ),
-    gradient: "from-indigo-500 to-purple-600",
-    bg: "bg-indigo-500/10",
-    border: "border-indigo-500/30",
-    hover: "hover:border-indigo-500/60",
-    textColor: "text-indigo-400",
+    Icon: LayoutGrid,
+    grad: "linear-gradient(135deg,#6366f1,#4338ca)",
+  },
+  {
+    path: "/ImageGen",
+    titleAr: "توليد صورة بالذكاء",
+    titleEn: "AI Image",
+    descAr: "ولّد صوراً احترافية بالذكاء الاصطناعي بهوية علامتك",
+    descEn: "Generate professional AI images with your brand",
+    Icon: Sparkles,
+    grad: "linear-gradient(135deg,#6366f1,#fb7185)",
   },
   {
     path: "/GreetingCards",
     titleAr: "بطاقات التهنئة",
     titleEn: "Greeting Cards",
     descAr: "ارفع قالباً وقائمة أسماء، وأصدِر بطاقات شخصية بالجملة",
-    descEn: "Upload a template + names list, generate personalised cards in bulk",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <path d="M4 4h16v16H4z"/>
-        <path d="M4 8l8 5 8-5"/>
-      </svg>
-    ),
-    gradient: "from-amber-500 to-pink-600",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/30",
-    hover: "hover:border-amber-500/60",
-    textColor: "text-amber-400",
+    descEn: "Upload a template + names list, generate cards in bulk",
+    Icon: MailPlus,
+    grad: "linear-gradient(135deg,#fb7185,#f43f5e)",
   },
   {
     path: "/DesignLibraryPage",
     titleAr: "مكتبة التصاميم",
     titleEn: "Design Library",
-    descAr: "استعرض وعدّل تصاميمك المحفوظة",
+    descAr: "استعرض وعدّل تصاميمك المحفوظة في أي وقت",
     descEn: "Browse and edit your saved designs",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <rect x="3" y="3" width="7" height="9" rx="1"/>
-        <rect x="14" y="3" width="7" height="5" rx="1"/>
-        <rect x="14" y="12" width="7" height="9" rx="1"/>
-        <rect x="3" y="16" width="7" height="5" rx="1"/>
-      </svg>
-    ),
-    gradient: "from-violet-500 to-pink-600",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/30",
-    hover: "hover:border-violet-500/60",
-    textColor: "text-violet-400",
+    Icon: BookImage,
+    grad: "linear-gradient(135deg,#8b5cf6,#6366f1)",
+  },
+  {
+    path: "/PostComposer",
+    titleAr: "إنشاء منشور",
+    titleEn: "New Post",
+    descAr: "اكتب منشورك، اختر التصميم والمنصات، وجدوله",
+    descEn: "Write a post, pick design & platforms, schedule it",
+    Icon: PenSquare,
+    grad: "linear-gradient(135deg,#22d3ee,#3b82f6)",
   },
   {
     path: "/AccountsPage",
     titleAr: "ربط الحسابات",
     titleEn: "Connect Accounts",
-    descAr: "اربط حساباتك على Facebook وInstagram وTikTok وغيرها",
-    descEn: "Connect your Facebook, Instagram, TikTok, and other accounts",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <circle cx="18" cy="5" r="3"/>
-        <circle cx="6" cy="12" r="3"/>
-        <circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-    ),
-    gradient: "from-emerald-500 to-teal-600",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/30",
-    hover: "hover:border-emerald-500/60",
-    textColor: "text-emerald-400",
+    descAr: "اربط حساباتك على Instagram وTikTok وغيرها",
+    descEn: "Connect your Instagram, TikTok and more",
+    Icon: Share2,
+    grad: "linear-gradient(135deg,#34d399,#0d9488)",
   },
 ];
 
-const PLATFORMS = ["Facebook", "Instagram", "TikTok", "YouTube", "Twitter", "Snapchat", "LinkedIn"];
+const PLATFORMS = ["Instagram", "Facebook", "TikTok", "YouTube", "Twitter", "Snapchat", "LinkedIn"];
 
 export default function Dashboard({ language }) {
   const ar = (language || localStorage.getItem("appLanguage") || "ar") === "ar";
   const navigate = useNavigate();
+  const Arrow = ar ? ArrowLeft : ArrowRight;
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-950 text-white">
-      <div className="max-w-5xl mx-auto px-6 py-12">
+    <div dir={ar ? "rtl" : "ltr"} className="hv-page hv-app-bg">
+      <div className="hv-page-inner">
 
-        {/* Header */}
-        <div className="mb-12">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <circle cx="18" cy="5" r="3"/>
-                <circle cx="6" cy="12" r="3"/>
-                <circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                {ar ? "إدارة السوشيال ميديا" : "Social Media Manager"}
-              </h1>
-              <p className="text-slate-500 text-sm">
-                {ar ? "اصنع محتواك واربط حساباتك من مكان واحد" : "Create your content and manage your accounts in one place"}
-              </p>
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl mb-9 p-8 md:p-10"
+             style={{ background: "var(--hv-grad)" }}>
+          <div className="absolute -top-10 -left-10 w-56 h-56 rounded-full"
+               style={{ background: "rgba(251,113,133,0.35)", filter: "blur(50px)" }} />
+          <div className="relative">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-bold backdrop-blur ring-1 ring-white/25">
+              <Sparkles className="w-3.5 h-3.5" /> {ar ? "استوديو المحتوى" : "Content Studio"}
+            </span>
+            <h1 className="mt-4 text-3xl md:text-4xl font-extrabold text-white leading-tight">
+              {ar ? "اصنع محتواك وانشره" : "Create & publish your content"}
+              <br />
+              <span className="text-white/85">{ar ? "من مكان واحد" : "all in one place"}</span>
+            </h1>
+            <p className="mt-3 text-white/80 text-sm md:text-base max-w-xl">
+              {ar
+                ? "صمّم، ولّد بالذكاء، جدول، وانشر على كل المنصات — بأدوات بسيطة وأنيقة."
+                : "Design, generate with AI, schedule and publish across every platform — simple and elegant."}
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={() => navigate("/DesignStudio")}
+                      className="hv-btn bg-white text-indigo-700 hover:brightness-95 shadow-lg">
+                <LayoutGrid className="w-4 h-4" /> {ar ? "ابدأ التصميم" : "Start designing"}
+              </button>
+              <button onClick={() => navigate("/ImageGen")}
+                      className="hv-btn bg-white/15 text-white ring-1 ring-white/30 hover:bg-white/25 backdrop-blur">
+                <Sparkles className="w-4 h-4" /> {ar ? "توليد بالذكاء" : "Generate with AI"}
+              </button>
             </div>
           </div>
         </div>
 
+        {/* Section title */}
+        <div className="mb-4">
+          <p className="hv-overline">{ar ? "الأدوات" : "Tools"}</p>
+          <h2 className="hv-page-title mt-1">{ar ? "وش تبي تسوي اليوم؟" : "What do you want to do?"}</h2>
+        </div>
+
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           {FEATURES.map((f) => (
             <button
               key={f.path}
               onClick={() => navigate(f.path)}
-              className={`group relative flex items-start gap-4 p-6 rounded-2xl border ${f.bg} ${f.border} ${f.hover} transition-all duration-200 ${ar ? "text-right" : "text-left"} hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40`}
+              className={`hv-card hv-card-hover group relative flex items-start gap-4 p-5 ${ar ? "text-right" : "text-left"}`}
             >
-              <div className={`flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center text-white shadow-lg`}>
-                {f.icon}
+              <div className="hv-icon-tile flex-shrink-0" style={{ background: f.grad }}>
+                <f.Icon className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-white mb-1">{ar ? f.titleAr : f.titleEn}</h2>
-                <p className="text-sm text-slate-400 leading-relaxed">{ar ? f.descAr : f.descEn}</p>
+                <h3 className="text-base font-extrabold mb-1" style={{ color: "var(--hv-text)" }}>
+                  {ar ? f.titleAr : f.titleEn}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--hv-text-soft)" }}>
+                  {ar ? f.descAr : f.descEn}
+                </p>
               </div>
-              <div className={`absolute ${ar ? "left-5" : "right-5"} top-1/2 -translate-y-1/2 ${f.textColor} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points={ar ? "15 18 9 12 15 6" : "9 18 15 12 9 6"}/>
-                </svg>
-              </div>
+              <Arrow className="w-5 h-5 flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                     style={{ color: "var(--hv-primary)" }} />
             </button>
           ))}
         </div>
 
         {/* Supported Platforms */}
-        <div className="border border-slate-800 rounded-2xl p-6 bg-slate-900/40">
-          <h3 className="text-sm font-semibold text-slate-400 mb-4">
-            {ar ? "المنصات المدعومة" : "Supported Platforms"}
-          </h3>
+        <div className="hv-card p-6">
+          <p className="hv-overline mb-3">{ar ? "المنصات المدعومة" : "Supported Platforms"}</p>
           <div className="flex flex-wrap gap-2">
             {PLATFORMS.map((p) => (
-              <span key={p} className="px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
-                {p}
-              </span>
+              <span key={p} className="hv-chip">{p}</span>
             ))}
           </div>
         </div>

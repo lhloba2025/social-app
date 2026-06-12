@@ -112,8 +112,8 @@ async function downloadImage(url, name) {
 function LibImageTile({ image, isRtl, onInfo, onDelete, busy }) {
   const [dim, setDim] = useState(null);
   return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/60">
-      <div className="aspect-square bg-slate-950 flex items-center justify-center overflow-hidden relative">
+    <div className="hv-card rounded-xl overflow-hidden">
+      <div className="aspect-square flex items-center justify-center overflow-hidden relative" style={{ background: "var(--hv-surface-2)" }}>
         <img
           src={image.url}
           alt={image.name}
@@ -129,7 +129,7 @@ function LibImageTile({ image, isRtl, onInfo, onDelete, busy }) {
       <div className="p-2 flex items-center justify-center gap-1.5">
         <button
           onClick={() => downloadImage(image.url, image.name)}
-          className="p-2 rounded-lg bg-slate-700/70 hover:bg-emerald-600 text-slate-200 transition"
+          className="hv-btn hv-btn-soft p-2"
           title={isRtl ? "تحميل على الكمبيوتر" : "Download"}
         >
           <Download className="w-4 h-4" />
@@ -138,14 +138,14 @@ function LibImageTile({ image, isRtl, onInfo, onDelete, busy }) {
           href={image.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-2 rounded-lg bg-slate-700/70 hover:bg-indigo-600 text-slate-200 transition"
+          className="hv-btn hv-btn-ghost p-2"
           title={isRtl ? "فتح في نافذة جديدة" : "Open"}
         >
           <Eye className="w-4 h-4" />
         </a>
         <button
           onClick={onInfo}
-          className="p-2 rounded-lg bg-slate-700/70 hover:bg-indigo-600 text-slate-200 transition"
+          className="hv-btn hv-btn-ghost p-2"
           title={isRtl ? "معلومات (العنوان/المنصات)" : "Info"}
         >
           <Upload className="w-4 h-4" />
@@ -153,7 +153,7 @@ function LibImageTile({ image, isRtl, onInfo, onDelete, busy }) {
         <button
           onClick={onDelete}
           disabled={busy}
-          className="p-2 rounded-lg bg-slate-700/70 hover:bg-red-600 text-slate-200 transition disabled:opacity-50"
+          className="hv-btn hv-btn-danger p-2 disabled:opacity-50"
           title={isRtl ? "حذف هذه الصورة" : "Delete this image"}
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -178,19 +178,19 @@ function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
   const currentPageBg = pages?.[pageIdx]?.bg?.color || "#1e293b";
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 rounded-2xl overflow-hidden max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="hv-card rounded-2xl overflow-hidden max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--hv-border)" }}>
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-white">{design.name}</h3>
+            <h3 className="font-bold" style={{ color: "var(--hv-text)" }}>{design.name}</h3>
             {hasMultiplePages && (
-              <span className="px-2 py-0.5 rounded-full bg-indigo-600/30 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
+              <span className="hv-chip text-xs">
                 {totalPages} {isRtl ? "صفحات" : "pages"}
               </span>
             )}
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+          <button onClick={onClose} className="transition" style={{ color: "var(--hv-text-soft)" }}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -218,8 +218,8 @@ function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
                     borderRadius: 8, position: "relative",
                   }}>
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                      <span className="text-5xl font-black text-white/20">{pageIdx + 1}</span>
-                      <span className="text-slate-400 text-sm text-center px-4">
+                      <span className="text-5xl font-black text-white/30">{pageIdx + 1}</span>
+                      <span className="text-white/80 text-sm text-center px-4">
                         {isRtl ? `الصفحة ${pageIdx + 1} — افتح التصميم وتنقل للصفحات لتظهر معاينتها` : `Page ${pageIdx + 1} — open & visit each page to generate previews`}
                       </span>
                     </div>
@@ -256,23 +256,23 @@ function DesignPreviewModal({ design, isRtl, onEdit, onClose }) {
                 <button
                   key={i}
                   onClick={() => setPageIdx(i)}
-                  className={`w-2 h-2 rounded-full transition ${i === pageIdx ? "bg-indigo-400 w-4" : "bg-slate-600 hover:bg-slate-400"}`}
+                  className={`w-2 h-2 rounded-full transition ${i === pageIdx ? "bg-indigo-500 w-4" : "bg-slate-300 hover:bg-slate-400"}`}
                 />
               ))}
             </div>
           )}
 
           {size.width && (
-            <p className="text-slate-400 text-xs text-center mt-2">{size.width}×{size.height}</p>
+            <p className="text-xs text-center mt-2" style={{ color: "var(--hv-text-soft)" }}>{size.width}×{size.height}</p>
           )}
         </div>
 
         {/* Actions */}
         <div className="flex gap-2 px-4 pb-4">
-          <button onClick={onClose} className="flex-1 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm transition">
+          <button onClick={onClose} className="hv-btn hv-btn-ghost flex-1 text-sm">
             {isRtl ? "إغلاق" : "Close"}
           </button>
-          <button onClick={onEdit} className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition flex items-center justify-center gap-2">
+          <button onClick={onEdit} className="hv-btn hv-btn-primary flex-1 text-sm">
             <Edit3 className="w-4 h-4" />
             {isRtl ? "تعديل التصميم" : "Edit Design"}
           </button>
@@ -594,31 +594,31 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   };
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-900 text-white p-6">
-      <div className="max-w-5xl mx-auto pb-12">
+    <div dir={isRtl ? "rtl" : "ltr"} className="hv-page">
+      <div className="hv-page-inner pb-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-sm">
+            <Link to="/" className="hv-btn hv-btn-ghost text-sm">
               <Home className="w-4 h-4" />
               <span>{isRtl ? "الرئيسية" : "Home"}</span>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">{isRtl ? "مكتبة التصاميم" : "Design Library"}</h1>
-              <p className="text-slate-400 text-sm mt-1">{isRtl ? "احفظ تصاميمك وارجع اعدل عليها" : "Save and edit your designs"}</p>
+              <h1 className="hv-page-title">{isRtl ? "مكتبة التصاميم" : "Design Library"}</h1>
+              <p className="hv-page-sub">{isRtl ? "احفظ تصاميمك وارجع اعدل عليها" : "Save and edit your designs"}</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowBulkModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold text-sm transition"
+              className="hv-btn hv-btn-soft text-sm"
             >
               <Upload className="w-4 h-4" />
               {isRtl ? "📤 رفع محتوى" : "📤 Upload"}
             </button>
             <button
               onClick={onNew}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-sm transition"
+              className="hv-btn hv-btn-primary text-sm"
             >
               <Plus className="w-4 h-4" />
               {isRtl ? "تصميم جديد" : "New Design"}
@@ -633,8 +633,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               onClick={() => setSelectedSize("all")}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
                 selectedSize === "all"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  ? "hv-btn hv-btn-primary"
+                  : "hv-btn hv-btn-ghost"
               }`}
             >
               {isRtl ? "الكل" : "All"}
@@ -645,8 +645,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 onClick={() => setSelectedSize(size)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
                   selectedSize === size
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    ? "hv-btn hv-btn-primary"
+                    : "hv-btn hv-btn-ghost"
                 }`}
               >
                 {size}
@@ -656,24 +656,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-700">
+        <div className="flex gap-2 mb-6 border-b" style={{ borderColor: "var(--hv-border)" }}>
           <button
             onClick={() => setActiveTab("designs")}
-            className={`px-4 py-2 font-semibold text-sm transition border-b-2 ${
-              activeTab === "designs"
-                ? "border-indigo-600 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
+            className="px-4 py-2 font-semibold text-sm transition border-b-2"
+            style={activeTab === "designs"
+              ? { borderColor: "var(--hv-primary)", color: "var(--hv-text)" }
+              : { borderColor: "transparent", color: "var(--hv-text-soft)" }}
           >
             {isRtl ? "التصاميم" : "Designs"} ({designs.length})
           </button>
           <button
             onClick={() => setActiveTab("media")}
-            className={`px-4 py-2 font-semibold text-sm transition border-b-2 ${
-              activeTab === "media"
-                ? "border-indigo-600 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
+            className="px-4 py-2 font-semibold text-sm transition border-b-2"
+            style={activeTab === "media"
+              ? { borderColor: "var(--hv-primary)", color: "var(--hv-text)" }
+              : { borderColor: "transparent", color: "var(--hv-text-soft)" }}
           >
             {isRtl ? "المكتبة" : "Media"} ({mediaTabCount})
           </button>
@@ -684,18 +682,18 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           <>
         {designsLoading ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--hv-primary)" }} />
           </div>
         ) : designs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+          <div className="flex flex-col items-center justify-center h-64" style={{ color: "var(--hv-text-faint)" }}>
             <FolderOpen className="w-16 h-16 mb-4 opacity-30" />
             <p className="text-lg">{isRtl ? "لا يوجد تصاميم محفوظة" : "No saved designs"}</p>
-            <button onClick={onNew} className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition">
+            <button onClick={onNew} className="hv-btn hv-btn-primary mt-4 text-sm">
               {isRtl ? "ابدأ تصميمك الأول" : "Start your first design"}
             </button>
           </div>
         ) : filteredDesigns.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+          <div className="flex flex-col items-center justify-center h-64" style={{ color: "var(--hv-text-faint)" }}>
             <FolderOpen className="w-16 h-16 mb-4 opacity-30" />
             <p className="text-lg">{isRtl ? "لا توجد تصاميم بهذا المقاس" : "No designs with this size"}</p>
           </div>
@@ -711,14 +709,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 <div
                   key={design.id}
                   onClick={() => setPreviewDesign(design)}
-                  className="group relative bg-slate-800 rounded-xl overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition"
+                  className="hv-card hv-card-hover group relative rounded-xl overflow-hidden cursor-pointer transition"
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-square bg-slate-700 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-square flex items-center justify-center overflow-hidden" style={{ background: "var(--hv-surface-2)" }}>
                     {design.thumbnail ? (
                       <img src={design.thumbnail} alt={design.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="text-slate-600 text-4xl font-bold">{design.name?.[0]?.toUpperCase()}</div>
+                      <div className="text-4xl font-bold" style={{ color: "var(--hv-text-faint)" }}>{design.name?.[0]?.toUpperCase()}</div>
                     )}
                     {/* Pages count badge */}
                     {pagesCount > 1 && (
@@ -730,22 +728,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
                   {/* Info */}
                   <div className="p-3">
-                    <p className="font-semibold text-sm truncate">{design.name}</p>
-                    {sizeStr && <p className="text-slate-400 text-xs mt-0.5">{sizeStr}</p>}
+                    <p className="font-semibold text-sm truncate" style={{ color: "var(--hv-text)" }}>{design.name}</p>
+                    {sizeStr && <p className="text-xs mt-0.5" style={{ color: "var(--hv-text-soft)" }}>{sizeStr}</p>}
                   </div>
 
                   {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                     <button
                       onClick={(e) => { e.stopPropagation(); setPreviewDesign(design); }}
-                      className="p-2 rounded-lg bg-slate-800/80 hover:bg-indigo-600 transition"
+                      className="p-2 rounded-lg bg-white/90 hover:bg-white text-slate-800 hover:text-indigo-600 transition"
                       title={isRtl ? "معاينة" : "Preview"}
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onOpen(design); }}
-                      className="p-2 rounded-lg bg-slate-800/80 hover:bg-indigo-600 transition"
+                      className="p-2 rounded-lg bg-white/90 hover:bg-white text-slate-800 hover:text-indigo-600 transition"
                       title={isRtl ? "تعديل" : "Edit"}
                     >
                       <Edit3 className="w-4 h-4" />
@@ -760,7 +758,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         });
                         navigate(`/PostComposer?${params}`);
                       }}
-                      className="p-2 rounded-lg bg-slate-800/80 hover:bg-green-600 transition"
+                      className="p-2 rounded-lg bg-white/90 hover:bg-emerald-600 text-slate-800 hover:text-white transition"
                       title={isRtl ? "جدولة المنشور" : "Schedule Post"}
                     >
                       <CalendarPlus className="w-4 h-4" />
@@ -768,7 +766,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     <button
                       onClick={(e) => handleDelete(e, design.id)}
                       disabled={deleting === design.id}
-                      className="p-2 rounded-lg bg-slate-800/80 hover:bg-red-600 transition disabled:opacity-50"
+                      className="p-2 rounded-lg bg-white/90 hover:bg-red-600 text-slate-800 hover:text-white transition disabled:opacity-50"
                       title={isRtl ? "حذف" : "Delete"}
                     >
                       {deleting === design.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -787,7 +785,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           <>
         {mediaLoading ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--hv-primary)" }} />
           </div>
         ) : (() => {
           // Read caption metadata from localStorage (saved during bulk
@@ -815,10 +813,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             // Empty-state UI lives in the same branch now so the local
             // list can pull the user out of empty even if backend is dry.
             return (
-              <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+              <div className="flex flex-col items-center justify-center h-64" style={{ color: "var(--hv-text-faint)" }}>
                 <FolderOpen className="w-16 h-16 mb-4 opacity-30" />
                 <p className="text-lg">{isRtl ? "لم تحمل أي محتوى بعد" : "No media uploaded yet"}</p>
-                <button onClick={() => setShowBulkModal(true)} className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition">
+                <button onClick={() => setShowBulkModal(true)} className="hv-btn hv-btn-primary mt-4 text-sm">
                   {isRtl ? "📤 ابدأ الآن" : "📤 Start Uploading"}
                 </button>
               </div>
@@ -989,21 +987,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   sort dropdown + a count of visible-vs-total posts.
                   Pills wrap on small screens so the bar stays usable
                   at any width. */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 mb-4 space-y-2.5">
+              <div className="hv-card rounded-xl p-3 mb-4 space-y-2.5">
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 pointer-events-none" style={{ color: "var(--hv-text-faint)" }} />
                   <input
                     type="text"
                     value={mediaSearch}
                     onChange={(e) => setMediaSearch(e.target.value)}
                     placeholder={isRtl ? "🔍 ابحث في العنوان، الكابشن، الهاشتاقات..." : "🔍 Search title, caption, hashtags..."}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg ps-9 pe-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                    className="hv-input ps-9 pe-3 text-sm"
                   />
                   {mediaSearch && (
                     <button
                       onClick={() => setMediaSearch("")}
-                      className="absolute top-1/2 -translate-y-1/2 end-2 text-slate-500 hover:text-white"
+                      className="absolute top-1/2 -translate-y-1/2 end-2"
+                      style={{ color: "var(--hv-text-faint)" }}
                       title={isRtl ? "مسح" : "Clear"}
                     >
                       <X className="w-4 h-4" />
@@ -1017,19 +1016,16 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     post-count badge; empties are dimmed but still
                     clickable so the user knows the bucket exists. */}
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-slate-400 me-1">{isRtl ? "المنصة:" : "Platform:"}</span>
+                  <span className="hv-overline me-1">{isRtl ? "المنصة:" : "Platform:"}</span>
                   <button
                     onClick={() => setMediaPlatform("all")}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${
-                      mediaPlatform === "all"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    }`}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1"
+                    style={mediaPlatform === "all"
+                      ? { background: "var(--hv-primary)", color: "#fff" }
+                      : { background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                   >
                     <span>{isRtl ? "الكل" : "All"}</span>
-                    <span className={`text-[10px] px-1.5 rounded-full ${
-                      mediaPlatform === "all" ? "bg-white/20" : "bg-slate-900/60"
-                    }`}>{totalPosts}</span>
+                    <span className="text-[10px] px-1.5 rounded-full" style={{ background: mediaPlatform === "all" ? "rgba(255,255,255,0.25)" : "rgba(79,70,229,0.12)" }}>{totalPosts}</span>
                   </button>
                   {PLATFORMS.map((p) => {
                     const count = platformCounts[p.id] || 0;
@@ -1039,22 +1035,15 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       <button
                         key={p.id}
                         onClick={() => setMediaPlatform(p.id)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${
-                          isActive
-                            ? "bg-indigo-600 text-white"
-                            : isEmpty
-                              ? "bg-slate-800/50 text-slate-500 hover:bg-slate-700/60"
-                              : "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                        }`}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${isEmpty && !isActive ? "opacity-50" : ""}`}
+                        style={isActive
+                          ? { background: "var(--hv-primary)", color: "#fff" }
+                          : { background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                         title={isEmpty ? (isRtl ? "لا توجد منشورات بعد" : "No posts yet") : undefined}
                       >
                         <span>{p.emoji}</span>
                         <span>{isRtl ? p.labelAr : p.label}</span>
-                        <span className={`text-[10px] px-1.5 rounded-full ${
-                          isActive ? "bg-white/20"
-                                   : isEmpty ? "bg-slate-900/40 text-slate-600"
-                                             : "bg-indigo-500/30 text-indigo-200"
-                        }`}>{count}</span>
+                        <span className="text-[10px] px-1.5 rounded-full" style={{ background: isActive ? "rgba(255,255,255,0.25)" : "rgba(79,70,229,0.12)" }}>{count}</span>
                       </button>
                     );
                   })}
@@ -1063,15 +1052,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   {platformCounts.unknown > 0 && (
                     <button
                       onClick={() => setMediaPlatform("unknown")}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${
-                        mediaPlatform === "unknown"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-amber-900/40 text-amber-300 hover:bg-amber-900/60"
-                      }`}
+                      className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1"
+                      style={mediaPlatform === "unknown"
+                        ? { background: "var(--hv-primary)", color: "#fff" }
+                        : { background: "rgba(244,63,94,0.10)", color: "var(--hv-secondary-600)" }}
                     >
                       <span>❓</span>
                       <span>{isRtl ? "بدون منصة" : "Unknown"}</span>
-                      <span className="text-[10px] px-1.5 rounded-full bg-amber-500/20">
+                      <span className="text-[10px] px-1.5 rounded-full" style={{ background: "rgba(244,63,94,0.15)" }}>
                         {platformCounts.unknown}
                       </span>
                     </button>
@@ -1084,7 +1072,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     all pills happen to match the same posts. */}
                 <div className="flex flex-wrap items-center gap-2 justify-between">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 me-1">{isRtl ? "التاريخ:" : "Date:"}</span>
+                    <span className="hv-overline me-1">{isRtl ? "التاريخ:" : "Date:"}</span>
                     {[
                       { id: "all",   ar: "الكل",         en: "All time" },
                       { id: "today", ar: "اليوم",        en: "Today" },
@@ -1113,16 +1101,13 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         <button
                           key={opt.id}
                           onClick={() => setMediaDateRange(opt.id)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1 ${
-                            isActive
-                              ? "bg-indigo-600 text-white"
-                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          }`}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition inline-flex items-center gap-1"
+                          style={isActive
+                            ? { background: "var(--hv-primary)", color: "#fff" }
+                            : { background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                         >
                           <span>{isRtl ? opt.ar : opt.en}</span>
-                          <span className={`text-[10px] px-1.5 rounded-full ${
-                            isActive ? "bg-white/20" : "bg-slate-900/60 text-slate-400"
-                          }`}>{count}</span>
+                          <span className="text-[10px] px-1.5 rounded-full" style={{ background: isActive ? "rgba(255,255,255,0.25)" : "rgba(79,70,229,0.12)" }}>{count}</span>
                         </button>
                       );
                     })}
@@ -1133,7 +1118,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   <select
                     value={mediaSort}
                     onChange={(e) => setMediaSort(e.target.value)}
-                    className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-white outline-none focus:border-indigo-500"
+                    className="hv-input w-auto px-2 py-1 text-[11px]"
                   >
                     <option value="newest">{isRtl ? "🔽 الأحدث أولاً" : "🔽 Newest first"}</option>
                     <option value="oldest">{isRtl ? "🔼 الأقدم أولاً" : "🔼 Oldest first"}</option>
@@ -1145,7 +1130,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     The select-mode toggle lives here (next to filters)
                     because turning it on is a discovery thing — the
                     user comes from the same toolbar context. */}
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t" style={{ color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>
                   <span>
                     {isRtl
                       ? `عرض ${visibleTopics} موضوع (${visibleCount} منشور)`
@@ -1160,7 +1145,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                           setMediaDateRange("all");
                           setMediaSort("newest");
                         }}
-                        className="text-indigo-400 hover:text-indigo-300 underline"
+                        className="underline"
+                        style={{ color: "var(--hv-primary)" }}
                       >
                         {isRtl ? "↺ إعادة تعيين" : "↺ Reset filters"}
                       </button>
@@ -1168,7 +1154,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     {selectMode ? (
                       <button
                         onClick={exitSelectMode}
-                        className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5 bg-indigo-600 text-white"
+                        className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5"
+                        style={{ background: "var(--hv-primary)", color: "#fff" }}
                       >
                         <CheckSquare className="w-3 h-3" />
                         {isRtl ? "إنهاء التحديد" : "Exit select"}
@@ -1177,14 +1164,16 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       <>
                         <button
                           onClick={() => { setCancelMode(false); setSelectMode(true); }}
-                          className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                          className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5"
+                          style={{ background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                         >
                           <CheckSquare className="w-3 h-3" />
                           {isRtl ? "تحديد للجدولة" : "Select to schedule"}
                         </button>
                         <button
                           onClick={() => { setCancelMode(true); setSelectMode(true); }}
-                          className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5 bg-amber-900/40 text-amber-300 hover:bg-amber-900/60"
+                          className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5"
+                          style={{ background: "rgba(244,63,94,0.10)", color: "var(--hv-secondary-600)" }}
                         >
                           <Ban className="w-3 h-3" />
                           {isRtl ? "إلغاء جدولة" : "Cancel schedules"}
@@ -1197,7 +1186,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 {/* Select-mode quick actions — only visible while in
                     select mode so the toolbar stays calm normally. */}
                 {selectMode && (
-                  <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-800">
+                  <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t" style={{ borderColor: "var(--hv-border)" }}>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setSelectedPostIds(new Set(
@@ -1206,7 +1195,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                             : posts.filter((p) => !scheduledIds.has(p.post_id))
                           ).map((p) => p.post_id)
                         ))}
-                        className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="text-[11px] px-2 py-0.5 rounded"
+                        style={{ background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                       >
                         {cancelMode
                           ? (isRtl ? "تحديد كل المجدول" : "Select all scheduled")
@@ -1215,12 +1205,13 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       <button
                         onClick={clearSelection}
                         disabled={selectedPostIds.size === 0}
-                        className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40"
+                        className="text-[11px] px-2 py-0.5 rounded disabled:opacity-40"
+                        style={{ background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                       >
                         {isRtl ? "إلغاء التحديد" : "Clear"}
                       </button>
                     </div>
-                    <span className="text-[11px] text-indigo-300 font-semibold">
+                    <span className="text-[11px] font-semibold" style={{ color: "var(--hv-primary)" }}>
                       {isRtl
                         ? `${selectedPostIds.size} محدد`
                         : `${selectedPostIds.size} selected`}
@@ -1232,7 +1223,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               {/* Empty-after-filter state — distinct from empty library
                   so the user knows their filters are the cause. */}
               {visibleTopics === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-slate-500 bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
+                <div className="flex flex-col items-center justify-center h-48 rounded-xl border border-dashed" style={{ color: "var(--hv-text-faint)", borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}>
                   <p className="text-base mb-1">{isRtl ? "لا توجد نتائج مطابقة" : "No matching posts"}</p>
                   <p className="text-[12px]">{isRtl ? "جرّب تعديل البحث أو الفلاتر." : "Try changing the search or filters."}</p>
                 </div>
@@ -1269,7 +1260,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         setViewingTopic(topic);
                       }
                     }}
-                    className={`group relative bg-slate-800 rounded-xl overflow-hidden transition ${
+                    className={`hv-card group relative rounded-xl overflow-hidden transition ${
                       lockedForSelect ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                     } ${
                       allSelected
@@ -1280,7 +1271,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                             ? ""
                             : selectMode
                               ? "hover:ring-2 hover:ring-indigo-400 opacity-90"
-                              : "hover:ring-2 hover:ring-indigo-500"
+                              : "hv-card-hover hover:ring-2 hover:ring-indigo-500"
                     }`}
                   >
                     {/* "Already scheduled" badge — shown when ANY post in the
@@ -1300,7 +1291,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                             ? "bg-indigo-500 text-white"
                             : someSelected
                               ? "bg-indigo-500/50 text-white"
-                              : "bg-slate-900/80 text-slate-300 border border-slate-600"
+                              : "bg-white/90 text-slate-500 border border-white"
                         }`}
                       >
                         {allSelected || someSelected
@@ -1311,7 +1302,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     {/* Cover thumbnail + sizes badge (top-end) + platform
                         badges (top-start). The sizes badge tells the user
                         this card is a TOPIC holding several images. */}
-                    <div className="aspect-square bg-slate-700 flex items-center justify-center overflow-hidden relative">
+                    <div className="aspect-square flex items-center justify-center overflow-hidden relative" style={{ background: "var(--hv-surface-2)" }}>
                       <img src={cover.url} alt={cover.name} className="w-full h-full object-cover" />
                       <div className="absolute top-2 start-2 flex flex-wrap gap-1 max-w-[85%]">
                         {topic.platforms.filter(Boolean).slice(0, 5).map((pl) => (
@@ -1331,19 +1322,19 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
                     {/* Info — topic title first, platform pills, caption. */}
                     <div className="p-3 min-h-[3rem]">
-                      <p className="font-semibold text-sm truncate">
+                      <p className="font-semibold text-sm truncate" style={{ color: "var(--hv-text)" }}>
                         {topic.title || cover.name}
                       </p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {topic.platforms.filter(Boolean).map((pl) => (
-                          <span key={pl} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-200 text-[10px] font-semibold">
+                          <span key={pl} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}>
                             <span>{platformEmoji(pl)}</span>
                             <span>{platformLabel(pl, isRtl)}</span>
                           </span>
                         ))}
                       </div>
                       {topic.posts[0]?.caption_text && (
-                        <p className="text-slate-500 text-[11px] mt-1.5 line-clamp-2" dir="auto">
+                        <p className="text-[11px] mt-1.5 line-clamp-2" style={{ color: "var(--hv-text-soft)" }} dir="auto">
                           {topic.posts[0].caption_text}
                         </p>
                       )}
@@ -1351,12 +1342,12 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
                     {/* Hover overlay — open all sizes, edit topic title/caption,
                         delete the whole topic. Hidden in select mode. */}
-                    <div className={`absolute inset-0 bg-black/40 opacity-0 transition flex items-center justify-center gap-2 ${
+                    <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition flex items-center justify-center gap-2 ${
                       selectMode ? "" : "group-hover:opacity-100"
                     }`}>
                       <button
                         onClick={(e) => { e.stopPropagation(); setViewingTopic(topic); }}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-indigo-600 transition"
+                        className="p-2 rounded-lg bg-white/90 hover:bg-white text-slate-800 hover:text-indigo-600 transition"
                         title={isRtl ? "فتح المقاسات" : "Open sizes"}
                       >
                         <Eye className="w-4 h-4" />
@@ -1366,7 +1357,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                           e.stopPropagation();
                           handleEditMediaContent({ post_id: topic.key, items: topic.items, caption_title: topic.title, caption_text: topic.posts[0]?.caption_text || "" });
                         }}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-purple-600 transition"
+                        className="p-2 rounded-lg bg-white/90 hover:bg-white text-slate-800 hover:text-indigo-600 transition"
                         title={isRtl ? "تحرير العنوان/الكابشن" : "Edit title/caption"}
                       >
                         <Edit3 className="w-4 h-4" />
@@ -1378,7 +1369,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                           setConfirmDeletePost({ post_id: topic.key, items: topic.items, caption_title: topic.title, caption_text: topic.posts[0]?.caption_text || "" });
                         }}
                         disabled={topic.items.some((m) => deleting === m.id)}
-                        className="p-2 rounded-lg bg-slate-800/80 hover:bg-red-600 transition disabled:opacity-50"
+                        className="p-2 rounded-lg bg-white/90 hover:bg-red-600 text-slate-800 hover:text-white transition disabled:opacity-50"
                         title={isRtl ? "حذف الموضوع" : "Delete topic"}
                       >
                         {topic.items.some((m) => deleting === m.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -1457,30 +1448,31 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
         return (
           <div
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => { setPreviewingPost(null); setCopiedFeedback(false); }}
             dir={isRtl ? "rtl" : "ltr"}
           >
             <div
-              className="bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col"
+              className="hv-card rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header — platform badge + carousel count + close */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--hv-border)" }}>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800 text-white text-xs font-semibold">
+                  <span className="hv-chip text-xs">
                     <span>{platformEmoji(post.platform)}</span>
                     <span>{platformLabel(post.platform, isRtl)}</span>
                   </span>
                   {isCarousel && (
-                    <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-semibold border border-cyan-500/30">
+                    <span className="hv-chip-accent inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold">
                       🎠 {itemsCount} {isRtl ? "صور" : "images"}
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => { setPreviewingPost(null); setCopiedFeedback(false); }}
-                  className="text-slate-400 hover:text-white p-1 rounded transition"
+                  className="p-1 rounded transition"
+                  style={{ color: "var(--hv-text-soft)" }}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1541,40 +1533,41 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   {/* Title */}
                   {post.caption_title && (
                     <div>
-                      <p className="text-[10px] text-slate-400 mb-1">{isRtl ? "العنوان" : "Title"}</p>
-                      <p className="text-white text-base font-bold leading-snug">{post.caption_title}</p>
+                      <p className="hv-overline mb-1">{isRtl ? "العنوان" : "Title"}</p>
+                      <p className="text-base font-bold leading-snug" style={{ color: "var(--hv-text)" }}>{post.caption_title}</p>
                     </div>
                   )}
 
                   {/* Full caption text */}
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-[10px] text-slate-400">{isRtl ? "الكابشن + الهاشتاقات" : "Caption + hashtags"}</p>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="hv-overline">{isRtl ? "الكابشن + الهاشتاقات" : "Caption + hashtags"}</p>
+                      <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>
                         {isRtl ? `${charCount} حرف · ${hashtagCount} هاشتاق` : `${charCount} chars · ${hashtagCount} hashtags`}
                       </p>
                     </div>
                     {post.caption_text ? (
                       <div
-                        className="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-sm text-slate-100 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto"
+                        className="rounded-lg p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto"
+                        style={{ background: "var(--hv-surface-2)", border: "1px solid var(--hv-border)", color: "var(--hv-text)" }}
                         dir="auto"
                       >
                         {post.caption_text}
                       </div>
                     ) : (
-                      <p className="text-slate-500 italic text-sm">
+                      <p className="italic text-sm" style={{ color: "var(--hv-text-faint)" }}>
                         {isRtl ? "لا يوجد كابشن لهذا المنشور." : "No caption for this post."}
                       </p>
                     )}
                   </div>
 
                   {/* Image metadata footer */}
-                  <div className="text-[10px] text-slate-500 leading-relaxed pt-2 border-t border-slate-800">
-                    <div>{isRtl ? "اسم الصورة:" : "Filename:"} <span className="text-slate-400 font-mono">{currentImage.name}</span></div>
+                  <div className="text-[10px] leading-relaxed pt-2 border-t" style={{ color: "var(--hv-text-faint)", borderColor: "var(--hv-border)" }}>
+                    <div>{isRtl ? "اسم الصورة:" : "Filename:"} <span className="font-mono" style={{ color: "var(--hv-text-soft)" }}>{currentImage.name}</span></div>
                     {currentImage.created_date && (
                       <div className="mt-0.5">
                         {isRtl ? "تاريخ الرفع:" : "Uploaded:"}{" "}
-                        <span className="text-slate-400">
+                        <span style={{ color: "var(--hv-text-soft)" }}>
                           {new Date(currentImage.created_date).toLocaleString(isRtl ? "ar-SA" : "en-US")}
                         </span>
                       </div>
@@ -1594,11 +1587,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                             setTimeout(() => setCopiedFeedback(false), 2000);
                           } catch { /* clipboard blocked — silently ignore */ }
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                          copiedFeedback
-                            ? "bg-emerald-600 text-white"
-                            : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                        }`}
+                        className={`hv-btn flex-1 text-sm ${copiedFeedback ? "hv-btn-accent" : "hv-btn-primary"}`}
+                        style={copiedFeedback ? { background: "#10b981" } : undefined}
                       >
                         {copiedFeedback
                           ? (isRtl ? "✓ تم النسخ!" : "✓ Copied!")
@@ -1612,7 +1602,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       href={currentImage.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition"
+                      className="hv-btn hv-btn-ghost text-sm"
                       title={isRtl ? "افتح الصورة في نافذة جديدة" : "Open image in new tab"}
                     >
                       <Eye className="w-4 h-4" />
@@ -1624,7 +1614,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         for screen space. */}
                     <button
                       onClick={() => { handleEditMediaContent(post); setPreviewingPost(null); }}
-                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition"
+                      className="hv-btn hv-btn-soft text-sm"
                     >
                       <Edit3 className="w-4 h-4" />
                       {isRtl ? "تحرير" : "Edit"}
@@ -1636,7 +1626,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     <button
                       onClick={() => setConfirmDeletePost(post)}
                       disabled={post.items.some((m) => deleting === m.id)}
-                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-200 text-sm transition disabled:opacity-50"
+                      className="hv-btn hv-btn-danger text-sm disabled:opacity-50"
                     >
                       {post.items.some((m) => deleting === m.id)
                         ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -1667,22 +1657,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         };
         return (
           <div
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setViewingTopic(null)}
             dir={isRtl ? "rtl" : "ltr"}
           >
             <div
-              className="bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col"
+              className="hv-card rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between gap-2 p-4 border-b border-slate-800">
+              <div className="flex items-center justify-between gap-2 p-4 border-b" style={{ borderColor: "var(--hv-border)" }}>
                 <div className="min-w-0">
-                  <p className="text-[10px] text-slate-400">{isRtl ? "الموضوع" : "Topic"}</p>
-                  <h3 className="font-bold text-white truncate">
+                  <p className="hv-overline">{isRtl ? "الموضوع" : "Topic"}</p>
+                  <h3 className="font-bold truncate" style={{ color: "var(--hv-text)" }}>
                     {topic.title || (isRtl ? "بدون عنوان" : "Untitled")}
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--hv-text-soft)" }}>
                     {topic.items.length} {isRtl ? "صورة/مقاس" : "images"}
                     {topic.platforms.length > 0 && <> · {topic.platforms.map((pl) => platformEmoji(pl)).join(" ")}</>}
                   </p>
@@ -1690,7 +1680,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     onClick={() => { handleEditMediaContent(syntheticPost); setViewingTopic(null); }}
-                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold transition flex items-center gap-1.5"
+                    className="hv-btn hv-btn-soft text-sm"
                     title={isRtl ? "تعديل العنوان والكابشن لكل صور الموضوع" : "Edit title & caption for the whole topic"}
                   >
                     <Edit3 className="w-4 h-4" />
@@ -1698,7 +1688,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   </button>
                   <button
                     onClick={() => setViewingTopic(null)}
-                    className="text-slate-400 hover:text-white p-1 rounded transition"
+                    className="p-1 rounded transition"
+                    style={{ color: "var(--hv-text-soft)" }}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1707,7 +1698,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
               {/* Body — grid of all images in this topic */}
               <div className="p-4 overflow-y-auto">
-                <p className="text-[11px] text-slate-400 mb-3">
+                <p className="text-[11px] mb-3" style={{ color: "var(--hv-text-soft)" }}>
                   {isRtl
                     ? "كل المقاسات تحت هذا العنوان. حمّل أو احذف أو عدّل بيانات أي صورة."
                     : "All sizes under this topic. Download, delete, or edit info for any image."}
@@ -1736,17 +1727,17 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               </div>
 
               {/* Footer */}
-              <div className="flex gap-2 p-4 border-t border-slate-800">
+              <div className="flex gap-2 p-4 border-t" style={{ borderColor: "var(--hv-border)" }}>
                 <button
                   onClick={() => setConfirmDeletePost(syntheticPost)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-200 text-sm transition"
+                  className="hv-btn hv-btn-danger text-sm"
                 >
                   <Trash2 className="w-4 h-4" />
                   {isRtl ? "حذف الموضوع كامل" : "Delete whole topic"}
                 </button>
                 <button
                   onClick={() => setViewingTopic(null)}
-                  className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition"
+                  className="hv-btn hv-btn-ghost flex-1 text-sm"
                 >
                   {isRtl ? "إغلاق" : "Close"}
                 </button>
@@ -1763,22 +1754,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           client-side until the backend is fixed). */}
       {editingCaption && (
         <div
-          className="fixed inset-0 bg-black/70 z-[55] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[55] flex items-center justify-center p-4"
           onClick={() => setEditingCaption(null)}
           dir={isRtl ? "rtl" : "ltr"}
         >
           <div
-            className="bg-slate-900 rounded-2xl w-full max-w-lg overflow-hidden"
+            className="hv-card rounded-2xl w-full max-w-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--hv-border)" }}>
+              <h3 className="font-bold flex items-center gap-2" style={{ color: "var(--hv-text)" }}>
+                <Edit3 className="w-4 h-4" style={{ color: "var(--hv-primary)" }} />
                 {isRtl ? "تعديل الكابشن" : "Edit caption"}
               </h3>
               <button
                 onClick={() => setEditingCaption(null)}
-                className="text-slate-400 hover:text-white"
+                style={{ color: "var(--hv-text-soft)" }}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1786,7 +1777,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
             <div className="p-5 space-y-3">
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">
+                <label className="hv-overline block mb-1">
                   {isRtl ? "العنوان" : "Title"}
                 </label>
                 <input
@@ -1796,16 +1787,16 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     setEditingCaption((c) => ({ ...c, title: e.target.value }))
                   }
                   placeholder={isRtl ? "عنوان المنشور" : "Post title"}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                  className="hv-input text-sm"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-400">
+                  <label className="hv-overline">
                     {isRtl ? "الكابشن + الهاشتاقات" : "Caption + hashtags"}
                   </label>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>
                     {(() => {
                       const txt = editingCaption.text || "";
                       const tags = txt.match(/#[^\s#]+/g)?.length || 0;
@@ -1825,27 +1816,27 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     ? "اكتب نص الكابشن مع الهاشتاقات هنا..."
                     : "Write your caption with hashtags here..."}
                   dir="auto"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 resize-y font-mono"
+                  className="hv-input text-sm resize-y font-mono"
                 />
               </div>
 
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[10px] leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
                 {isRtl
                   ? "💡 التعديلات تُحفظ على جهازك (الـ backend لا يدعم تعديل الكابشن حالياً)."
                   : "💡 Edits save to this device (the backend doesn't support caption edits yet)."}
               </p>
             </div>
 
-            <div className="flex gap-2 p-4 border-t border-slate-800">
+            <div className="flex gap-2 p-4 border-t" style={{ borderColor: "var(--hv-border)" }}>
               <button
                 onClick={() => setEditingCaption(null)}
-                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition"
+                className="hv-btn hv-btn-ghost flex-1 text-sm"
               >
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
               <button
                 onClick={handleSaveCaption}
-                className="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition"
+                className="hv-btn hv-btn-primary flex-1 text-sm"
               >
                 {isRtl ? "💾 حفظ التعديلات" : "💾 Save changes"}
               </button>
@@ -1864,24 +1855,25 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         const isBusy = post.items.some((m) => deleting === m.id);
         return (
           <div
-            className="fixed inset-0 bg-black/75 z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
             onClick={() => !isBusy && setConfirmDeletePost(null)}
             dir={isRtl ? "rtl" : "ltr"}
           >
             <div
-              className="bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden border border-red-500/30"
+              className="hv-card rounded-2xl w-full max-w-md overflow-hidden"
+              style={{ borderColor: "rgba(220,38,38,0.3)" }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-5 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0">
-                    <Trash2 className="w-6 h-6 text-red-400" />
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#fee2e2" }}>
+                    <Trash2 className="w-6 h-6" style={{ color: "#dc2626" }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-base">
+                    <h3 className="font-bold text-base" style={{ color: "var(--hv-text)" }}>
                       {isRtl ? "تأكيد الحذف" : "Confirm deletion"}
                     </h3>
-                    <p className="text-[12px] text-slate-400 mt-0.5">
+                    <p className="text-[12px] mt-0.5" style={{ color: "var(--hv-text-soft)" }}>
                       {isRtl
                         ? `هل أنت متأكد من حذف هذا المنشور${post.items.length > 1 ? ` (${post.items.length} صور)` : ""}؟`
                         : `Are you sure you want to delete this post${post.items.length > 1 ? ` (${post.items.length} images)` : ""}?`}
@@ -1891,36 +1883,36 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
                 {/* Show what we're about to lose so the user sees the
                     actual content, not just an abstract "this post". */}
-                <div className="bg-slate-800/60 rounded-lg p-3 flex gap-3 items-start">
+                <div className="rounded-lg p-3 flex gap-3 items-start" style={{ background: "var(--hv-surface-2)" }}>
                   <img
                     src={post.items[0].url}
                     alt=""
                     className="w-16 h-16 object-cover rounded flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="text-sm font-semibold truncate" style={{ color: "var(--hv-text)" }}>
                       {post.caption_title || post.items[0].name}
                     </p>
                     {post.caption_text && (
-                      <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5" dir="auto">
+                      <p className="text-[11px] line-clamp-2 mt-0.5" style={{ color: "var(--hv-text-soft)" }} dir="auto">
                         {post.caption_text}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <p className="text-[10px] text-amber-300/80 leading-relaxed">
+                <p className="text-[10px] leading-relaxed" style={{ color: "#d97706" }}>
                   {isRtl
                     ? "⚠️ لا يمكن التراجع عن هذه العملية."
                     : "⚠️ This action cannot be undone."}
                 </p>
               </div>
 
-              <div className="flex gap-2 p-4 border-t border-slate-800 bg-slate-900">
+              <div className="flex gap-2 p-4 border-t" style={{ borderColor: "var(--hv-border)" }}>
                 <button
                   onClick={() => setConfirmDeletePost(null)}
                   disabled={isBusy}
-                  className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition disabled:opacity-50"
+                  className="hv-btn hv-btn-ghost flex-1 text-sm disabled:opacity-50"
                 >
                   {isRtl ? "إلغاء" : "Cancel"}
                 </button>
@@ -1944,7 +1936,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     }
                   }}
                   disabled={isBusy}
-                  className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="hv-btn flex-1 text-sm disabled:opacity-50"
+                  style={{ background: "#dc2626", color: "#fff" }}
                 >
                   {isBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1961,9 +1954,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
 
       {/* Edit Media Properties Modal */}
       {editingMedia && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="font-bold text-white text-lg mb-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="hv-card rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="font-bold text-lg mb-4" style={{ color: "var(--hv-text)" }}>
               {isRtl ? "معلومات المحتوى" : "Media Info"}
             </h3>
 
@@ -1971,7 +1964,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               {/* Title = the topic identifier. Images that share a title are
                   treated as the SAME topic and scheduled together. Required. */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-1">
+                <label className="block text-sm font-semibold mb-1" style={{ color: "var(--hv-text)" }}>
                   {isRtl ? "العنوان (مُعرّف الموضوع) *" : "Title (topic id) *"}
                 </label>
                 <input
@@ -1979,14 +1972,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   value={editingData.title || ""}
                   onChange={(e) => setEditingData((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder={isRtl ? "مثال: إجازة الصيف" : "e.g. Summer sale"}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                  className="hv-input"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-soft)" }}>
                   {isRtl ? "الصور بنفس العنوان = موضوع واحد، تتجدول مع بعض (البوست والستوري سوا)." : "Same title = one topic, scheduled together."}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                <label className="block text-sm font-semibold mb-2" style={{ color: "var(--hv-text)" }}>
                   {isRtl ? "اسم الملف (اختياري)" : "File Name (optional)"}
                 </label>
                 <input
@@ -1998,12 +1991,12 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       name: e.target.value,
                     }))
                   }
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                  className="hv-input"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                <label className="block text-sm font-semibold mb-2" style={{ color: "var(--hv-text)" }}>
                   {isRtl ? "المنصات (اختر واحدة أو أكثر)" : "Platforms (one or more)"}
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -2017,7 +2010,10 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                           const cur = prev.platforms || [];
                           return { ...prev, platforms: on ? cur.filter((x) => x !== p.id) : [...cur, p.id] };
                         })}
-                        className={`flex items-center gap-1.5 px-2 py-2 rounded-lg text-[12px] font-semibold border transition ${on ? "bg-indigo-600 border-indigo-400 text-white" : "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600"}`}
+                        className="flex items-center gap-1.5 px-2 py-2 rounded-lg text-[12px] font-semibold border transition"
+                        style={on
+                          ? { background: "var(--hv-primary)", borderColor: "var(--hv-primary)", color: "#fff" }
+                          : { background: "var(--hv-surface)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}
                       >
                         <span>{p.emoji}</span>
                         <span className="truncate">{isRtl ? p.labelAr : p.label}</span>
@@ -2032,7 +2028,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setEditingMedia(null)}
-                className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold transition"
+                className="hv-btn hv-btn-ghost flex-1"
               >
                 {isRtl ? "إلغاء" : "Cancel"}
               </button>
@@ -2040,7 +2036,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 onClick={handleSaveEdit}
                 disabled={updateMediaMutation.isPending || !(editingData.title || "").trim()}
                 title={!(editingData.title || "").trim() ? (isRtl ? "اكتب عنواناً أولاً" : "Enter a title first") : ""}
-                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="hv-btn hv-btn-primary flex-1 disabled:opacity-50"
               >
                 {updateMediaMutation.isPending && (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -2060,18 +2056,18 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           "you're selecting something to do with it later". */}
       {activeTab === "media" && selectedPostIds.size > 0 && (
         <div className="fixed bottom-4 inset-x-4 z-40 flex justify-center pointer-events-none" dir={isRtl ? "rtl" : "ltr"}>
-          <div className="pointer-events-auto bg-slate-800/95 backdrop-blur border border-indigo-500/50 rounded-2xl shadow-2xl shadow-indigo-900/50 px-4 py-3 flex items-center gap-3 max-w-2xl w-full">
+          <div className="pointer-events-auto hv-card backdrop-blur rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 max-w-2xl w-full" style={{ borderColor: "rgba(79,70,229,0.4)" }}>
             <div className="flex items-center gap-2 flex-1">
-              <div className="w-8 h-8 rounded-full bg-indigo-500/30 flex items-center justify-center">
-                <CheckSquare className="w-4 h-4 text-indigo-300" />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(79,70,229,0.12)" }}>
+                <CheckSquare className="w-4 h-4" style={{ color: "var(--hv-primary)" }} />
               </div>
               <div className="leading-tight">
-                <p className="text-sm font-bold text-white">
+                <p className="text-sm font-bold" style={{ color: "var(--hv-text)" }}>
                   {isRtl
                     ? `${selectedPostIds.size} منشور محدد`
                     : `${selectedPostIds.size} post${selectedPostIds.size === 1 ? "" : "s"} selected`}
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>
                   {cancelMode
                     ? (isRtl ? "إلغاء جدولة المحدد دفعة واحدة" : "Cancel the selected schedules in one go")
                     : (isRtl ? "اختر طريقة الجدولة لكل منشور دفعة واحدة" : "Schedule them all in one go")}
@@ -2080,7 +2076,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             </div>
             <button
               onClick={exitSelectMode}
-              className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm transition"
+              className="hv-btn hv-btn-ghost text-sm"
             >
               {isRtl ? "إلغاء" : "Cancel"}
             </button>
@@ -2088,7 +2084,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               <button
                 onClick={handleBulkCancel}
                 disabled={bulkCancelling}
-                className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                className="hv-btn text-sm disabled:opacity-50"
+                style={{ background: "#d97706", color: "#fff" }}
               >
                 <Ban className="w-4 h-4" />
                 {bulkCancelling
@@ -2133,7 +2130,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                   .filter(Boolean);
                 if (queue.length > 0) setBulkScheduleQueue(queue);
               }}
-              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition flex items-center gap-1.5"
+              className="hv-btn hv-btn-primary text-sm"
             >
               <Calendar className="w-4 h-4" />
               {isRtl ? "جدولة" : "Schedule"}

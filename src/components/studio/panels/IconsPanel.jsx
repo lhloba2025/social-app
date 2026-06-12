@@ -111,21 +111,21 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
       {/* Canvas icons list */}
       {canvasIcons.length > 0 && (
         <div className="space-y-1">
-          <p className="text-slate-400 font-semibold">{isRtl ? "🎯 أيقوناتك في الكانفاس" : "🎯 Your Canvas Icons"}</p>
+          <p className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "🎯 أيقوناتك في الكانفاس" : "🎯 Your Canvas Icons"}</p>
           <div className="space-y-1 max-h-36 overflow-y-auto">
             {canvasIcons.map((img) => (
               <div
                 key={img.id}
                 onClick={() => onSelect(img.id, "image")}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                  img.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
+                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border ${
+                  img.id === selectedId ? "border-[var(--hv-primary)] bg-[rgba(79,70,229,0.08)]" : "bg-slate-50 hover:bg-slate-100 border-[var(--hv-border)]"
                 }`}
               >
-                <span className="flex-1 truncate text-slate-200">{getIconLabel(img)}</span>
-                <button onClick={(e) => { e.stopPropagation(); onUpdate(img.id, { visible: img.visible === false ? true : false }); }} className="text-slate-400 hover:text-white">
+                <span className="flex-1 truncate" style={{color:'var(--hv-text)'}}>{getIconLabel(img)}</span>
+                <button onClick={(e) => { e.stopPropagation(); onUpdate(img.id, { visible: img.visible === false ? true : false }); }} className="text-slate-400 hover:text-[var(--hv-text)]">
                   {img.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onDuplicate(img.id); }} className="text-slate-400 hover:text-white">
+                <button onClick={(e) => { e.stopPropagation(); onDuplicate(img.id); }} className="text-slate-400 hover:text-[var(--hv-text)]">
                   <Copy className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(img.id); }} className="text-red-400 hover:text-red-300">
@@ -137,7 +137,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
         </div>
       )}
 
-      <h3 className="text-slate-400 font-semibold">{isRtl ? "🎯 مكتبة الأيقونات" : "🎯 Icons Library"}</h3>
+      <h3 className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "🎯 مكتبة الأيقونات" : "🎯 Icons Library"}</h3>
 
       {/* Search */}
       <div className="relative">
@@ -147,7 +147,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={isRtl ? "ابحث عن أيقونة..." : "Search icons..."}
-          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 ps-7 text-white placeholder-slate-500 outline-none focus:border-indigo-500"
+          className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1.5 ps-7 text-[var(--hv-text)] placeholder-slate-400 outline-none focus:border-indigo-500"
         />
       </div>
 
@@ -158,7 +158,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={`px-2 py-0.5 rounded text-[10px] transition ${
-              activeCategory === cat ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"
+              activeCategory === cat ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             {isRtl ? CATEGORY_LABELS[cat].ar : CATEGORY_LABELS[cat].en}
@@ -180,7 +180,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
               width: 12,
               height: 12,
             })}
-            className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+            className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
             title={isRtl ? currency.nameAr : currency.name}
           >
             <span className="text-lg font-bold">{currency.icon}</span>
@@ -200,7 +200,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
                 iconColor: doodle.color,
                 width: 18, height: 18,
               })}
-              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
               title={doodle.label}
             >
               <span
@@ -225,7 +225,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
                 iconColor: icon.color,
                 width: 12, height: 12,
               })}
-              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
               title={icon.label}
             >
               <span
@@ -242,7 +242,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
         {(activeCategory === "all" || activeCategory === "saudi") && !search && (
           <button
             onClick={() => handleAdd("SAR")}
-            className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+            className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
             title="Saudi Riyal"
           >
             <span className="text-lg font-bold">&#x20C1;</span>
@@ -257,7 +257,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
             <button
               key={name}
               onClick={() => handleAdd(name)}
-              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="flex flex-col items-center gap-0.5 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
               title={name}
             >
               <Icon className="w-4 h-4" />
@@ -275,8 +275,8 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
 
       {/* Edit selected */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
-          <p className="text-slate-400 font-semibold">{isRtl ? "✏️ تعديل الأيقونة المحددة" : "✏️ Edit selected"}</p>
+        <div className="space-y-3 border-t border-[var(--hv-border)] pt-3">
+          <p className="font-semibold" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "✏️ تعديل الأيقونة المحددة" : "✏️ Edit selected"}</p>
 
           {selected.isLucideIcon && (
             <StudioColorPicker
@@ -321,12 +321,12 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
               ["#0ea5e9","#6366f1"],
             ];
             return (
-              <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+              <div className="border border-[var(--hv-border)] rounded-lg p-2.5 space-y-2 bg-[var(--hv-surface-2)]">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-200 font-semibold text-[11px]">{isRtl ? "✨ لون مدرج" : "✨ Gradient Fill"}</span>
+                  <span className="font-semibold text-[11px]" style={{color:'var(--hv-text)'}}>{isRtl ? "✨ لون مدرج" : "✨ Gradient Fill"}</span>
                   <button
                     onClick={() => updateGrad({ enabled: !ig.enabled })}
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${ig.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${ig.enabled ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >
                     {ig.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
                   </button>
@@ -337,7 +337,7 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
                       key={i}
                       onClick={() => updateGrad({ color1: c1, color2: c2, enabled: true })}
                       style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
-                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${ig.color1 === c1 && ig.color2 === c2 ? "border-white" : "border-slate-600"}`}
+                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${ig.color1 === c1 && ig.color2 === c2 ? "border-[var(--hv-primary)]" : "border-slate-300"}`}
                     />
                   ))}
                 </div>
@@ -345,18 +345,18 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
                   <>
                     <div className="flex gap-2">
                       <div className="flex-1">
-                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
+                        <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
                         <input type="color" value={ig.color1 || "#8b5cf6"} onInput={(e) => updateGrad({ color1: e.target.value })}
-                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                          className="w-full h-6 rounded cursor-pointer border border-slate-200 bg-transparent" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
+                        <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
                         <input type="color" value={ig.color2 || "#ec4899"} onInput={(e) => updateGrad({ color2: e.target.value })}
-                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                          className="w-full h-6 rounded cursor-pointer border border-slate-200 bg-transparent" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${ig.angle ?? 135}°` : `Angle: ${ig.angle ?? 135}°`}</label>
+                      <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${ig.angle ?? 135}°` : `Angle: ${ig.angle ?? 135}°`}</label>
                       <input type="range" min="0" max="360" step="5" value={ig.angle ?? 135}
                         onChange={(e) => updateGrad({ angle: parseInt(e.target.value) })}
                         className="w-full accent-indigo-500" />
@@ -370,45 +370,45 @@ export default function IconsPanel({ onAddIcon, selectedId, onSelect, onDelete, 
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
               <input type="number" value={Math.round(selected.width || 12)}
                 onChange={(e) => update("width", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
               <input type="number" value={Math.round(selected.height || 12)}
                 onChange={(e) => update("height", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input type="number" value={Math.round(selected.x || 0)}
                 onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input type="number" value={Math.round(selected.y || 0)}
                 onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
               onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
             <input type="number" value={selected.rotation || 0}
               onChange={(e) => update("rotation", parseInt(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+              className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
           </div>
         </div>
       )}

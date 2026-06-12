@@ -101,14 +101,14 @@ export default function AccountsPage({ language }) {
   const connectedCount = PLATFORMS.filter((p) => accountsByPlatform[p]).length;
 
   return (
-    <div dir={ar ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-slate-900 text-white">
+    <div dir={ar ? "rtl" : "ltr"} className="hv-page">
 
       {/* OAuth notification */}
       {oauthNotif && (
         <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border text-sm font-semibold
           ${oauthNotif.type === "success"
-            ? "bg-green-900/90 border-green-500/50 text-green-300"
-            : "bg-red-900/90 border-red-500/50 text-red-300"}`}>
+            ? "bg-green-50 border-green-200 text-green-700"
+            : "bg-red-50 border-red-200 text-red-700"}`}>
           {oauthNotif.type === "success"
             ? <CheckCircle2 className="w-5 h-5" />
             : <XCircle className="w-5 h-5" />}
@@ -118,13 +118,13 @@ export default function AccountsPage({ language }) {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="hv-page-inner">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold">{ar ? "الحسابات المرتبطة" : "Connected Accounts"}</h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <h1 className="hv-page-title">{ar ? "الحسابات المرتبطة" : "Connected Accounts"}</h1>
+            <p className="hv-page-sub mt-1">
               {ar
                 ? `${connectedCount} من ${PLATFORMS.length} حسابات مرتبطة`
                 : `${connectedCount} of ${PLATFORMS.length} accounts connected`}
@@ -132,7 +132,7 @@ export default function AccountsPage({ language }) {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition shadow-lg shadow-indigo-600/30"
+            className="hv-btn hv-btn-primary"
           >
             <UserPlus className="w-4 h-4" />
             {ar ? "ربط حساب جديد" : "Add Account"}
@@ -141,7 +141,7 @@ export default function AccountsPage({ language }) {
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--hv-primary)' }} />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -66,10 +66,10 @@ export default function DecorationFinder({ onAdd, language }) {
   }, [isRtl, onAdd]);
 
   return (
-    <div className="bg-slate-800/60 border border-emerald-500/30 rounded-xl p-3 space-y-2.5 text-xs mb-3">
+    <div className="bg-[var(--hv-surface-2)] border border-emerald-500/40 rounded-xl p-3 space-y-2.5 text-xs mb-3">
       <div className="flex items-center gap-1.5">
-        <span className="text-emerald-400 text-sm">⚡</span>
-        <span className="text-[12px] text-emerald-200 font-bold">{isRtl ? "إضافة صورة سريعة" : "Quick add image"}</span>
+        <span className="text-emerald-500 text-sm">⚡</span>
+        <span className="text-[12px] text-emerald-600 font-bold">{isRtl ? "إضافة صورة سريعة" : "Quick add image"}</span>
       </div>
 
       {/* Primary action: paste / type a link */}
@@ -81,7 +81,7 @@ export default function DecorationFinder({ onAdd, language }) {
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddUrl(); } }}
           placeholder={isRtl ? "الصق رابط الصورة…" : "Paste image URL…"}
           dir="ltr"
-          className="flex-1 min-w-0 bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-2 text-[11px] text-white placeholder-slate-500 outline-none focus:border-emerald-400"
+          className="flex-1 min-w-0 bg-white border border-[var(--hv-border)] rounded-lg px-2.5 py-2 text-[11px] text-[var(--hv-text)] placeholder-slate-400 outline-none focus:border-emerald-400"
         />
         <button
           onClick={handleAddUrl}
@@ -93,13 +93,13 @@ export default function DecorationFinder({ onAdd, language }) {
       </div>
 
       {/* Secondary hint — one quiet line */}
-      <p className="text-[10px] text-slate-400 leading-snug">
+      <p className="text-[10px] text-slate-500 leading-snug">
         {isRtl ? "أو انسخ صورة والصقها بـ Ctrl + V" : "Or copy an image and press Ctrl + V"}
       </p>
 
       <button
         onClick={() => setShowFinder((v) => !v)}
-        className={`w-full py-1.5 rounded-lg text-[11px] font-semibold transition border ${showFinder ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-200" : "bg-slate-900 border-slate-600 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-200"}`}
+        className={`w-full py-1.5 rounded-lg text-[11px] font-semibold transition border ${showFinder ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600" : "bg-white border-[var(--hv-border)] text-slate-600 hover:border-emerald-500/40 hover:text-emerald-600"}`}
       >
         🔍 {showFinder ? (isRtl ? "إخفاء البحث" : "Hide search") : (isRtl ? "ابحث عن صور PNG شفافة" : "Search transparent PNGs")}
       </button>
@@ -107,7 +107,7 @@ export default function DecorationFinder({ onAdd, language }) {
         <div className="space-y-2.5 max-h-72 overflow-y-auto pe-1 pt-0.5">
           {REAL_IMAGE_CATEGORIES.map((cat) => (
             <div key={cat.en} className="space-y-1.5">
-              <h4 className="text-[10px] font-bold text-emerald-300/90 sticky top-0 bg-slate-900 py-0.5">
+              <h4 className="text-[10px] font-bold text-emerald-600 sticky top-0 bg-white py-0.5">
                 {isRtl ? cat.ar : cat.en}
               </h4>
               <div className="grid grid-cols-4 gap-1.5">
@@ -117,7 +117,7 @@ export default function DecorationFinder({ onAdd, language }) {
                     href={googleImagesUrl(s.query)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-500 hover:text-slate-900 border border-slate-700 hover:border-emerald-300 transition"
+                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-50 text-[var(--hv-text)] hover:bg-emerald-500 hover:text-white border border-[var(--hv-border)] hover:border-emerald-300 transition"
                     title={isRtl ? s.ar : s.en}
                   >
                     <span className="text-lg leading-none">{s.emoji}</span>
@@ -127,7 +127,7 @@ export default function DecorationFinder({ onAdd, language }) {
               </div>
             </div>
           ))}
-          <p className="text-[9px] text-slate-500 pt-1 border-t border-slate-800 leading-relaxed">
+          <p className="text-[9px] text-slate-500 pt-1 border-t border-[var(--hv-border)] leading-relaxed">
             {isRtl ? "افتح الموضوع → كليك يمين على الصورة → «نسخ الصورة» → ارجع والصقها بـ Ctrl+V." : "Open a topic → right-click image → Copy image → come back and Ctrl+V."}
           </p>
         </div>

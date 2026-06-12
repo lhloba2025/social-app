@@ -57,7 +57,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
 
   return (
     <div className="space-y-3 text-xs">
-      <h3 className="text-slate-400 font-semibold">{isRtl ? "📁 مكتبة اللوقوهات" : "📁 Logo Library"}</h3>
+      <h3 className="font-semibold" style={{ color: "var(--hv-text)" }}>{isRtl ? "📁 مكتبة اللوقوهات" : "📁 Logo Library"}</h3>
 
       {/* Upload new logo */}
       <div className="space-y-1.5">
@@ -66,7 +66,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
           value={logoName}
           onChange={(e) => setLogoName(e.target.value)}
           placeholder={isRtl ? "اسم اللوقو (اختياري)..." : "Logo name (optional)..."}
-          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-white placeholder-slate-500"
+          className="hv-input w-full px-2 py-1.5"
         />
         <button
           onClick={() => fileRef.current?.click()}
@@ -80,7 +80,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
       </div>
 
       {/* Saved logos library */}
-      <div className="border-t border-slate-700 pt-2">
+      <div className="border-t pt-2" style={{ borderColor: "var(--hv-border)" }}>
         <p className="text-slate-500 mb-2">{isRtl ? "اضغط لإضافة للكانفاس:" : "Click to add to canvas:"}</p>
         {savedLogos.length === 0 ? (
           <p className="text-slate-500 text-center py-4">{isRtl ? "لا توجد لوقوهات محفوظة" : "No logos saved yet"}</p>
@@ -90,7 +90,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
               <div key={logo.id} className="relative group">
                 <button
                   onClick={() => addToCanvas(logo)}
-                  className="w-full aspect-square bg-slate-700 rounded-lg border border-slate-600 hover:border-indigo-500 transition flex flex-col items-center justify-center p-1 gap-1"
+                  className="w-full aspect-square bg-[var(--hv-surface-2)] rounded-lg border border-slate-200 hover:border-indigo-500 transition flex flex-col items-center justify-center p-1 gap-1"
                   title={logo.name}
                 >
                   {logo.isSvg && logo.svgContent ? (
@@ -98,7 +98,7 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
                   ) : (
                     <img src={logo.url} alt={logo.name} className="w-10 h-10 object-contain" />
                   )}
-                  <span className="text-[9px] text-slate-400 truncate w-full text-center">{logo.name}</span>
+                  <span className="text-[9px] text-slate-500 truncate w-full text-center">{logo.name}</span>
                 </button>
                 <button
                   onClick={() => deleteSavedLogo(logo.id)}
@@ -114,22 +114,23 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
 
       {/* Canvas logos list */}
       {logos.length > 0 && (
-        <div className="border-t border-slate-700 pt-2 space-y-1">
+        <div className="border-t pt-2 space-y-1" style={{ borderColor: "var(--hv-border)" }}>
           <p className="text-slate-500">{isRtl ? "على الكانفاس:" : "On canvas:"}</p>
           {logos.map((logo) => (
             <div
               key={logo.id}
               onClick={() => onSelect(logo.id)}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                logo.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
-              }`}
+              className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border"
+              style={logo.id === selectedId
+                ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" }
+                : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}
             >
               {logo.isSvg && logo.svgContent ? (
                 <div className="w-7 h-7 flex-shrink-0" dangerouslySetInnerHTML={{ __html: logo.svgContent }} />
               ) : (
                 <img src={logo.url} alt="" className="w-7 h-7 object-contain flex-shrink-0" />
               )}
-              <span className="flex-1 text-slate-300 text-[10px] truncate">{isRtl ? "لوقو" : "Logo"}</span>
+              <span className="flex-1 text-slate-600 text-[10px] truncate">{isRtl ? "لوقو" : "Logo"}</span>
               <button onClick={(e) => { e.stopPropagation(); onDelete(logo.id); }} className="text-red-400 hover:text-red-300">
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -140,41 +141,41 @@ export default function LogoLibraryPanel({ logos, selectedId, onSelect, onAdd, o
 
       {/* Selected logo controls */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
+        <div className="space-y-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
               <input type="number" value={Math.round(selected.width || 20)} onChange={(e) => update("width", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
               <input type="number" value={Math.round(selected.height || 20)} onChange={(e) => update("height", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input type="number" value={Math.round(selected.x || 10)} onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input type="number" value={Math.round(selected.y || 10)} onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="hv-input w-full px-2 py-1" />
             </div>
           </div>
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}</label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
               onChange={(e) => update("opacity", parseFloat(e.target.value))} className="w-full" />
           </div>
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "دوران" : "Rotation"}</label>
             <input type="number" value={selected.rotation || 0}
               onChange={(e) => update("rotation", parseInt(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+              className="hv-input w-full px-2 py-1" />
           </div>
           <StudioColorPicker
             label={isRtl ? "🎨 لون اللوقو" : "🎨 Logo Color"}

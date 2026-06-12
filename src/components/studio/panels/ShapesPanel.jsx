@@ -187,7 +187,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             <button
               key={st.id}
               onClick={() => onAdd(st.id)}
-              className="flex flex-col items-center gap-1 p-2 rounded bg-slate-700 hover:bg-indigo-600 transition text-slate-300 hover:text-white"
+              className="flex flex-col items-center gap-1 p-2 rounded bg-slate-50 hover:bg-indigo-600 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
             >
               <ShapeIcon type={st.id} />
               <span className="text-[10px]">{isRtl ? st.labelAr : st.labelEn}</span>
@@ -199,13 +199,13 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
       {/* Decorative shapes — shown only in deco mode */}
       {decoMode && (
         <div>
-          <p className="text-slate-400 font-semibold mb-1">✦ {isRtl ? "زخارف وحبال" : "Decorative"}</p>
+          <p className="font-semibold mb-1" style={{color:'var(--hv-text-soft)'}}>✦ {isRtl ? "زخارف وحبال" : "Decorative"}</p>
           <div className="grid grid-cols-4 gap-1">
             {DECO_SHAPE_TYPES.map((st) => (
               <button
                 key={st.id}
                 onClick={() => onAdd(st.id)}
-                className="flex flex-col items-center gap-0.5 p-1.5 rounded bg-slate-700/80 hover:bg-purple-700 transition text-slate-300 hover:text-white"
+                className="flex flex-col items-center gap-0.5 p-1.5 rounded bg-slate-50 hover:bg-purple-700 border border-[var(--hv-border)] transition text-[var(--hv-text)] hover:text-white"
               >
                 <DecoIcon type={st.id} />
                 <span className="text-[9px] text-center leading-tight">{isRtl ? st.labelAr : st.labelEn}</span>
@@ -221,33 +221,33 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           <p className="text-slate-500">{isRtl ? "محاذاة وتوزيع" : "Align & Distribute"}</p>
           {multiSelected.length > 0 && (
             <div className="flex items-center gap-1">
-              <span className="text-indigo-400 text-[10px]">{multiSelected.length} {isRtl ? "محدد" : "selected"}</span>
-              <button onClick={() => setMultiSelected([])} className="text-slate-400 hover:text-red-400 text-[10px]">✕</button>
+              <span className="text-indigo-600 text-[10px]">{multiSelected.length} {isRtl ? "محدد" : "selected"}</span>
+              <button onClick={() => setMultiSelected([])} className="text-slate-400 hover:text-red-500 text-[10px]">✕</button>
             </div>
           )}
         </div>
         <div className="flex gap-1">
           <button onClick={centerH} disabled={getTargets().length === 0}
-            className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 disabled:opacity-30 transition text-[10px] font-semibold">
+            className="flex-1 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 hover:text-white text-[var(--hv-text)] border border-[var(--hv-border)] disabled:opacity-30 transition text-[10px] font-semibold">
             ⬌ {isRtl ? "أفقي" : "Ctr H"}
           </button>
           <button onClick={centerV} disabled={getTargets().length === 0}
-            className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 disabled:opacity-30 transition text-[10px] font-semibold">
+            className="flex-1 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 hover:text-white text-[var(--hv-text)] border border-[var(--hv-border)] disabled:opacity-30 transition text-[10px] font-semibold">
             ⬍ {isRtl ? "عمودي" : "Ctr V"}
           </button>
           <button onClick={() => { centerH(); centerV(); }} disabled={getTargets().length === 0}
-            className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 disabled:opacity-30 transition text-[10px] font-semibold">
+            className="flex-1 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 hover:text-white text-[var(--hv-text)] border border-[var(--hv-border)] disabled:opacity-30 transition text-[10px] font-semibold">
             ⊕ {isRtl ? "مركز" : "Both"}
           </button>
         </div>
 
         {/* Offset from center */}
-        <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
-          <label className="text-slate-300 font-semibold block">{isRtl ? "المسافة عن السنتر%" : "Offset from center %"}</label>
+        <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-2">
+          <label className="font-semibold block" style={{color:'var(--hv-text)'}}>{isRtl ? "المسافة عن السنتر%" : "Offset from center %"}</label>
           <input
             type="number" min="0" max="200" value={distributeGap}
             onChange={(e) => setDistributeGap(parseFloat(e.target.value) || 0)}
-            className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white"
+            className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]"
           />
           <div className="flex gap-1">
             <button
@@ -270,10 +270,10 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
       {/* Multi-select layer controls */}
       {multiSelected.length > 0 && (
-        <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+        <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-indigo-400 text-xs font-semibold">{multiSelected.length} {isRtl ? "محدد" : "selected"}</span>
-            <button onClick={() => setMultiSelected([])} className="text-slate-400 hover:text-red-400 text-xs">✕</button>
+            <span className="text-indigo-600 text-xs font-semibold">{multiSelected.length} {isRtl ? "محدد" : "selected"}</span>
+            <button onClick={() => setMultiSelected([])} className="text-slate-400 hover:text-red-500 text-xs">✕</button>
           </div>
           <div className="flex gap-1">
             <button onClick={moveSelectedUp} className="flex-1 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1">
@@ -292,9 +292,9 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           <div
             key={s.id}
             onClick={() => onSelect(s.id)}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-              multiSelected.includes(s.id) ? "bg-purple-600/30 border border-purple-500/50" :
-              s.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
+            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border text-[var(--hv-text)] ${
+              multiSelected.includes(s.id) ? "border-purple-500 bg-purple-50" :
+              s.id === selectedId ? "border-[var(--hv-primary)] bg-[rgba(79,70,229,0.08)]" : "bg-slate-50 hover:bg-slate-100 border-[var(--hv-border)]"
             }`}
           >
             <input
@@ -305,17 +305,17 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               className="w-3 h-3 accent-purple-500 flex-shrink-0"
             />
             <ShapeIcon type={s.shapeType} size={12} />
-            <span className="flex-1 text-slate-200">{isRtl ? SHAPE_TYPES.find(st => st.id === s.shapeType)?.labelAr : SHAPE_TYPES.find(st => st.id === s.shapeType)?.labelEn}</span>
-            <button onClick={(e) => { e.stopPropagation(); onUpdate(s.id, { visible: !s.visible }); }} className="text-slate-400 hover:text-white">
+            <span className="flex-1" style={{color:'var(--hv-text)'}}>{isRtl ? SHAPE_TYPES.find(st => st.id === s.shapeType)?.labelAr : SHAPE_TYPES.find(st => st.id === s.shapeType)?.labelEn}</span>
+            <button onClick={(e) => { e.stopPropagation(); onUpdate(s.id, { visible: !s.visible }); }} className="text-slate-400 hover:text-[var(--hv-text)]">
               {s.visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDuplicate(s.id); }} className="text-slate-400 hover:text-white" title="Ctrl+D">
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(s.id); }} className="text-slate-400 hover:text-[var(--hv-text)]" title="Ctrl+D">
               <Copy className="w-3 h-3" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); moveShapeUp(s.id); }} className="text-slate-400 hover:text-white" title={isRtl ? "أمام" : "Bring Forward"}>
+            <button onClick={(e) => { e.stopPropagation(); moveShapeUp(s.id); }} className="text-slate-400 hover:text-[var(--hv-text)]" title={isRtl ? "أمام" : "Bring Forward"}>
               <ArrowUp className="w-3 h-3" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); moveShapeDown(s.id); }} className="text-slate-400 hover:text-white" title={isRtl ? "خلف" : "Send Backward"}>
+            <button onClick={(e) => { e.stopPropagation(); moveShapeDown(s.id); }} className="text-slate-400 hover:text-[var(--hv-text)]" title={isRtl ? "خلف" : "Send Backward"}>
               <ArrowDown className="w-3 h-3" />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="text-red-400 hover:text-red-300">
@@ -327,12 +327,12 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
       {/* Selected shape settings */}
       {selected && selected.shapeType === "saudi_regions" && (
-        <div className="space-y-2 border-t border-slate-700 pt-3">
+        <div className="space-y-2 border-t border-[var(--hv-border)] pt-3">
           <div className="flex items-center justify-between">
-            <label className="text-slate-200 font-bold text-xs">{isRtl ? "🗺️ مناطق المملكة" : "🗺️ Saudi Regions"}</label>
+            <label className="font-bold text-xs" style={{color:'var(--hv-text)'}}>{isRtl ? "🗺️ مناطق المملكة" : "🗺️ Saudi Regions"}</label>
             <span className="text-[10px] text-slate-500">{isRtl ? "13 منطقة" : "13 regions"}</span>
           </div>
-          <p className="text-[10px] text-slate-400 leading-relaxed">
+          <p className="text-[10px] text-slate-500 leading-relaxed">
             {isRtl
               ? "انقر منطقة من القائمة (أو من الخريطة مباشرة) ثم لوّنها أو أضف لها صورة."
               : "Pick a region from the list (or click it on the map), then color it or add an image."}
@@ -347,19 +347,19 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 <button
                   key={r.id}
                   onClick={() => onSelectRegion && onSelectRegion(r.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition ${
-                    isActive ? "bg-indigo-600/30 border border-indigo-500/60" : "bg-slate-700 hover:bg-slate-600 border border-transparent"
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition border ${
+                    isActive ? "border-[var(--hv-primary)] bg-[rgba(79,70,229,0.08)]" : "bg-slate-50 hover:bg-slate-100 border-[var(--hv-border)]"
                   }`}
                 >
                   <span
-                    className="w-5 h-5 rounded flex-shrink-0 border border-slate-500 overflow-hidden"
+                    className="w-5 h-5 rounded flex-shrink-0 border border-slate-300 overflow-hidden"
                     style={{ background: st.fill || "#cbd5e1" }}
                   >
                     {st.image && <img src={st.image} alt="" className="w-full h-full object-cover" />}
                   </span>
-                  <span className="flex-1 text-start text-slate-200 truncate">{isRtl ? r.nameAr : r.nameEn}</span>
+                  <span className="flex-1 text-start truncate" style={{color:'var(--hv-text)'}}>{isRtl ? r.nameAr : r.nameEn}</span>
                   {(st.fill || st.image) && (
-                    <span className="text-[9px] text-emerald-400">●</span>
+                    <span className="text-[9px] text-emerald-500">●</span>
                   )}
                 </button>
               );
@@ -371,12 +371,12 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             const region = SAUDI_REGIONS.find((r) => r.id === selectedRegion);
             const st = (selected.regionStyles || {})[selectedRegion] || {};
             return (
-              <div className="bg-slate-900/50 border border-indigo-500/40 rounded-lg p-2 space-y-2">
+              <div className="bg-[var(--hv-surface-2)] border border-indigo-500/40 rounded-lg p-2 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-300">{isRtl ? region?.nameAr : region?.nameEn}</span>
+                  <span className="text-xs font-bold text-indigo-600">{isRtl ? region?.nameAr : region?.nameEn}</span>
                   {(st.fill || st.image) && (
                     <button onClick={() => clearRegionStyle(selectedRegion)}
-                      className="text-[10px] text-red-400 hover:text-red-300">
+                      className="text-[10px] text-red-500 hover:text-red-400">
                       {isRtl ? "✕ إعادة تعيين" : "✕ Reset"}
                     </button>
                   )}
@@ -391,12 +391,12 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
                 {/* Image */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">{isRtl ? "صورة داخل المنطقة" : "Image inside region"}</label>
+                  <label className="text-[10px] text-slate-500 block mb-1">{isRtl ? "صورة داخل المنطقة" : "Image inside region"}</label>
                   {st.image ? (
                     <div className="flex items-center gap-2">
-                      <img src={st.image} alt="" className="w-12 h-12 object-cover rounded border border-slate-600" />
+                      <img src={st.image} alt="" className="w-12 h-12 object-cover rounded border border-slate-200" />
                       <button onClick={() => setRegionStyle(selectedRegion, { image: null })}
-                        className="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+                        className="text-[10px] px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600">
                         {isRtl ? "إزالة الصورة" : "Remove image"}
                       </button>
                     </div>
@@ -404,7 +404,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                     <button
                       onClick={() => { setUploadingRegion(selectedRegion); regionImgRef.current?.click(); }}
                       disabled={uploadingRegion === selectedRegion}
-                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 text-slate-200 text-[11px] font-semibold transition disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 text-[var(--hv-text)] hover:text-white border border-[var(--hv-border)] text-[11px] font-semibold transition disabled:opacity-50"
                     >
                       {uploadingRegion === selectedRegion ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                       {isRtl ? "رفع صورة للمنطقة" : "Upload region image"}
@@ -412,7 +412,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   )}
                   {st.image && (
                     <div className="mt-1.5">
-                      <label className="text-[10px] text-slate-400 block">{isRtl ? "تكبير الصورة" : "Image zoom"}: {st.imageScale || 100}%</label>
+                      <label className="text-[10px] text-slate-500 block">{isRtl ? "تكبير الصورة" : "Image zoom"}: {st.imageScale || 100}%</label>
                       <input type="range" min="100" max="300" value={st.imageScale || 100}
                         onChange={(e) => setRegionStyle(selectedRegion, { imageScale: parseInt(e.target.value) })}
                         className="w-full accent-indigo-500" />
@@ -435,13 +435,13 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 });
                 onUpdate(selected.id, { regionStyles: next });
               }}
-              className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-indigo-600 text-[10px] text-slate-200 transition"
+              className="flex-1 py-1.5 rounded bg-slate-50 hover:bg-indigo-600 hover:text-white border border-[var(--hv-border)] text-[10px] text-[var(--hv-text)] transition"
             >
               {isRtl ? "🎨 تلوين تلقائي" : "🎨 Auto-color"}
             </button>
             <button
               onClick={() => onUpdate(selected.id, { regionStyles: {} })}
-              className="flex-1 py-1.5 rounded bg-slate-700 hover:bg-red-600 text-[10px] text-slate-200 transition"
+              className="flex-1 py-1.5 rounded bg-slate-50 hover:bg-red-600 hover:text-white border border-[var(--hv-border)] text-[10px] text-[var(--hv-text)] transition"
             >
               {isRtl ? "↺ مسح الكل" : "↺ Clear all"}
             </button>
@@ -470,23 +470,23 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
       )}
 
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
+        <div className="space-y-3 border-t border-[var(--hv-border)] pt-3">
           {/* Fill: Solid / Gradient */}
-          <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+          <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-slate-300 font-semibold">{isRtl ? "نوع التعبئة" : "Fill Type"}</label>
+              <label className="font-semibold" style={{color:'var(--hv-text)'}}>{isRtl ? "نوع التعبئة" : "Fill Type"}</label>
               <div className="flex gap-1">
                 <button
                   onClick={() => update("fillMode", "solid")}
-                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${(!selected.fillMode || selected.fillMode === "solid") ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${(!selected.fillMode || selected.fillMode === "solid") ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >{isRtl ? "لون" : "Solid"}</button>
                 <button
                   onClick={() => update("fillMode", "gradient")}
-                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "gradient" ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "gradient" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >{isRtl ? "تدرج" : "Gradient"}</button>
                 <button
                   onClick={() => update("fillMode", "stripes")}
-                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "stripes" ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:text-white"}`}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition ${selected.fillMode === "stripes" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >{isRtl ? "خطوط" : "Stripes"}</button>
               </div>
             </div>
@@ -497,8 +497,8 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
             {/* ── Mockup-specific color controls ───────────────────────── */}
             {["phone_mockup","tablet_mockup","laptop_mockup","browser_window","monitor_mockup","tv_mockup","watch_mockup"].includes(selected.shapeType) && (
-              <div className="border border-indigo-700/50 rounded-lg p-2.5 space-y-2 bg-indigo-950/20">
-                <p className="text-indigo-300 font-semibold text-[11px]">
+              <div className="border border-indigo-200 rounded-lg p-2.5 space-y-2 bg-indigo-50">
+                <p className="text-indigo-600 font-semibold text-[11px]">
                   {isRtl ? "🎨 لون جسم الجهاز (الإطار الخارجي)" : "🎨 Device Body Color"}
                 </p>
                 <div className="flex flex-wrap gap-1">
@@ -514,7 +514,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       key={c}
                       onClick={() => update("bezelColor", c)}
                       style={{ background: c }}
-                      className={`w-6 h-6 rounded-full border-2 hover:scale-110 transition ${selected.bezelColor === c ? "border-white" : "border-slate-600"}`}
+                      className={`w-6 h-6 rounded-full border-2 hover:scale-110 transition ${selected.bezelColor === c ? "border-[var(--hv-primary)]" : "border-slate-300"}`}
                     />
                   ))}
                 </div>
@@ -523,13 +523,13 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                     type="color"
                     value={selected.bezelColor || "#1e293b"}
                     onInput={(e) => update("bezelColor", e.target.value)}
-                    className="w-8 h-7 rounded border border-slate-600 cursor-pointer bg-transparent"
+                    className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
                   />
                   <input
                     type="text"
                     value={selected.bezelColor || "#1e293b"}
                     onChange={(e) => update("bezelColor", e.target.value)}
-                    className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white font-mono"
+                    className="flex-1 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs text-[var(--hv-text)] font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -560,15 +560,15 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 <StudioColorPicker label={isRtl ? "اللون الثاني" : "Color 2"} value={selected.gradientColor2 || "#ec4899"} onChange={(v) => update("gradientColor2", v)} />
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-slate-400">{isRtl ? "زاوية التدرج" : "Gradient Angle"}</label>
-                    <span className="text-indigo-400 font-bold">{selected.gradientAngle ?? 135}°</span>
+                    <label className="text-slate-500">{isRtl ? "زاوية التدرج" : "Gradient Angle"}</label>
+                    <span className="text-indigo-600 font-bold">{selected.gradientAngle ?? 135}°</span>
                   </div>
                   <input type="range" min="0" max="360" value={selected.gradientAngle ?? 135}
                     onChange={(e) => update("gradientAngle", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                   <div className="flex gap-1 mt-1">
                     {[0, 45, 90, 135, 180, 225, 270, 315].map(v => (
                       <button key={v} onClick={() => update("gradientAngle", v)}
-                        className={`flex-1 py-1 rounded text-[9px] transition ${(selected.gradientAngle ?? 135) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                        className={`flex-1 py-1 rounded text-[9px] transition ${(selected.gradientAngle ?? 135) === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                         {v}°
                       </button>
                     ))}
@@ -591,15 +591,15 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   <StudioColorPicker label={isRtl ? "لون الخلفية" : "Background Color"} value={sbg} onChange={(v) => update("stripeBg", v)} />
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-slate-400">{isRtl ? "عرض الخط" : "Stripe Width"}</label>
-                      <span className="text-indigo-400 font-bold">{sw}px</span>
+                      <label className="text-slate-500">{isRtl ? "عرض الخط" : "Stripe Width"}</label>
+                      <span className="text-indigo-600 font-bold">{sw}px</span>
                     </div>
                     <input type="range" min="2" max="40" step="1" value={sw}
                       onChange={(e) => update("stripeWidth", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                     <div className="flex gap-1 mt-1">
                       {[4, 8, 12, 16, 24, 32].map(v => (
                         <button key={v} onClick={() => update("stripeWidth", v)}
-                          className={`flex-1 py-1 rounded text-[10px] transition ${sw === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                          className={`flex-1 py-1 rounded text-[10px] transition ${sw === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                           {v}
                         </button>
                       ))}
@@ -607,22 +607,22 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-slate-400">{isRtl ? "زاوية الخطوط" : "Stripe Angle"}</label>
-                      <span className="text-indigo-400 font-bold">{sa}°</span>
+                      <label className="text-slate-500">{isRtl ? "زاوية الخطوط" : "Stripe Angle"}</label>
+                      <span className="text-indigo-600 font-bold">{sa}°</span>
                     </div>
                     <input type="range" min="0" max="180" step="5" value={sa}
                       onChange={(e) => update("stripeAngle", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                     <div className="flex gap-1 mt-1">
                       {[0, 30, 45, 60, 90, 120, 135, 150].map(v => (
                         <button key={v} onClick={() => update("stripeAngle", v)}
-                          className={`flex-1 py-1 rounded text-[9px] transition ${sa === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                          className={`flex-1 py-1 rounded text-[9px] transition ${sa === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                           {v}°
                         </button>
                       ))}
                     </div>
                   </div>
                   {/* Stripes preview */}
-                  <div className="w-full h-8 rounded border border-slate-600" style={{ background: previewBg }} />
+                  <div className="w-full h-8 rounded border border-slate-200" style={{ background: previewBg }} />
                 </>
               );
             })()}
@@ -631,17 +631,17 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           <StudioColorPicker label={isRtl ? "لون الحدود" : "Border Color"} value={selected.borderColor} onChange={(v) => update("borderColor", v)} />
 
           {/* Blur effect */}
-          <div className="bg-slate-700/50 rounded-lg p-2 space-y-1">
+          <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-slate-300 font-semibold">{isRtl ? "ضبابية" : "Blur"}</label>
-              <span className="text-indigo-400 font-bold">{selected.blur || 0}px</span>
+              <label className="font-semibold" style={{color:'var(--hv-text)'}}>{isRtl ? "ضبابية" : "Blur"}</label>
+              <span className="text-indigo-600 font-bold">{selected.blur || 0}px</span>
             </div>
             <input type="range" min="0" max="40" step="0.5" value={selected.blur || 0}
               onChange={(e) => update("blur", parseFloat(e.target.value))} className="w-full accent-indigo-500" />
             <div className="flex gap-1">
               {[0, 3, 6, 10, 15, 20].map(v => (
                 <button key={v} onClick={() => update("blur", v)}
-                  className={`flex-1 py-1 rounded text-[10px] transition ${(selected.blur || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                  className={`flex-1 py-1 rounded text-[10px] transition ${(selected.blur || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                   {v}
                 </button>
               ))}
@@ -649,15 +649,15 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           </div>
 
           {/* Drop shadow + Inner shadow */}
-          <div className="bg-slate-900/40 border border-slate-700 rounded p-2 space-y-2">
-            <label className="text-xs font-semibold text-slate-300">{isRtl ? "🌑 الظلال" : "🌑 Shadows"}</label>
+          <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded p-2 space-y-2">
+            <label className="text-xs font-semibold" style={{color:'var(--hv-text)'}}>{isRtl ? "🌑 الظلال" : "🌑 Shadows"}</label>
 
             {/* Outer shadow */}
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-300">{isRtl ? "ظل خارجي" : "Drop shadow"}</span>
+              <span className="text-[11px]" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "ظل خارجي" : "Drop shadow"}</span>
               <button
                 onClick={() => update("outerShadow", { ...(selected.outerShadow || { x: 0, y: 6, blur: 12, spread: 0, color: "rgba(0,0,0,0.4)" }), enabled: !selected.outerShadow?.enabled })}
-                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.outerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.outerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
               >
                 {selected.outerShadow?.enabled ? (isRtl ? "On" : "On") : (isRtl ? "Off" : "Off")}
               </button>
@@ -665,22 +665,22 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {selected.outerShadow?.enabled && (
               <div className="grid grid-cols-2 gap-2 pl-1">
                 <div>
-                  <label className="text-[10px] text-slate-400 block">X: {selected.outerShadow.x ?? 0}</label>
+                  <label className="text-[10px] text-slate-500 block">X: {selected.outerShadow.x ?? 0}</label>
                   <input type="range" min="-30" max="30" value={selected.outerShadow.x ?? 0}
                     onChange={(e) => update("outerShadow", { ...selected.outerShadow, x: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">Y: {selected.outerShadow.y ?? 6}</label>
+                  <label className="text-[10px] text-slate-500 block">Y: {selected.outerShadow.y ?? 6}</label>
                   <input type="range" min="-30" max="30" value={selected.outerShadow.y ?? 6}
                     onChange={(e) => update("outerShadow", { ...selected.outerShadow, y: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "تمويه" : "Blur"}: {selected.outerShadow.blur ?? 12}</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "تمويه" : "Blur"}: {selected.outerShadow.blur ?? 12}</label>
                   <input type="range" min="0" max="50" value={selected.outerShadow.blur ?? 12}
                     onChange={(e) => update("outerShadow", { ...selected.outerShadow, blur: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "اللون" : "Color"}</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "اللون" : "Color"}</label>
                   <input type="color" value={(selected.outerShadow.color || "#000000").startsWith("rgba") ? "#000000" : selected.outerShadow.color}
                     onChange={(e) => update("outerShadow", { ...selected.outerShadow, color: e.target.value })} className="w-full h-7 rounded cursor-pointer" />
                 </div>
@@ -688,11 +688,11 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             )}
 
             {/* Inner shadow */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-700/50">
-              <span className="text-[11px] text-slate-300">{isRtl ? "ظل داخلي" : "Inner shadow"}</span>
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--hv-border)]">
+              <span className="text-[11px]" style={{color:'var(--hv-text-soft)'}}>{isRtl ? "ظل داخلي" : "Inner shadow"}</span>
               <button
                 onClick={() => update("innerShadow", { ...(selected.innerShadow || { x: 0, y: 4, blur: 8, spread: 0, color: "rgba(0,0,0,0.5)" }), enabled: !selected.innerShadow?.enabled })}
-                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.innerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300"}`}
+                className={`text-[10px] px-2 py-0.5 rounded transition ${selected.innerShadow?.enabled ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
               >
                 {selected.innerShadow?.enabled ? (isRtl ? "On" : "On") : (isRtl ? "Off" : "Off")}
               </button>
@@ -700,22 +700,22 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {selected.innerShadow?.enabled && (
               <div className="grid grid-cols-2 gap-2 pl-1">
                 <div>
-                  <label className="text-[10px] text-slate-400 block">X: {selected.innerShadow.x ?? 0}</label>
+                  <label className="text-[10px] text-slate-500 block">X: {selected.innerShadow.x ?? 0}</label>
                   <input type="range" min="-30" max="30" value={selected.innerShadow.x ?? 0}
                     onChange={(e) => update("innerShadow", { ...selected.innerShadow, x: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">Y: {selected.innerShadow.y ?? 4}</label>
+                  <label className="text-[10px] text-slate-500 block">Y: {selected.innerShadow.y ?? 4}</label>
                   <input type="range" min="-30" max="30" value={selected.innerShadow.y ?? 4}
                     onChange={(e) => update("innerShadow", { ...selected.innerShadow, y: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "تمويه" : "Blur"}: {selected.innerShadow.blur ?? 8}</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "تمويه" : "Blur"}: {selected.innerShadow.blur ?? 8}</label>
                   <input type="range" min="0" max="50" value={selected.innerShadow.blur ?? 8}
                     onChange={(e) => update("innerShadow", { ...selected.innerShadow, blur: parseInt(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block">{isRtl ? "اللون" : "Color"}</label>
+                  <label className="text-[10px] text-slate-500 block">{isRtl ? "اللون" : "Color"}</label>
                   <input type="color" value={(selected.innerShadow.color || "#000000").startsWith("rgba") ? "#000000" : selected.innerShadow.color}
                     onChange={(e) => update("innerShadow", { ...selected.innerShadow, color: e.target.value })} className="w-full h-7 rounded cursor-pointer" />
                 </div>
@@ -725,17 +725,17 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
           {/* Border radius - all shapes except circle/ellipse/line */}
           {!["circle", "ellipse", "line"].includes(selected.shapeType) && (
-            <div className="bg-slate-700/50 rounded-lg p-2 space-y-1">
+            <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-slate-300 font-semibold">{isRtl ? "⬛ تدوير الحواف" : "⬛ Corner Radius"}</label>
-                <span className="text-indigo-400 font-bold">{selected.borderRadius || 0}px</span>
+                <label className="font-semibold" style={{color:'var(--hv-text)'}}>{isRtl ? "⬛ تدوير الحواف" : "⬛ Corner Radius"}</label>
+                <span className="text-indigo-600 font-bold">{selected.borderRadius || 0}px</span>
               </div>
               <input type="range" min="0" max="200" step="1" value={selected.borderRadius || 0}
                 onChange={(e) => update("borderRadius", parseInt(e.target.value))} className="w-full accent-indigo-500" />
               <div className="flex gap-1 mt-1">
                 {[0, 8, 16, 32, 99, 200].map(v => (
                   <button key={v} onClick={() => update("borderRadius", v)}
-                    className={`flex-1 py-1 rounded text-[10px] transition ${selected.borderRadius === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    className={`flex-1 py-1 rounded text-[10px] transition ${selected.borderRadius === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                     {v === 0 ? "■" : v === 200 ? "●" : v}
                   </button>
                 ))}
@@ -745,42 +745,42 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "سماكة الحدود" : "Border Width"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "سماكة الحدود" : "Border Width"}</label>
               <input type="number" min="0" value={selected.borderWidth || 0}
                 onChange={(e) => update("borderWidth", parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "العرض%" : "Width%"}</label>
               <input type="number" value={Math.round(selected.width)} onChange={(e) => update("width", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
+              <label className="text-slate-500 block mb-1">{isRtl ? "الارتفاع%" : "Height%"}</label>
               <input type="number" value={Math.round(selected.height)} onChange={(e) => update("height", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-slate-400 block mb-1">X%</label>
+              <label className="text-slate-500 block mb-1">X%</label>
               <input type="number" value={Math.round(selected.x)} onChange={(e) => update("x", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Y%</label>
+              <label className="text-slate-500 block mb-1">Y%</label>
               <input type="number" value={Math.round(selected.y)} onChange={(e) => update("y", parseFloat(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white" />
+                className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1 text-[var(--hv-text)]" />
             </div>
           </div>
 
           {/* Nudge arrows */}
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "تحريك دقيق" : "Nudge"}</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "تحريك دقيق" : "Nudge"}</label>
             <div className="grid grid-cols-4 gap-1">
               {[
                 { label: "↑", key: "y", delta: -1 },
@@ -789,22 +789,22 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 { label: "→", key: "x", delta: 1 },
               ].map(({ label, key, delta }) => (
                 <button key={label} onClick={() => update(key, (selected[key] || 0) + delta)}
-                  className="py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-white">{label}</button>
+                  className="py-1.5 bg-slate-100 hover:bg-slate-200 border border-[var(--hv-border)] rounded text-[var(--hv-text)]">{label}</button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">{isRtl ? "شفافية" : "Opacity"}: {Math.round((selected.opacity ?? 1) * 100)}%</label>
+            <label className="text-slate-500 block mb-1">{isRtl ? "شفافية" : "Opacity"}: {Math.round((selected.opacity ?? 1) * 100)}%</label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
               onChange={(e) => update("opacity", parseFloat(e.target.value))}
               className="w-full accent-indigo-500" />
           </div>
 
           {/* ── Rotation (with slider + presets + manual input) ── */}
-          <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+          <div className="border border-[var(--hv-border)] rounded-lg p-2.5 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-slate-200 font-semibold text-[11px]">
+              <label className="font-semibold text-[11px]" style={{color:'var(--hv-text)'}}>
                 🔄 {isRtl ? "دوران الشكل" : "Rotate Shape"}
               </label>
               <div className="flex items-center gap-1">
@@ -812,13 +812,13 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   type="number"
                   value={selected.rotation || 0}
                   onChange={(e) => update("rotation", parseInt(e.target.value) || 0)}
-                  className="w-14 bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-white text-center"
+                  className="w-14 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 text-xs text-[var(--hv-text)] text-center"
                 />
-                <span className="text-slate-400 text-xs">°</span>
+                <span className="text-slate-500 text-xs">°</span>
                 {(selected.rotation || 0) !== 0 && (
                   <button
                     onClick={() => update("rotation", 0)}
-                    className="text-[10px] text-slate-400 hover:text-white bg-slate-700 px-1.5 py-0.5 rounded transition"
+                    className="text-[10px] text-slate-500 hover:text-[var(--hv-text)] bg-slate-100 px-1.5 py-0.5 rounded transition"
                     title={isRtl ? "إعادة لـ 0°" : "Reset to 0°"}
                   >↺</button>
                 )}
@@ -841,7 +841,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                   className={`py-1 rounded text-[9px] font-semibold transition ${
                     (selected.rotation || 0) === deg
                       ? "bg-indigo-600 text-white"
-                      : "bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                   title={`${deg}°`}
                 >
@@ -852,13 +852,13 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             <div className="flex gap-1">
               <button
                 onClick={() => update("rotation", ((selected.rotation || 0) - 15))}
-                className="flex-1 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] transition"
+                className="flex-1 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] transition"
               >
                 ↶ -15°
               </button>
               <button
                 onClick={() => update("rotation", ((selected.rotation || 0) + 15))}
-                className="flex-1 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] transition"
+                className="flex-1 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] transition"
               >
                 +15° ↷
               </button>
@@ -866,15 +866,15 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           </div>
 
           {/* ── Text inside shape (rotates with the shape) ────────────── */}
-          <div className="border border-indigo-700/50 rounded-lg p-2.5 space-y-2 bg-indigo-950/20">
+          <div className="border border-indigo-200 rounded-lg p-2.5 space-y-2 bg-indigo-50">
             <div className="flex items-center justify-between">
-              <label className="text-indigo-300 font-semibold text-[11px]">
+              <label className="text-indigo-600 font-semibold text-[11px]">
                 {isRtl ? "📝 نص داخل الشكل" : "📝 Text inside shape"}
               </label>
               {selected.text && (
                 <button
                   onClick={() => update("text", "")}
-                  className="text-[10px] text-slate-400 hover:text-red-400 bg-slate-700 px-2 py-0.5 rounded transition"
+                  className="text-[10px] text-slate-500 hover:text-red-500 bg-white border border-[var(--hv-border)] px-2 py-0.5 rounded transition"
                 >
                   {isRtl ? "مسح" : "Clear"}
                 </button>
@@ -885,18 +885,18 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               onChange={(e) => update("text", e.target.value)}
               placeholder={isRtl ? "اكتب النص هنا..." : "Type text here..."}
               rows={2}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 resize-none outline-none focus:border-indigo-500"
+              className="w-full bg-white border border-[var(--hv-border)] rounded px-2 py-1.5 text-xs text-[var(--hv-text)] placeholder-slate-400 resize-none outline-none focus:border-indigo-500"
               style={{ fontFamily: selected.textFontFamily || "Tajawal" }}
             />
             {selected.text && (
               <>
                 {/* Font family — full width */}
                 <div>
-                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "الخط" : "Font"}</label>
+                  <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "الخط" : "Font"}</label>
                   <select
                     value={selected.textFontFamily || "Tajawal"}
                     onChange={(e) => update("textFontFamily", e.target.value)}
-                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[11px] text-white"
+                    className="w-full bg-white border border-[var(--hv-border)] rounded px-2 py-1 text-[11px] text-[var(--hv-text)]"
                   >
                     {["Tajawal","Cairo","Almarai","Readex Pro","El Messiri","Amiri","Reem Kufi","Lalezar","Aref Ruqaa","Marhey","Aladin","Caveat","Pacifico","Dancing Script","Permanent Marker","Satisfy","Indie Flower","Patrick Hand","Arial","Georgia"].map(f => (
                       <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
@@ -907,21 +907,21 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 {/* Size + color — single compact row */}
                 <div className="flex items-end gap-2">
                   <div className="flex-1 min-w-0">
-                    <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "حجم الخط" : "Size"}</label>
+                    <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "حجم الخط" : "Size"}</label>
                     <input
                       type="number"
                       value={selected.textFontSize || 24}
                       onChange={(e) => update("textFontSize", parseInt(e.target.value) || 24)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                      className="w-full bg-white border border-[var(--hv-border)] rounded px-2 py-1 text-xs text-[var(--hv-text)]"
                     />
                   </div>
                   <div className="flex-shrink-0">
-                    <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "اللون" : "Color"}</label>
+                    <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "اللون" : "Color"}</label>
                     <input
                       type="color"
                       value={selected.textColor || "#ffffff"}
                       onInput={(e) => update("textColor", e.target.value)}
-                      className="w-9 h-7 rounded cursor-pointer border border-slate-600 bg-transparent"
+                      className="w-9 h-7 rounded cursor-pointer border border-slate-200 bg-transparent"
                       title={selected.textColor || "#ffffff"}
                     />
                   </div>
@@ -944,21 +944,21 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 <div className="grid grid-cols-3 gap-1">
                   <button
                     onClick={() => update("textBold", !selected.textBold)}
-                    className={`py-1 rounded text-[11px] font-bold transition ${selected.textBold ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                    className={`py-1 rounded text-[11px] font-bold transition ${selected.textBold ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >B</button>
                   <button
                     onClick={() => update("textItalic", !selected.textItalic)}
-                    className={`py-1 rounded text-[11px] italic transition ${selected.textItalic ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                    className={`py-1 rounded text-[11px] italic transition ${selected.textItalic ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >I</button>
                   <button
                     onClick={() => update("textShadow", !selected.textShadow)}
-                    className={`py-1 rounded text-[10px] transition ${selected.textShadow ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                    className={`py-1 rounded text-[10px] transition ${selected.textShadow ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >{isRtl ? "ظل" : "Shadow"}</button>
                 </div>
 
                 {/* Alignment — combined into a single 3x2 grid */}
                 <div>
-                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "محاذاة أفقية" : "H Align"}</label>
+                  <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "محاذاة أفقية" : "H Align"}</label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
                       { v: "left",   labelAr: "يسار",  labelEn: "Left"   },
@@ -968,14 +968,14 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       <button
                         key={opt.v}
                         onClick={() => update("textAlign", opt.v)}
-                        className={`py-1 rounded text-[10px] transition ${(selected.textAlign || "center") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                        className={`py-1 rounded text-[10px] transition ${(selected.textAlign || "center") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                       >{isRtl ? opt.labelAr : opt.labelEn}</button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "محاذاة عمودية" : "V Align"}</label>
+                  <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "محاذاة عمودية" : "V Align"}</label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
                       { v: "top",    labelAr: "أعلى",  labelEn: "Top"    },
@@ -985,14 +985,14 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       <button
                         key={opt.v}
                         onClick={() => update("textVAlign", opt.v)}
-                        className={`py-1 rounded text-[10px] transition ${(selected.textVAlign || "middle") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                        className={`py-1 rounded text-[10px] transition ${(selected.textVAlign || "middle") === opt.v ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                       >{isRtl ? opt.labelAr : opt.labelEn}</button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 text-[10px] block mb-0.5">
+                  <label className="text-slate-500 text-[10px] block mb-0.5">
                     {isRtl ? `الحشو الداخلي: ${selected.textPadding ?? 8}%` : `Inner Padding: ${selected.textPadding ?? 8}%`}
                   </label>
                   <input type="range" min="0" max="30" step="0.5" value={selected.textPadding ?? 8}
@@ -1015,14 +1015,14 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               { name: "Extreme",   depth: 12, angle: 135, color: "#0f172a" },
             ];
             return (
-              <div className="border border-fuchsia-700/50 rounded-lg p-2.5 space-y-2 bg-fuchsia-950/20">
+              <div className="border border-fuchsia-200 rounded-lg p-2.5 space-y-2 bg-fuchsia-50">
                 <div className="flex items-center justify-between">
-                  <span className="text-fuchsia-300 font-semibold text-[11px]">
+                  <span className="text-fuchsia-600 font-semibold text-[11px]">
                     {isRtl ? "🧊 تأثير ثلاثي الأبعاد" : "🧊 3D Extrude Effect"}
                   </span>
                   <button
                     onClick={() => updateTd({ enabled: !td.enabled, depth: td.depth || 10, angle: td.angle ?? 135, color: td.color || "#312e81" })}
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${td.enabled ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${td.enabled ? "bg-fuchsia-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >
                     {td.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
                   </button>
@@ -1034,7 +1034,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                     <button
                       key={p.name}
                       onClick={() => updateTd({ enabled: p.depth > 0, depth: p.depth, angle: p.angle, color: p.color })}
-                      className={`py-1 rounded text-[9px] font-semibold transition ${td.depth === p.depth && (p.depth === 0 ? !td.enabled : td.enabled) ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
+                      className={`py-1 rounded text-[9px] font-semibold transition ${td.depth === p.depth && (p.depth === 0 ? !td.enabled : td.enabled) ? "bg-fuchsia-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                     >
                       {p.name}
                     </button>
@@ -1044,7 +1044,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 {td.enabled && (
                   <>
                     <div>
-                      <label className="text-slate-400 text-[10px] block mb-0.5">
+                      <label className="text-slate-500 text-[10px] block mb-0.5">
                         {isRtl ? `العمق: ${td.depth ?? 10}px` : `Depth: ${td.depth ?? 10}px`}
                       </label>
                       <input
@@ -1055,7 +1055,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-[10px] block mb-0.5">
+                      <label className="text-slate-500 text-[10px] block mb-0.5">
                         {isRtl ? `زاوية الإضاءة: ${td.angle ?? 135}°` : `Light angle: ${td.angle ?? 135}°`}
                       </label>
                       <input
@@ -1069,19 +1069,19 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                           <button
                             key={a}
                             onClick={() => updateTd({ angle: a })}
-                            className={`flex-1 py-0.5 rounded text-[8px] transition ${(td.angle ?? 135) === a ? "bg-fuchsia-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                            className={`flex-1 py-0.5 rounded text-[8px] transition ${(td.angle ?? 135) === a ? "bg-fuchsia-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                           >{a}°</button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون العمق" : "Depth Color"}</label>
+                      <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "لون العمق" : "Depth Color"}</label>
                       <div className="flex gap-1 items-center">
                         <input
                           type="color"
                           value={td.color || "#312e81"}
                           onInput={(e) => updateTd({ color: e.target.value })}
-                          className="w-8 h-7 rounded cursor-pointer border border-slate-600 bg-transparent"
+                          className="w-8 h-7 rounded cursor-pointer border border-slate-200 bg-transparent"
                         />
                         <div className="flex flex-wrap gap-1 flex-1">
                           {["#1e1b4b","#312e81","#0f172a","#1e293b","#7f1d1d","#7c2d12","#365314","#0c4a6e"].map(c => (
@@ -1089,7 +1089,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                               key={c}
                               onClick={() => updateTd({ color: c })}
                               style={{ background: c }}
-                              className={`w-5 h-5 rounded-full border-2 transition ${td.color === c ? "border-white" : "border-slate-600"}`}
+                              className={`w-5 h-5 rounded-full border-2 transition ${td.color === c ? "border-[var(--hv-primary)]" : "border-slate-300"}`}
                               title={c}
                             />
                           ))}
@@ -1106,21 +1106,21 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           })()}
 
           {/* ── أشكال مرنة / Flex Transform ── */}
-          <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+          <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-indigo-300 font-bold text-xs">
+              <label className="text-indigo-600 font-bold text-xs">
                 {isRtl ? "✦ أشكال مرنة" : "✦ Flex Transform"}
               </label>
               <button
                 onClick={() => { update("skewX", 0); update("skewY", 0); update("rotateX", 0); update("rotateY", 0); update("perspective", 800); }}
-                className="text-[10px] text-slate-400 hover:text-white bg-slate-700 px-2 py-0.5 rounded transition"
+                className="text-[10px] text-slate-500 hover:text-[var(--hv-text)] bg-slate-100 px-2 py-0.5 rounded transition"
               >{isRtl ? "إعادة" : "Reset"}</button>
             </div>
 
             {/* Skew X */}
             <div>
               <div className="flex justify-between mb-0.5">
-                <label className="text-slate-400 text-[11px]">{isRtl ? "ميل أفقي" : "Skew X"}</label>
+                <label className="text-slate-500 text-[11px]">{isRtl ? "ميل أفقي" : "Skew X"}</label>
                 <span className="text-indigo-400 text-[11px] font-bold">{selected.skewX || 0}°</span>
               </div>
               <input type="range" min="-60" max="60" step="1" value={selected.skewX || 0}
@@ -1128,7 +1128,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               <div className="flex gap-1 mt-1">
                 {[-45, -30, -15, 0, 15, 30, 45].map(v => (
                   <button key={v} onClick={() => update("skewX", v)}
-                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.skewX || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.skewX || 0) === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                     {v}
                   </button>
                 ))}
@@ -1138,7 +1138,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {/* Skew Y */}
             <div>
               <div className="flex justify-between mb-0.5">
-                <label className="text-slate-400 text-[11px]">{isRtl ? "ميل عمودي" : "Skew Y"}</label>
+                <label className="text-slate-500 text-[11px]">{isRtl ? "ميل عمودي" : "Skew Y"}</label>
                 <span className="text-indigo-400 text-[11px] font-bold">{selected.skewY || 0}°</span>
               </div>
               <input type="range" min="-60" max="60" step="1" value={selected.skewY || 0}
@@ -1148,7 +1148,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {/* 3D Rotate X */}
             <div>
               <div className="flex justify-between mb-0.5">
-                <label className="text-slate-400 text-[11px]">{isRtl ? "3D أعلى/أسفل" : "3D Tilt X"}</label>
+                <label className="text-slate-500 text-[11px]">{isRtl ? "3D أعلى/أسفل" : "3D Tilt X"}</label>
                 <span className="text-indigo-400 text-[11px] font-bold">{selected.rotateX || 0}°</span>
               </div>
               <input type="range" min="-80" max="80" step="1" value={selected.rotateX || 0}
@@ -1158,7 +1158,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {/* 3D Rotate Y */}
             <div>
               <div className="flex justify-between mb-0.5">
-                <label className="text-slate-400 text-[11px]">{isRtl ? "3D يمين/يسار" : "3D Tilt Y"}</label>
+                <label className="text-slate-500 text-[11px]">{isRtl ? "3D يمين/يسار" : "3D Tilt Y"}</label>
                 <span className="text-indigo-400 text-[11px] font-bold">{selected.rotateY || 0}°</span>
               </div>
               <input type="range" min="-80" max="80" step="1" value={selected.rotateY || 0}
@@ -1166,7 +1166,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               <div className="flex gap-1 mt-1">
                 {[-60, -40, -20, 0, 20, 40, 60].map(v => (
                   <button key={v} onClick={() => update("rotateY", v)}
-                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.rotateY || 0) === v ? "bg-purple-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.rotateY || 0) === v ? "bg-purple-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                     {v}
                   </button>
                 ))}
@@ -1176,7 +1176,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
             {/* Perspective depth */}
             <div>
               <div className="flex justify-between mb-0.5">
-                <label className="text-slate-400 text-[11px]">{isRtl ? "عمق المنظور" : "Perspective"}</label>
+                <label className="text-slate-500 text-[11px]">{isRtl ? "عمق المنظور" : "Perspective"}</label>
                 <span className="text-indigo-400 text-[11px] font-bold">{selected.perspective ?? 800}px</span>
               </div>
               <input type="range" min="100" max="1500" step="50" value={selected.perspective ?? 800}
@@ -1184,7 +1184,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               <div className="flex gap-1 mt-1">
                 {[200, 400, 600, 800, 1200].map(v => (
                   <button key={v} onClick={() => update("perspective", v)}
-                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.perspective ?? 800) === v ? "bg-indigo-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-400"}`}>
+                    className={`flex-1 py-0.5 rounded text-[9px] transition ${(selected.perspective ?? 800) === v ? "bg-indigo-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}>
                     {v}
                   </button>
                 ))}
@@ -1205,7 +1205,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                 ].map(p => (
                   <button key={p.label}
                     onClick={() => { update("skewX", p.skewX); update("skewY", p.skewY); update("rotateX", p.rotateX); update("rotateY", p.rotateY); if (p.perspective) update("perspective", p.perspective); }}
-                    className="py-1 rounded text-[10px] bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+                    className="py-1 rounded text-[10px] bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white transition">
                     {p.label}
                   </button>
                 ))}
@@ -1214,21 +1214,21 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
           </div>
 
           <button onClick={() => onDuplicate(selected.id)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition">
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white border border-[var(--hv-border)] transition">
             <Copy className="w-3.5 h-3.5" />
             {isRtl ? "نسخ الشكل (Ctrl+D)" : "Duplicate (Ctrl+D)"}
           </button>
 
           {/* Image Fill inside shape */}
           {selected.shapeType !== "arrow" && selected.shapeType !== "line" && (
-            <div className="bg-slate-700/50 rounded-lg p-2 space-y-2">
+            <div className="bg-[var(--hv-surface-2)] border border-[var(--hv-border)] rounded-lg p-2 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-slate-300 font-semibold text-xs">
+                <label className="font-semibold text-xs" style={{color:'var(--hv-text)'}}>
                   {isRtl ? "🖼️ صورة داخل الشكل" : "🖼️ Image Fill"}
                 </label>
                 {selected.fillImage && (
                   <button onClick={() => { update("fillImage", null); update("imageOffsetX", 0); update("imageOffsetY", 0); update("imageScale", 100); }}
-                    className="text-red-400 hover:text-red-300 text-xs flex items-center gap-0.5">
+                    className="text-red-500 hover:text-red-400 text-xs flex items-center gap-0.5">
                     <X className="w-3 h-3" /> {isRtl ? "إزالة" : "Remove"}
                   </button>
                 )}
@@ -1268,7 +1268,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
               {selected.fillImage && (
                 <>
                   <div>
-                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                    <div className="flex justify-between text-slate-500 text-[10px] mb-0.5">
                       <span>{isRtl ? "حجم الصورة" : "Scale"}</span>
                       <span>{selected.imageScale || 100}%</span>
                     </div>
@@ -1276,7 +1276,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       onChange={(e) => update("imageScale", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                    <div className="flex justify-between text-slate-500 text-[10px] mb-0.5">
                       <span>{isRtl ? "إزاحة أفقية" : "Offset X"}</span>
                       <span>{selected.imageOffsetX || 0}</span>
                     </div>
@@ -1284,7 +1284,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       onChange={(e) => update("imageOffsetX", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                   </div>
                   <div>
-                    <div className="flex justify-between text-slate-400 text-[10px] mb-0.5">
+                    <div className="flex justify-between text-slate-500 text-[10px] mb-0.5">
                       <span>{isRtl ? "إزاحة عمودية" : "Offset Y"}</span>
                       <span>{selected.imageOffsetY || 0}</span>
                     </div>
@@ -1292,7 +1292,7 @@ export default function ShapesPanel({ shapes, selectedId, onSelect, onAdd, onUpd
                       onChange={(e) => update("imageOffsetY", parseInt(e.target.value))} className="w-full accent-indigo-500" />
                   </div>
                   <button onClick={() => fillImgRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-1 py-1 rounded bg-slate-600 hover:bg-slate-500 text-xs text-slate-300 transition">
+                    className="w-full flex items-center justify-center gap-1 py-1 rounded bg-slate-100 hover:bg-slate-200 border border-[var(--hv-border)] text-xs text-slate-600 transition">
                     <Upload className="w-3 h-3" /> {isRtl ? "تغيير الصورة" : "Change Image"}
                   </button>
                 </>

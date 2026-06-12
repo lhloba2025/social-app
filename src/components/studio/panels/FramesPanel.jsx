@@ -103,7 +103,7 @@ export default function FramesPanel({ frames, onChange, language }) {
   return (
     <div className="space-y-3 text-xs">
       <div className="flex items-center justify-between">
-        <h3 className="text-slate-300 font-bold text-sm">{isRtl ? "🖼️ الإطارات" : "🖼️ Frames"}</h3>
+        <h3 className="font-bold text-sm" style={{ color: "var(--hv-text)" }}>{isRtl ? "🖼️ الإطارات" : "🖼️ Frames"}</h3>
         <button
           onClick={addFrame}
           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition"
@@ -126,14 +126,15 @@ export default function FramesPanel({ frames, onChange, language }) {
               <div
                 key={f.id}
                 onClick={() => setSelectedId(f.id === selectedId ? null : f.id)}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition ${
-                  f.id === selectedId ? "bg-indigo-600/30 border border-indigo-500/50" : "bg-slate-700 hover:bg-slate-600"
-                }`}
+                className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition border"
+                style={f.id === selectedId
+                  ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.08)" }
+                  : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}
               >
-                <div className="w-8 h-6 bg-slate-900 rounded overflow-hidden p-0.5 flex-shrink-0">
+                <div className="w-8 h-6 bg-slate-100 rounded overflow-hidden p-0.5 flex-shrink-0">
                   <FramePreview presetId={f.presetId} color={f.color} />
                 </div>
-                <span className="flex-1 text-slate-300 truncate">
+                <span className="flex-1 text-slate-600 truncate">
                   {isRtl
                     ? (preset?.nameAr || f.presetId)
                     : (preset?.nameEn || f.presetId)
@@ -154,8 +155,8 @@ export default function FramesPanel({ frames, onChange, language }) {
 
       {/* Controls for selected frame */}
       {selected && (
-        <div className="space-y-3 border-t border-slate-700 pt-3">
-          <p className="text-slate-400 font-semibold">{isRtl ? "تعديل الإطار المحدد:" : "Edit Selected Frame:"}</p>
+        <div className="space-y-3 border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
+          <p className="text-slate-500 font-semibold">{isRtl ? "تعديل الإطار المحدد:" : "Edit Selected Frame:"}</p>
 
           {/* Preset grid */}
           <div className="grid grid-cols-3 gap-2">
@@ -165,14 +166,14 @@ export default function FramesPanel({ frames, onChange, language }) {
                 onClick={() => updateSelected("presetId", preset.id)}
                 className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition ${
                   selected.presetId === preset.id
-                    ? "border-indigo-500 bg-indigo-900/40"
-                    : "border-slate-600 bg-slate-700/50 hover:border-slate-500"
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-slate-200 bg-[var(--hv-surface-2)] hover:border-slate-400"
                 }`}
               >
-                <div className="w-full aspect-[4/3] bg-slate-900 rounded overflow-hidden p-1">
+                <div className="w-full aspect-[4/3] bg-slate-100 rounded overflow-hidden p-1">
                   <FramePreview presetId={preset.id} color={selected.color} />
                 </div>
-                <span className="text-[10px] text-slate-300 text-center leading-tight">
+                <span className="text-[10px] text-slate-600 text-center leading-tight">
                   {isRtl ? preset.nameAr : preset.nameEn}
                 </span>
               </button>
@@ -196,12 +197,12 @@ export default function FramesPanel({ frames, onChange, language }) {
               ["#0ea5e9","#6366f1"],
             ];
             return (
-              <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
+              <div className="border rounded-lg p-2.5 space-y-2" style={{ borderColor: "var(--hv-border)" }}>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-200 font-semibold text-[11px]">{isRtl ? "✨ لون مدرج للإطار" : "✨ Gradient Fill"}</span>
+                  <span className="font-semibold text-[11px]" style={{ color: "var(--hv-text)" }}>{isRtl ? "✨ لون مدرج للإطار" : "✨ Gradient Fill"}</span>
                   <button
                     onClick={() => updateGrad({ enabled: !fg.enabled })}
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${fg.enabled ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${fg.enabled ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-100"}`}
                   >
                     {fg.enabled ? (isRtl ? "مفعّل ✓" : "ON ✓") : (isRtl ? "معطّل" : "OFF")}
                   </button>
@@ -212,7 +213,7 @@ export default function FramesPanel({ frames, onChange, language }) {
                       key={i}
                       onClick={() => updateGrad({ color1: c1, color2: c2, enabled: true })}
                       style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
-                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${fg.color1 === c1 && fg.color2 === c2 ? "border-white" : "border-slate-600"}`}
+                      className={`w-6 h-6 rounded-full hover:scale-110 transition border-2 ${fg.color1 === c1 && fg.color2 === c2 ? "border-indigo-500" : "border-slate-200"}`}
                     />
                   ))}
                 </div>
@@ -220,18 +221,18 @@ export default function FramesPanel({ frames, onChange, language }) {
                   <>
                     <div className="flex gap-2">
                       <div className="flex-1">
-                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
+                        <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "لون ١" : "Color 1"}</label>
                         <input type="color" value={fg.color1 || "#8b5cf6"} onInput={(e) => updateGrad({ color1: e.target.value })}
-                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                          className="w-full h-6 rounded cursor-pointer border border-slate-200 bg-transparent" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
+                        <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? "لون ٢" : "Color 2"}</label>
                         <input type="color" value={fg.color2 || "#ec4899"} onInput={(e) => updateGrad({ color2: e.target.value })}
-                          className="w-full h-6 rounded cursor-pointer border border-slate-600 bg-transparent" />
+                          className="w-full h-6 rounded cursor-pointer border border-slate-200 bg-transparent" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-slate-400 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${fg.angle ?? 135}°` : `Angle: ${fg.angle ?? 135}°`}</label>
+                      <label className="text-slate-500 text-[10px] block mb-0.5">{isRtl ? `زاوية: ${fg.angle ?? 135}°` : `Angle: ${fg.angle ?? 135}°`}</label>
                       <input type="range" min="0" max="360" step="5" value={fg.angle ?? 135}
                         onChange={(e) => updateGrad({ angle: parseInt(e.target.value) })}
                         className="w-full accent-indigo-500" />
@@ -244,7 +245,7 @@ export default function FramesPanel({ frames, onChange, language }) {
           })()}
 
           <div>
-            <label className="text-slate-400 block mb-1">
+            <label className="text-slate-500 block mb-1">
               {isRtl ? "السُمك / الحجم" : "Thickness / Size"}: {selected.thickness ?? 3}px
             </label>
             <input type="range" min="1" max="20" value={selected.thickness ?? 3}
@@ -252,7 +253,7 @@ export default function FramesPanel({ frames, onChange, language }) {
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">
+            <label className="text-slate-500 block mb-1">
               {isRtl ? "المسافة من الحافة" : "Padding from edge"}: {selected.padding ?? 4}%
             </label>
             <input type="range" min="0" max="15" step="0.5" value={selected.padding ?? 4}
@@ -260,7 +261,7 @@ export default function FramesPanel({ frames, onChange, language }) {
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">
+            <label className="text-slate-500 block mb-1">
               {isRtl ? "الشفافية" : "Opacity"}: {Math.round((selected.opacity ?? 1) * 100)}%
             </label>
             <input type="range" min="0" max="1" step="0.05" value={selected.opacity ?? 1}
@@ -268,10 +269,10 @@ export default function FramesPanel({ frames, onChange, language }) {
           </div>
 
           {/* ── Position / scale offsets ─────────────────────── */}
-          <div className="border border-slate-600 rounded-lg p-2.5 space-y-2">
-            <p className="text-slate-200 font-semibold text-[11px]">{isRtl ? "📍 الموقع والحجم" : "📍 Position & Size"}</p>
+          <div className="border rounded-lg p-2.5 space-y-2" style={{ borderColor: "var(--hv-border)" }}>
+            <p className="font-semibold text-[11px]" style={{ color: "var(--hv-text)" }}>{isRtl ? "📍 الموقع والحجم" : "📍 Position & Size"}</p>
             <div>
-              <label className="text-slate-400 block mb-1 text-[10px]">
+              <label className="text-slate-500 block mb-1 text-[10px]">
                 {isRtl ? "إزاحة أفقية X" : "Horizontal offset X"}: {selected.offsetX ?? 0}%
               </label>
               <input type="range" min="-50" max="50" step="0.5" value={selected.offsetX ?? 0}
@@ -279,7 +280,7 @@ export default function FramesPanel({ frames, onChange, language }) {
                 className="w-full accent-indigo-500" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1 text-[10px]">
+              <label className="text-slate-500 block mb-1 text-[10px]">
                 {isRtl ? "إزاحة عمودية Y" : "Vertical offset Y"}: {selected.offsetY ?? 0}%
               </label>
               <input type="range" min="-50" max="50" step="0.5" value={selected.offsetY ?? 0}
@@ -287,7 +288,7 @@ export default function FramesPanel({ frames, onChange, language }) {
                 className="w-full accent-indigo-500" />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1 text-[10px]">
+              <label className="text-slate-500 block mb-1 text-[10px]">
                 {isRtl ? "الحجم" : "Scale"}: {Math.round((selected.scale ?? 1) * 100)}%
               </label>
               <input type="range" min="0.3" max="2" step="0.05" value={selected.scale ?? 1}
@@ -296,7 +297,7 @@ export default function FramesPanel({ frames, onChange, language }) {
             </div>
             <button
               onClick={() => { updateSelected("offsetX", 0); updateSelected("offsetY", 0); updateSelected("scale", 1); }}
-              className="w-full py-1 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 transition"
+              className="w-full py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600 transition"
             >
               {isRtl ? "🔄 إعادة ضبط الموقع" : "🔄 Reset position"}
             </button>
