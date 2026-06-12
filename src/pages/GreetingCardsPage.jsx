@@ -6,11 +6,13 @@
 // preview each card, then download all cards as a single ZIP.
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Upload, Download, Loader2, Type, Image as ImageIcon, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Maximize2, Copy, Crop } from "lucide-react";
+import { Upload, Download, Loader2, Type, Image as ImageIcon, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Maximize2, Copy, Crop, Sparkles, LayoutGrid, BookImage, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { normalizeImageFile, isHeic, shrinkBlobToLimit } from "@/utils/imageConvert";
-import { fetchImageByUrl } from "@/api/localClient";
+import { fetchImageByUrl, localApi } from "@/api/localClient";
+import { listLocalMedia } from "@/utils/localMediaStore";
 
 // ── IndexedDB cards library — much bigger quota than localStorage ──
 // localStorage caps at ~5MB which fills up after one or two designs that
@@ -319,11 +321,19 @@ function FontPicker({ value, onChange, fonts, isRtl }) {
 
 export default function GreetingCardsPage({ language }) {
   const isRtl = (language || localStorage.getItem("appLanguage") || "ar") === "ar";
+  const navigate = useNavigate();
 
   // Template image
   const [templateUrl, setTemplateUrl] = useState(null);
   const [templateW, setTemplateW] = useState(0);
   const [templateH, setTemplateH] = useState(0);
+
+  // "Choose template from the library" — bridges the AI generator and the
+  // Design Studio: anything generated/designed lands in the library, and here
+  // the user can pick any of it as a card template (instead of only uploading).
+  const [showTemplateLib, setShowTemplateLib] = useState(false);
+  const [templateLibItems, setTemplateLibItems] = useState([]);
+  const [loadingTemplateLib, setLoadingTemplateLib] = useState(false);
 
   // Template positioning — zoom + 2-axis offset applied ON TOP of fitMode.
   // Lets users reframe the template photo (move the sheep, crop the tree, etc.)
@@ -1672,6 +1682,68 @@ export default function GreetingCardsPage({ language }) {
     }
   };
 
+  // Set the card template from any image URL (library pick / AI / studio export).
+  const setTemplateFromUrl = async (url) => {
+    if (!url) return;
+    setUploadingTemplate(true);
+    setError("");
+    try {
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = url;
+      });
+      setTemplateUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url; });
+      setTemplateW(img.naturalWidth);
+      setTemplateH(img.naturalHeight);
+      setTemplateZoom(1);
+      setTemplateOffsetX(0);
+      setTemplateOffsetY(0);
+      setShowTemplateLib(false);
+    } catch (err) {
+      setError(isRtl ? "تعذّر تحميل الصورة من المكتبة" : "Couldn't load that image");
+    } finally {
+      setUploadingTemplate(false);
+    }
+  };
+
+  // Gather everything the user has created — AI images + bulk media + saved
+  // studio designs — into one pick list for the template chooser.
+  const openTemplateLibrary = async () => {
+    setShowTemplateLib(true);
+    setLoadingTemplateLib(true);
+    const items = [];
+    const seen = new Set();
+    const pushItem = (url, label, kind) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      items.push({ url, label, kind });
+    };
+    // 1) Local AI / bulk images — synchronous, show instantly.
+    try {
+      listLocalMedia().forEach((m) => pushItem(m.url, m.caption_title || m.name || "", "ai"));
+    } catch {}
+    setTemplateLibItems([...items]);
+    if (items.length) setLoadingTemplateLib(false); // we already have something to show
+
+    // 2 + 3) Backend media + saved studio designs — best-effort, never block
+    // the UI (the preview/headless build has no backend, so we time them out).
+    const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+    try {
+      const designs = await withTimeout(localApi.entities.Design.list("-updated_date"), 4000);
+      (designs || []).forEach((d) => pushItem(d.thumbnail, d.name || "", "design"));
+      setTemplateLibItems([...items]);
+    } catch {}
+    try {
+      const media = await withTimeout(localApi.entities.Media.list("-created_date"), 4000);
+      (media || []).forEach((m) => pushItem(m.url || m.image_url, m.caption_title || m.name || "", "ai"));
+      setTemplateLibItems([...items]);
+    } catch {}
+    setLoadingTemplateLib(false);
+  };
+
   // ── Names upload (Excel / CSV) ───────────────────────────────
   const handleNames = async (e) => {
     const file = e.target.files[0];
@@ -2796,12 +2868,44 @@ export default function GreetingCardsPage({ language }) {
                 disabled={uploadingTemplate}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition disabled:opacity-50"
               >
-                {uploadingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                {uploadingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 {templateUrl ? (isRtl ? "تغيير الصورة" : "Change image") : (isRtl ? "رفع صورة القالب" : "Upload template image")}
               </button>
               <input ref={templateInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleTemplate} />
+
+              {/* Or CREATE a template — pick from your library, or jump to the
+                  AI generator / Design Studio (their output saves to the library). */}
+              <div className="flex items-center gap-2 my-2.5">
+                <span className="flex-1 h-px" style={{ background: "var(--hv-border)" }} />
+                <span className="text-[10px] font-bold" style={{ color: "var(--hv-text-faint)" }}>{isRtl ? "أو أنشئ قالب" : "or create one"}</span>
+                <span className="flex-1 h-px" style={{ background: "var(--hv-border)" }} />
+              </div>
+              <button
+                onClick={openTemplateLibrary}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition hover:bg-slate-100"
+                style={{ background: "var(--hv-surface)", border: "1px solid var(--hv-border)", color: "var(--hv-primary)" }}
+              >
+                <BookImage className="w-4 h-4" /> {isRtl ? "اختر من المكتبة" : "Pick from library"}
+              </button>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                  onClick={() => navigate("/ImageGen")}
+                  className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition hover:bg-slate-100"
+                  style={{ background: "var(--hv-surface)", border: "1px solid var(--hv-border)", color: "var(--hv-text-soft)" }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--hv-secondary-600,#f43f5e)" }} /> {isRtl ? "أنشئ بالذكاء" : "AI"}
+                </button>
+                <button
+                  onClick={() => navigate("/DesignStudio")}
+                  className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition hover:bg-slate-100"
+                  style={{ background: "var(--hv-surface)", border: "1px solid var(--hv-border)", color: "var(--hv-text-soft)" }}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" style={{ color: "var(--hv-primary)" }} /> {isRtl ? "صمّم بالمنشئ" : "Studio"}
+                </button>
+              </div>
+
               {templateW > 0 && (
-                <p className="text-[10px] text-[var(--hv-text-faint)] mt-1.5">{templateW} ?� {templateH} px</p>
+                <p className="text-[10px] text-[var(--hv-text-faint)] mt-2">{templateW} × {templateH} px</p>
               )}
             </div>
 
@@ -5998,6 +6102,49 @@ export default function GreetingCardsPage({ language }) {
       </div>
 
       {/* Save card modal */}
+      {showTemplateLib && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowTemplateLib(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--hv-border)" }}>
+              <div>
+                <h3 className="font-extrabold text-base" style={{ color: "var(--hv-text)" }}>{isRtl ? "اختر قالباً من المكتبة" : "Pick a template"}</h3>
+                <p className="text-[11px]" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "صور الذكاء وتصاميم المنشئ المحفوظة" : "Your AI images & saved studio designs"}</p>
+              </div>
+              <button onClick={() => setShowTemplateLib(false)} className="p-1.5 rounded-lg hover:bg-slate-100" style={{ color: "var(--hv-text-soft)" }}><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingTemplateLib ? (
+                <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--hv-primary)" }} /></div>
+              ) : templateLibItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookImage className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--hv-text-faint)" }} />
+                  <p className="text-sm font-bold mb-1" style={{ color: "var(--hv-text)" }}>{isRtl ? "المكتبة فاضية" : "Library is empty"}</p>
+                  <p className="text-[12px] mb-4" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "ولّد صورة بالذكاء أو صمّم في المنشئ، وبتظهر هنا." : "Generate with AI or design in the Studio — they'll show up here."}</p>
+                  <div className="flex gap-2 justify-center">
+                    <button onClick={() => navigate("/ImageGen")} className="hv-btn hv-btn-primary text-xs"><Sparkles className="w-3.5 h-3.5" /> {isRtl ? "توليد بالذكاء" : "AI generator"}</button>
+                    <button onClick={() => navigate("/DesignStudio")} className="hv-btn hv-btn-ghost text-xs"><LayoutGrid className="w-3.5 h-3.5" /> {isRtl ? "منشئ التصاميم" : "Design Studio"}</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {templateLibItems.map((it, i) => (
+                    <button key={it.url + i} onClick={() => setTemplateFromUrl(it.url)}
+                            className="group relative rounded-xl overflow-hidden border bg-slate-50 hover:border-[var(--hv-primary)] transition aspect-square"
+                            style={{ borderColor: "var(--hv-border)" }} title={it.label}>
+                      <img src={it.url} alt={it.label} className="w-full h-full object-cover" loading="lazy" />
+                      <span className="absolute top-1.5 inset-inline-start-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                            style={{ background: it.kind === "ai" ? "var(--hv-secondary-600,#f43f5e)" : "var(--hv-primary)", insetInlineStart: "6px" }}>
+                        {it.kind === "ai" ? (isRtl ? "ذكاء" : "AI") : (isRtl ? "تصميم" : "Design")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowSaveModal(false)}>
           <div className="bg-[var(--hv-surface-2)] rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
