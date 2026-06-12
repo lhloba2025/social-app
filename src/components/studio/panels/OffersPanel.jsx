@@ -12,7 +12,9 @@ const THEMES = [
   { name: "بنفسجي", accent: "#7c3aed", text: "#3b0764", row: "#ffffff" },
 ];
 
-const CURRENCIES = ["ريال", "ر.س", "﷼", "$", "د.إ", "د.ك", "AED", "USD"];
+// "⃁" = the NEW official Saudi Riyal symbol (Unicode U+20C1), first so it's
+// easy to reach. "﷼" is the older riyal sign, kept for existing designs.
+const CURRENCIES = ["⃁", "ريال", "ر.س", "﷼", "$", "د.إ", "د.ك", "AED", "USD"];
 
 export default function OffersPanel({ offers, onChange, language }) {
   const isRtl = language === "ar";
