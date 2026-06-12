@@ -1458,8 +1458,12 @@ export default function StudioCanvas({
           const top  = corner === "nw" || corner === "ne";  // dragging a top handle
           let newW = Math.max(2, startW + (left ? -dx : dx));
           let newH = Math.max(2, startH + (top ? -dy : dy));
-          // Lock aspect ratio with Shift.
-          if (e.shiftKey && startW > 0 && startH > 0) {
+          // Images/logos KEEP their aspect ratio by default (so the box always
+          // hugs the picture — no letterbox gap inside the selection); hold Shift
+          // to stretch freely. Shapes are free by default; Shift locks them.
+          const isImg = type === "image" || type === "logo";
+          const keepRatio = isImg ? !e.shiftKey : e.shiftKey;
+          if (keepRatio && startW > 0 && startH > 0) {
             const ratio = startW / startH;
             if (Math.abs(dx) > Math.abs(dy)) newH = Math.max(2, newW / ratio);
             else newW = Math.max(2, newH * ratio);
