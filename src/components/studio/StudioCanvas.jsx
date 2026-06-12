@@ -1008,7 +1008,7 @@ function ShapeElement({ shape, scale, isSelected, selectedRegion, onSelectRegion
 }
 
 // ─── Smart Guides helper (خارج المكوّن لأنها دالة خالصة) ─────────────────────
-const SNAP_THRESHOLD = 1.5; // percent
+const SNAP_THRESHOLD = 0.9; // percent — gentle, so it aligns without feeling "magnetic"
 
 function computeSnapGuides(id, type, newX, newY, textLayers, shapes, images, logos) {
   let dragW = 20, dragH = 15, isTextEl = type === "text";
@@ -1346,12 +1346,31 @@ export default function StudioCanvas({
     dragRef.current = { id, type, startMX, startMY, startX, startY, lastX: currentX, lastY: currentY };
   }, []);
 
-  const startResize = useCallback((e, id, type, currentW, currentH) => {
+  // corner: "nw" | "ne" | "sw" | "se" (defaults se for text/group/legacy callers).
+  const startResize = useCallback((e, id, type, currentW, currentH, corner = "se", currentX = 0, currentY = 0) => {
     e.stopPropagation();
     const startMX = e.clientX;
     const startMY = e.clientY;
-    resizeRef.current = { id, type, startMX, startMY, startW: currentW, startH: currentH };
+    resizeRef.current = { id, type, startMX, startMY, startW: currentW, startH: currentH, corner, startX: currentX, startY: currentY };
   }, []);
+
+  // Render 4 corner resize handles for an element (image / logo / shape).
+  // Dragging any corner keeps the OPPOSITE corner anchored, so the box grows
+  // from the side you pull — not always from the bottom-right.
+  const resizeHandles = (id, type, x, y, w, h) => {
+    const corners = [
+      { k: "nw", pos: { top: -6, left: -6 }, cursor: "nwse-resize" },
+      { k: "ne", pos: { top: -6, right: -6 }, cursor: "nesw-resize" },
+      { k: "sw", pos: { bottom: -6, left: -6 }, cursor: "nesw-resize" },
+      { k: "se", pos: { bottom: -6, right: -6 }, cursor: "nwse-resize" },
+    ];
+    return corners.map((c) => (
+      <div key={c.k}
+        onMouseDown={(e) => { e.stopPropagation(); startResize(e, id, type, w, h, c.k, x, y); }}
+        style={{ position: "absolute", width: 12, height: 12, background: "#fff", border: "2px solid #4f46e5", borderRadius: 3, cursor: c.cursor, ...c.pos }}
+      />
+    ));
+  };
 
   const startRotate = useCallback((e, id, type, currentRotation) => {
     e.stopPropagation();
@@ -1427,30 +1446,31 @@ export default function StudioCanvas({
       }
 
       if (resizeRef.current) {
-        const { id, type, startMX, startMY, startW, startH } = resizeRef.current;
+        const { id, type, startMX, startMY, startW, startH, corner = "se", startX = 0, startY = 0 } = resizeRef.current;
         let dx = ((e.clientX - startMX) / containerW) * 100;
         let dy = ((e.clientY - startMY) / containerH) * 100;
-        let newW = Math.max(2, startW + dx);
-        let newH = Math.max(2, startH + dy);
 
-        // Lock aspect ratio with Shift
-        if (e.shiftKey && startW > 0 && startH > 0) {
-          const ratio = startW / startH;
-          // Use the larger delta direction
-          if (Math.abs(dx) > Math.abs(dy)) {
-            newH = newW / ratio;
-          } else {
-            newW = newH * ratio;
+        if (type === "text") {
+          onUpdateText(id, { textWidth: Math.max(10, startW + dx * 2) });
+        } else if (type === "shape" || type === "image" || type === "logo") {
+          // Corner-aware resize: pulling a corner keeps the OPPOSITE corner fixed.
+          const left = corner === "nw" || corner === "sw";  // dragging a left handle
+          const top  = corner === "nw" || corner === "ne";  // dragging a top handle
+          let newW = Math.max(2, startW + (left ? -dx : dx));
+          let newH = Math.max(2, startH + (top ? -dy : dy));
+          // Lock aspect ratio with Shift.
+          if (e.shiftKey && startW > 0 && startH > 0) {
+            const ratio = startW / startH;
+            if (Math.abs(dx) > Math.abs(dy)) newH = Math.max(2, newW / ratio);
+            else newW = Math.max(2, newH * ratio);
           }
-          newW = Math.max(2, newW);
-          newH = Math.max(2, newH);
-        }
-
-        if (type === "shape") onUpdateShape(id, { width: newW, height: newH });
-        else if (type === "image") onUpdateImage(id, { width: newW, height: newH });
-        else if (type === "logo") onUpdateLogo(id, { width: newW, height: newH });
-        else if (type === "text") onUpdateText(id, { textWidth: Math.max(10, startW + dx * 2) });
-        else if (type === "group") {
+          const patch = { width: newW, height: newH };
+          // When the left/top edge moves, shift x/y so the opposite edge stays put.
+          if (left) patch.x = startX + (startW - newW);
+          if (top)  patch.y = startY + (startH - newH);
+          const updateFn = type === "shape" ? onUpdateShape : (type === "image" ? onUpdateImage : onUpdateLogo);
+          updateFn(id, patch);
+        } else if (type === "group") {
           const group = groups.find(g => g.id === id);
           if (group) {
             const bounds = getGroupBounds(group);
@@ -1683,10 +1703,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: coloredSvg.replace('<svg ', '<svg width="100%" height="100%" style="display:block" ') }}
           />
           {isSelected && !isExporting && (
-            <div
-              style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-              onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-            />
+            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
           )}
         </div>
       );
@@ -1732,10 +1749,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: coloredSvg.replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="none" style="display:block;overflow:visible" ') }}
           />
           {isSelected && !isExporting && (
-            <div
-              style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-              onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-            />
+            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
           )}
         </div>
       );
@@ -1770,10 +1784,7 @@ export default function StudioCanvas({
             dangerouslySetInnerHTML={{ __html: img.svgContent.replace('<svg ', '<svg width="100%" height="100%" style="display:block;overflow:visible" ') }}
           />
           {isSelected && !isExporting && (
-            <div
-              style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-              onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-            />
+            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
           )}
         </div>
       );
@@ -1822,10 +1833,7 @@ export default function StudioCanvas({
             );
           })()}
           {isSelected && !isExporting && (
-            <div
-              style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-              onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-            />
+            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
           )}
         </div>
       );
@@ -1881,10 +1889,7 @@ export default function StudioCanvas({
             {img.text}
           </div>
           {isSelected && !isExporting && (
-            <div
-              style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-              onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-            />
+            resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)
           )}
         </div>
       );
@@ -1965,16 +1970,7 @@ export default function StudioCanvas({
             </div>
           );
         })()}
-        {isSelected && !isExporting && (
-          <div
-            style={{
-              position: "absolute", bottom: -6, right: -6,
-              width: 12, height: 12,
-              background: "#818cf8", borderRadius: 2, cursor: "se-resize",
-            }}
-            onMouseDown={(e) => { e.stopPropagation(); startResize(e, img.id, type, w, h); }}
-          />
-        )}
+        {isSelected && !isExporting && resizeHandles(img.id, type, img.x || 10, img.y || 10, w, h)}
       </div>
     );
 
@@ -2334,11 +2330,8 @@ export default function StudioCanvas({
                       zIndex: 99,
                     }}
                   />
-                  {/* Resize handle (bottom-right) */}
-                  <div
-                    style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "#818cf8", borderRadius: 2, cursor: "se-resize" }}
-                    onMouseDown={(e) => { e.stopPropagation(); startResize(e, shape.id, "shape", shape.width || 20, shape.height || 15); }}
-                  />
+                  {/* Resize handles — all four corners */}
+                  {resizeHandles(shape.id, "shape", shape.x || 0, shape.y || 0, shape.width || 20, shape.height || 15)}
                 </>
               )}
             </div>
