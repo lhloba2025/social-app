@@ -25,7 +25,7 @@ export function buildAuthUrl(state) {
     client_id:     process.env.LINKEDIN_CLIENT_ID || "",
     redirect_uri:  process.env.LINKEDIN_REDIRECT_URI || "",
     state,
-    scope:         process.env.LINKEDIN_SCOPES || "r_organization_admin w_organization_social",
+    scope:         process.env.LINKEDIN_SCOPES || "rw_organization_admin w_organization_social",
   });
   return `${AUTH_URL}?${params}`;
 }
