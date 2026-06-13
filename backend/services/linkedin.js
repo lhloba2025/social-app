@@ -25,7 +25,7 @@ export function buildAuthUrl(state) {
     client_id:     process.env.LINKEDIN_CLIENT_ID || "",
     redirect_uri:  process.env.LINKEDIN_REDIRECT_URI || "",
     state,
-    scope:         process.env.LINKEDIN_SCOPES || "openid profile w_member_social",
+    scope:         process.env.LINKEDIN_SCOPES || "openid profile r_organization_admin w_organization_social",
   });
   return `${AUTH_URL}?${params}`;
 }
@@ -53,6 +53,35 @@ export async function getMemberUrn(accessToken) {
   });
   if (!data?.sub) throw new Error("LinkedIn userinfo returned no member id");
   return `urn:li:person:${data.sub}`;
+}
+
+// Find the FIRST Company Page the connecting user ADMINISTERS, so we post on
+// behalf of THAT page. This auto-discovery means every business just connects
+// its own LinkedIn and posts to its own page — no per-business code changes.
+// Returns { urn: "urn:li:organization:<id>", name }.
+export async function getAdminOrg(accessToken) {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "X-Restli-Protocol-Version": "2.0.0",
+    "LinkedIn-Version": API_VERSION,
+  };
+  // Which organizations does this member administer (approved admin role)?
+  const acl = await axios.get(
+    "https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED",
+    { headers, timeout: 20000 }
+  );
+  const orgUrn = acl.data?.elements?.[0]?.organization; // "urn:li:organization:<id>"
+  if (!orgUrn) {
+    throw new Error("ما لقينا صفحة شركة أنت أدمن فيها على لينكدإن — تأكد إنك أدمن الصفحة.");
+  }
+  // Best-effort: fetch the page's display name.
+  let name = "LinkedIn Page";
+  try {
+    const id = String(orgUrn).split(":").pop();
+    const org = await axios.get(`https://api.linkedin.com/rest/organizations/${id}`, { headers, timeout: 20000 });
+    name = org.data?.localizedName || org.data?.vanityName || name;
+  } catch { /* name is best-effort */ }
+  return { urn: orgUrn, name };
 }
 
 // Publish an image (or text-only) post to the member's feed.
