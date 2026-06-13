@@ -854,6 +854,9 @@ app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString
 app.get('/tiktok82i5AkjFeMrzi1Al4f4pAomO3OKLvYDB.txt', (_, res) => {
   res.type('text/plain').send('tiktok-developers-site-verification=82i5AkjFeMrzi1Al4f4pAomO3OKLvYDB');
 });
+app.get('/tiktokhF2R39Z0wFNWyGt50ZzukglpJTaRywtK.txt', (_, res) => {
+  res.type('text/plain').send('tiktok-developers-site-verification=hF2R39Z0wFNWyGt50ZzukglpJTaRywtK');
+});
 if (process.env.TIKTOK_VERIFY_FILE && process.env.TIKTOK_VERIFY_CONTENT) {
   app.get(`/${process.env.TIKTOK_VERIFY_FILE}`, (_, res) =>
     res.type('text/plain').send(process.env.TIKTOK_VERIFY_CONTENT));
