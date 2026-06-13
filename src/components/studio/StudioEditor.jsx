@@ -2216,7 +2216,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               <label className="text-xs mb-2 block" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "صيغة الملف" : "Format"}</label>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { id: "png",  label: "PNG",  hint: isRtl ? "شفاف" : "Transparent" },
+                  { id: "png",  label: "PNG",  hint: isRtl ? "أعلى جودة" : "Lossless" },
                   { id: "jpeg", label: "JPG",  hint: isRtl ? "أصغر حجم" : "Smaller" },
                   { id: "webp", label: "WebP", hint: isRtl ? "حديث" : "Modern" },
                   { id: "svg",  label: "SVG",  hint: isRtl ? "متجه" : "Vector" },
@@ -2277,12 +2277,24 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               </div>
             )}
 
-            {/* Transparent BG */}
+            {/* Transparent BG — prominent so it isn't missed (was a common "why is my PNG white?" trap) */}
             {(exportFormat === "png" || exportFormat === "webp" || exportFormat === "svg") && (
-              <label className="flex items-center gap-2 mb-4 cursor-pointer text-sm">
-                <input type="checkbox" checked={exportTransparent} onChange={(e) => setExportTransparent(e.target.checked)} className="rounded" />
-                <span style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "خلفية شفافة" : "Transparent background"}</span>
-              </label>
+              <div
+                className="mb-4 rounded-lg border p-3 transition"
+                style={exportTransparent
+                  ? { borderColor: "var(--hv-primary)", background: "rgba(79,70,229,0.06)" }
+                  : { borderColor: "var(--hv-border)", background: "var(--hv-surface-2)" }}
+              >
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input type="checkbox" checked={exportTransparent} onChange={(e) => setExportTransparent(e.target.checked)} className="rounded w-4 h-4" />
+                  <span className="font-semibold" style={{ color: "var(--hv-text)" }}>{isRtl ? "🪟 خلفية شفافة" : "🪟 Transparent background"}</span>
+                </label>
+                <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
+                  {isRtl
+                    ? "علّم هذا الخيار لو تبي الصورة بدون خلفية (تركّبها فوق تصاميم ثانية). بدونه تطلع الخلفية بلونها الحالي (أبيض)."
+                    : "Check this to export with no background (to layer over other designs). Otherwise the current background (white) is kept."}
+                </p>
+              </div>
             )}
 
             {/* Batch all pages */}
