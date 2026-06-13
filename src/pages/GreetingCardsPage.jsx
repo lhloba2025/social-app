@@ -1055,7 +1055,7 @@ export default function GreetingCardsPage({ language }) {
       // colour from the base letters. Detected via the Unicode "Mn"
       // (Mark, nonspacing) category, so it works for any harakat the font
       // can render. Text is NFD-normalized first so precomposed forms like
-      // أ decompose into ا + ?� and become colourable.
+      // أ decompose into ا + × and become colourable.
       useDiacriticColor: false,
       diacriticColor: "#dc2626",
       // Per-codepoint paint colours — map of NFD codepoint index → hex.
@@ -1093,7 +1093,7 @@ export default function GreetingCardsPage({ language }) {
   // Export quality controls
   //   exportFormat="png"  → lossless: no JPEG ringing on text edges, no banding on gradients
   //   exportFormat="jpeg" → smaller file but introduces compression artifacts (off by default)
-  //   superSample=2 means render at 2?� the target size then downsample with a high-quality
+  //   superSample=2 means render at 2× the target size then downsample with a high-quality
   //   bicubic-ish resampler → classic SSAA antialiasing for razor-sharp calligraphy edges.
   const [exportFormat, setExportFormat] = useState("png");
   const [superSample, setSuperSample] = useState(2);
@@ -1137,7 +1137,7 @@ export default function GreetingCardsPage({ language }) {
   // Convert any image URL (blob: / data: / http) into a data URL for storage.
   // IndexedDB has plenty of room, so we keep the budget generous — exported
   // cards then stay sharp even at 4K-ish output.
-  // 3500px / 10MB lets a typical phone photo template (3024?�4032) survive at
+  // 3500px / 10MB lets a typical phone photo template (3024×4032) survive at
   // near-original quality.
   const urlToDataUrl = async (url, maxDim = 3500, maxBytes = 10 * 1024 * 1024) => {
     if (!url) return null;
@@ -1832,7 +1832,7 @@ export default function GreetingCardsPage({ language }) {
     }
 
     // Output canvas — chosen platform size, or fall back to the template's native size.
-    // We render INTERNALLY at `superSample`?� this size (SSAA), then downsample the
+    // We render INTERNALLY at `superSample`× this size (SSAA), then downsample the
     // result before encoding. Every dimension below is computed from W/H as a %, so
     // multiplying W/H by the scale factor automatically scales text, decorations,
     // logo, etc. with no per-element changes needed.
@@ -1871,7 +1871,7 @@ export default function GreetingCardsPage({ language }) {
           ctx.fillRect(0, 0, W, H);
         }
       }
-      // User reframe: zoom ?� base, recenter, then shift by offset% of card.
+      // User reframe: zoom × base, recenter, then shift by offset% of card.
       // This matches the CSS preview `translate(...) scale(...)` (translate%
       // is computed against the original box, so the visible offset is offset%
       // of card width regardless of zoom).
@@ -2279,7 +2279,7 @@ export default function GreetingCardsPage({ language }) {
     };
 
     // Renders an ornament SVG (from TEXT_ORNAMENTS) wrapping the text bbox.
-    // The ornament's 100?�40 reference grid is scaled so its "text area" (the
+    // The ornament's 100×40 reference grid is scaled so its "text area" (the
     // middle region after subtracting padTop/padBottom etc.) matches the real
     // text bbox — so brackets sit at the right place regardless of font size.
     const drawOrnament = async (ornamentId, color, bx, by, bw, bh, rotation) => {
@@ -2517,9 +2517,9 @@ export default function GreetingCardsPage({ language }) {
 
     // Headings first (so the recipient name renders on top if they overlap).
     // Render order per item:
-    //   1. Background shape   �? under everything
+    //   1. Background shape   ↺ under everything
     //   2. Text (with outline + glow)
-    //   3. Ornament SVG       �? on top of text
+    //   3. Ornament SVG       ↺ on top of text
     for (const h of headings) {
       if (!h.text) continue;
       const bbox = computeTextBBox(h.text, h);
@@ -2706,7 +2706,7 @@ export default function GreetingCardsPage({ language }) {
     }
 
     // ── Downsample the super-sampled canvas to the final output size ──────
-    // Drawing the 2?� canvas into a 1?� canvas with imageSmoothingQuality="high"
+    // Drawing the 2× canvas into a 1× canvas with imageSmoothingQuality="high"
     // averages 4 samples per output pixel → SSAA-quality edges (no jaggies on
     // calligraphy, gold/dark text on light backgrounds stays crisp).
     let finalCanvas = canvas;
@@ -2916,14 +2916,14 @@ export default function GreetingCardsPage({ language }) {
               <div className="bg-white border border-cyan-500/30 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold flex items-center gap-2">
-                    ↔�? {isRtl ? "تحريك القالب وتكبيره" : "Reframe template"}
+                    ↔️ {isRtl ? "تحريك القالب وتكبيره" : "Reframe template"}
                   </h3>
                   {(templateZoom !== 1 || templateOffsetX !== 0 || templateOffsetY !== 0) && (
                     <button
                       onClick={() => { setTemplateZoom(1); setTemplateOffsetX(0); setTemplateOffsetY(0); }}
                       className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text-soft)]"
                     >
-                      �? {isRtl ? "إعادة" : "Reset"}
+                      ↺ {isRtl ? "إعادة" : "Reset"}
                     </button>
                   )}
                 </div>
@@ -2943,10 +2943,10 @@ export default function GreetingCardsPage({ language }) {
                     : (isRtl ? "🖐️ تفعيل السحب على المعاينة" : "🖐️ Enable drag-on-preview")}
                 </button>
 
-                {/* Zoom — 0.5?� to 3?�, 1 = baseline (no zoom). */}
+                {/* Zoom — 0.5× to 3×, 1 = baseline (no zoom). */}
                 <div>
                   <label className="text-[10px] text-[var(--hv-text-soft)] block">
-                    {isRtl ? "تكبير" : "Zoom"}: {templateZoom.toFixed(2)}?�
+                    {isRtl ? "تكبير" : "Zoom"}: {templateZoom.toFixed(2)}×
                   </label>
                   <input type="range" min="0.5" max="3" step="0.01" value={templateZoom}
                     onChange={(e) => setTemplateZoom(parseFloat(e.target.value))}
@@ -3005,7 +3005,7 @@ export default function GreetingCardsPage({ language }) {
                     <optgroup key={platform} label={platform}>
                       {list.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {(isRtl ? s.nameAr : s.nameEn)} — {s.width}?�{s.height}
+                          {(isRtl ? s.nameAr : s.nameEn)} — {s.width}×{s.height}
                         </option>
                       ))}
                     </optgroup>
@@ -3051,16 +3051,17 @@ export default function GreetingCardsPage({ language }) {
                 stylized illustrations (good for cards with a graphic look). If
                 the user wants real photos, point them at the Decor tab where
                 the new quick-search shortcuts make PNG hunting frictionless. */}
-            <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 text-[11px] text-amber-100 leading-relaxed">
-              <p className="font-bold mb-1">
-                ℹ�? {isRtl ? "ℹ️ هذه رسومات (Flat / Vector) — مو صور حقيقية" : "ℹ️ These are flat/vector illustrations — not real photos"}
+            <div className="rounded-xl p-3 text-[11px] leading-relaxed border" style={{ background: "#fffbeb", borderColor: "#fde68a" }}>
+              <p className="font-bold mb-1 flex items-start gap-1.5" style={{ color: "#92400e" }}>
+                <span className="flex-shrink-0">ℹ️</span>
+                <span>{isRtl ? "هذه رسومات (Flat / Vector) — مو صور حقيقية" : "These are flat/vector illustrations — not real photos"}</span>
               </p>
-              <p>
-                {isRtl ? "إذا تبي صور حقيقيه (خروف حقيقي، بيت تراثي حقيقي، إلخ) روح تبويب «🎨 زخارف» — فيه أزرار بحث جاهزه تفتح Google تلقائياً بصور PNG شفافه واقعيه." : "If you want real photos (real sheep, real heritage house, etc.) use the '🎨 Decor' tab — it has quick-search buttons that open Google pre-filtered to realistic transparent PNGs."}
+              <p style={{ color: "var(--hv-text-soft)" }}>
+                {isRtl ? "إذا تبي صور حقيقية (خروف حقيقي، بيت تراثي، إلخ) روح تبويب «زخارف» — فيه أزرار بحث تفتح Google تلقائياً بصور PNG شفافة واقعية." : "If you want real photos (real sheep, heritage house, etc.) use the 'Decor' tab — quick-search buttons open Google pre-filtered to realistic transparent PNGs."}
               </p>
               <button
                 onClick={() => setActivePanel("deco")}
-                className="mt-2 text-[10px] px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold"
+                className="hv-btn hv-btn-soft mt-2 text-[10px] !py-1"
               >
                 {isRtl ? "اذهب لتبويب «زخارف» ←" : "Go to 'Decor' tab →"}
               </button>
@@ -3333,7 +3334,7 @@ export default function GreetingCardsPage({ language }) {
                     className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text-soft)]"
                     title={isRtl ? "ارجع للألوان الأصلية" : "Reset to defaults"}
                   >
-                    �? {isRtl ? "افتراضي" : "Default"}
+                    ↺ {isRtl ? "افتراضي" : "Default"}
                   </button>
                 </div>
 
@@ -3440,7 +3441,7 @@ export default function GreetingCardsPage({ language }) {
                   <div className="flex items-center gap-2">
                     <img src={logo.url} alt="logo" className="w-12 h-12 object-contain rounded bg-[var(--hv-surface-2)] border border-[var(--hv-border)]" />
                     <div className="flex-1 text-[10px] text-[var(--hv-text-soft)]">
-                      {logo.naturalW}?�{logo.naturalH}
+                      {logo.naturalW}×{logo.naturalH}
                     </div>
                     <button onClick={() => logoInputRef.current?.click()}
                       className="text-[10px] px-2 py-1 rounded bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text)]">
@@ -3528,7 +3529,7 @@ export default function GreetingCardsPage({ language }) {
               </div>
               <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl
-                  ? "اك🎨 نصوصاً تظهر على كل البطاقات (مثل ثع🎯 أضحى مبارك?�ٌ ثمن / إلى?�...). كل نص له تنسيقه الخاص."
+                  ? "اكتب نصوصاً تظهر على كل البطاقات (مثل: «عيد مبارك» / «من — إلى»). كل نص له تنسيقه الخاص."
                   : 'Add texts that appear on every card (e.g. "Eid Mubarak", "From / To"). Each has its own styling.'}
               </p>
 
@@ -4132,7 +4133,7 @@ export default function GreetingCardsPage({ language }) {
                     {/* ── Ornament (decorative flourish around text) ──── */}
                     <div className="bg-[var(--hv-surface-2)] rounded p-2 space-y-1.5">
                       <label className="text-[10px] text-[var(--hv-text-soft)] font-semibold">
-                        ?ْ� {isRtl ? "💫 زخرفة جانبية" : "💫 Decorative ornament"}
+                        {isRtl ? "💫 زخرفة جانبية" : "💫 Decorative ornament"}
                       </label>
                       <div className="grid grid-cols-2 gap-1">
                         {TEXT_ORNAMENT_LIST.map((o) => (
@@ -4166,7 +4167,7 @@ export default function GreetingCardsPage({ language }) {
                 <div className="bg-[var(--hv-surface-2)] rounded-lg p-3 text-center">
                   <p className="text-[11px] text-[var(--hv-text-soft)] leading-relaxed">
                     {isRtl
-                      ? "لا توجد نصوص بعد. اضغط «+ إضافة نص» لكتابة عبارة مثل ثع🎯 أضحى مبارك?� بخط مزخرف."
+                      ? "لا توجد نصوص بعد. اضغط «+ إضافة نص» لكتابة عبارة مثل «عيد مبارك» بخط مزخرف."
                       : 'No texts yet. Click "Add text" to add an ornate phrase like "Eid Mubarak".'}
                   </p>
                 </div>
@@ -4585,7 +4586,7 @@ export default function GreetingCardsPage({ language }) {
                     >
                       <img src={d.url} alt="" className="w-8 h-8 object-contain rounded bg-[var(--hv-surface-2)] border border-[var(--hv-border)]" />
                       <span className="flex-1 text-start text-[var(--hv-text)] truncate text-[10px]">
-                        {isRtl ? `#${i + 1}` : `#${i + 1}`} ط {d.naturalW}?�{d.naturalH}
+                        {isRtl ? `#${i + 1}` : `#${i + 1}`} ط {d.naturalW}×{d.naturalH}
                       </span>
                       <span onClick={(e) => { e.stopPropagation(); duplicateDecoration(d.id); }}
                         title={isRtl ? "تكرار (لقصّها لأجزاء مختلفة)" : "Duplicate (for splitting into pieces)"}
@@ -4779,7 +4780,7 @@ export default function GreetingCardsPage({ language }) {
                       {((activeDecoration.cropTop || 0) + (activeDecoration.cropRight || 0) + (activeDecoration.cropBottom || 0) + (activeDecoration.cropLeft || 0)) > 0 && (
                         <button onClick={() => updateDecoration(activeDecoration.id, { cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
                           className="text-[10px] text-[var(--hv-text-soft)] hover:text-[var(--hv-text)]">
-                          �? {isRtl ? "إعادة" : "Reset"}
+                          ↺ {isRtl ? "إعادة" : "Reset"}
                         </button>
                       )}
                     </div>
@@ -4999,9 +5000,9 @@ export default function GreetingCardsPage({ language }) {
                             className="w-full accent-amber-500" />
                           <div className="flex gap-1 mt-1">
                             {[
-                              { l: "→", v: 90 }, { l: "�?", v: 270 },
+                              { l: "→", v: 90 }, { l: "←", v: 270 },
                               { l: "↑", v: 0 }, { l: "↓", v: 180 },
-                              { l: "�?", v: 135 }, { l: "↗", v: 45 },
+                              { l: "↘", v: 135 }, { l: "↗", v: 45 },
                             ].map((d) => (
                               <button key={d.v} onClick={() => updateDecoration(activeDecoration.id, { gradientAngle: d.v })}
                                 className={`flex-1 py-0.5 rounded text-[10px] ${activeDecoration.gradientAngle === d.v ? "bg-amber-500 text-slate-900" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
@@ -5213,9 +5214,9 @@ export default function GreetingCardsPage({ language }) {
                         className="w-full accent-indigo-500" />
                       <div className="flex gap-1 mt-1">
                         {[
-                          { l: "→", v: 90 }, { l: "�?", v: 270 },
+                          { l: "→", v: 90 }, { l: "←", v: 270 },
                           { l: "↑", v: 0 }, { l: "↓", v: 180 },
-                          { l: "�?", v: 135 }, { l: "↗", v: 45 },
+                          { l: "↘", v: 135 }, { l: "↗", v: 45 },
                         ].map((d) => (
                           <button key={d.v} onClick={() => updateStyle({ gradientAngle: d.v })}
                             className={`flex-1 py-0.5 rounded text-[10px] ${style.gradientAngle === d.v ? "bg-indigo-600 text-white" : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"}`}>
@@ -5305,14 +5306,14 @@ export default function GreetingCardsPage({ language }) {
             {/* Save & Library */}
             <div className="bg-white border border-emerald-500/30 rounded-xl p-4 space-y-2">
               <h3 className="text-sm font-bold flex items-center gap-2">
-                ?ْ� {isRtl ? "حفظ التصميم" : "Save design"}
+                💾 {isRtl ? "حفظ التصميم" : "Save design"}
               </h3>
               <button
                 onClick={() => { setSaveCardName(""); setShowSaveModal(true); }}
                 disabled={!templateUrl && stockObjects.length === 0 && headings.length === 0}
                 className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition disabled:opacity-40"
               >
-                ?ْ� {isRtl ? "حفظ هذا التصميم" : "Save current design"}
+                💾 {isRtl ? "حفظ هذا التصميم" : "Save current design"}
               </button>
               <button
                 onClick={() => setShowLibraryModal(true)}
@@ -5358,7 +5359,7 @@ export default function GreetingCardsPage({ language }) {
                         : "bg-[var(--hv-surface-2)] text-[var(--hv-text-soft)] hover:bg-slate-100"
                     }`}
                   >
-                    �?? JPEG
+                    JPEG
                     <div className="text-[9px] opacity-80 font-normal mt-0.5">
                       {isRtl ? "ملف أصغر — جودة 98%" : "Smaller file — 98% quality"}
                     </div>
@@ -5366,13 +5367,13 @@ export default function GreetingCardsPage({ language }) {
                 </div>
               </div>
 
-              {/* Super-sampling factor — internal render at N?� then downsample.
-                  2?� is the sweet spot (4 samples/pixel) — 3?� rarely buys more
+              {/* Super-sampling factor — internal render at N× then downsample.
+                  2× is the sweet spot (4 samples/pixel) — 3× rarely buys more
                   but quadruples the memory/time. */}
               <div>
                 <label className="text-[10px] text-[var(--hv-text-soft)] block mb-1">
                   {isRtl ? "نعومة الحواف (Anti-Alias)" : "Edge smoothness (SSAA)"}
-                  <span className="text-indigo-600"> — {superSample}?�</span>
+                  <span className="text-indigo-600"> — {superSample}×</span>
                 </label>
                 <div className="grid grid-cols-3 gap-1">
                   {[
@@ -5852,7 +5853,7 @@ export default function GreetingCardsPage({ language }) {
                                   return (
                                     <span
                                       key={i}
-                                      // 1.5?� hit box while painting via padding so
+                                      // 1.5× hit box while painting via padding so
                                       // tiny diacritics like a kasra below the line
                                       // are still tappable.
                                       style={{
@@ -6148,7 +6149,7 @@ export default function GreetingCardsPage({ language }) {
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowSaveModal(false)}>
           <div className="bg-[var(--hv-surface-2)] rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
-            <h3 className="font-bold text-base mb-3 text-[var(--hv-text)]">?ْ� {isRtl ? "حفظ التصميم في المكتبة" : "Save design to library"}</h3>
+            <h3 className="font-bold text-base mb-3 text-[var(--hv-text)]">💾 {isRtl ? "حفظ التصميم في المكتبة" : "Save design to library"}</h3>
             <input
               type="text"
               value={saveCardName}
@@ -6169,7 +6170,7 @@ export default function GreetingCardsPage({ language }) {
               <button onClick={handleSaveCard} disabled={savingCard || !saveCardName.trim()}
                 className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {savingCard && <Loader2 className="w-4 h-4 animate-spin" />}
-                ?ْ� {isRtl ? "حفظ" : "Save"}
+                💾 {isRtl ? "حفظ" : "Save"}
               </button>
             </div>
           </div>
@@ -6182,7 +6183,7 @@ export default function GreetingCardsPage({ language }) {
           <div className="bg-[var(--hv-surface-2)] rounded-2xl p-5 w-full max-w-3xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-base text-[var(--hv-text)]">📌 {isRtl ? `مك🎨ة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}</h3>
-              <button onClick={() => setShowLibraryModal(false)} className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] text-xl leading-none">?�</button>
+              <button onClick={() => setShowLibraryModal(false)} className="text-[var(--hv-text-soft)] hover:text-[var(--hv-text)] text-xl leading-none">×</button>
             </div>
             {savedCards.length === 0 ? (
               <div className="text-center py-12 text-[var(--hv-text-faint)]">
