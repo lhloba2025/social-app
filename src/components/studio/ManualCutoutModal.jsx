@@ -157,13 +157,54 @@ export default function ManualCutoutModal({ imageUrl, language, onApply, onClose
     img.src = imageUrl;
   }, [imageUrl]);
 
+  // Drag state for repositioning existing points.
+  const dragIdx = useRef(null);
+  const movedDuringDrag = useRef(false);
+
+  const pointFromEvent = (clientX, clientY) => {
+    const rect = stageRef.current.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+  };
+
+  // Click on empty image area → add a point. Clicks ON an existing point are
+  // intercepted by the point's own handlers (they stop propagation), so they
+  // never reach here and never add a stray extra point.
   const handleStageClick = (e) => {
     if (phase !== "draw") return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setPoints((p) => [...p, { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }]);
+    // Swallow the click that fires right after dragging a point off-target.
+    if (movedDuringDrag.current) { movedDuringDrag.current = false; return; }
+    setPoints((p) => [...p, pointFromEvent(e.clientX, e.clientY)]);
   };
+
+  // Begin dragging an existing point (so a mis-placed point can be fixed
+  // instead of clearing everything and starting over).
+  const startDragPoint = (i, e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    dragIdx.current = i;
+    movedDuringDrag.current = false;
+  };
+  const deletePoint = (i) => setPoints((p) => p.filter((_, idx) => idx !== i));
+
+  // Global move/up listeners so dragging keeps working even if the cursor
+  // leaves the little dot.
+  useEffect(() => {
+    const onMove = (e) => {
+      if (dragIdx.current == null) return;
+      movedDuringDrag.current = true;
+      const pt = pointFromEvent(e.clientX, e.clientY);
+      setPoints((p) => p.map((q, idx) => (idx === dragIdx.current ? pt : q)));
+    };
+    const onUp = () => { dragIdx.current = null; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
 
   const undoPoint = useCallback(() => setPoints((p) => p.slice(0, -1)), []);
   const clearPoints = useCallback(() => setPoints([]), []);
@@ -255,8 +296,8 @@ export default function ManualCutoutModal({ imageUrl, language, onApply, onClose
           <>
             <p className="text-xs text-slate-400 mb-2">
               {isRtl
-                ? "انقر على الصورة لإضافة نقاط حول المنطقة المطلوبة. كل نقطة تتصل بالتي قبلها. تحتاج 3 نقاط على الأقل."
-                : "Click on the image to add points around the area. Each point connects to the previous one. Minimum 3 points."}
+                ? "انقر لإضافة نقاط حول المنطقة. اسحب أي نقطة لتحريكها، وانقر عليها مرتين لحذفها. النقطة الخضراء = البداية، والخط المتقطّع = إغلاق تلقائي للشكل. تحتاج 3 نقاط على الأقل."
+                : "Click to add points around the area. Drag any point to move it, double-click it to delete. Green dot = start, dashed line = auto-close. Minimum 3 points."}
             </p>
             <div className="flex justify-center mb-3">
               <div
@@ -269,14 +310,35 @@ export default function ManualCutoutModal({ imageUrl, language, onApply, onClose
                   style={{ width: "100%", height: "100%", objectFit: "fill", display: "block", pointerEvents: "none" }} />
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none"
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
-                  {points.length >= 2 && (
-                    <polygon points={polyPoints} fill="rgba(99,102,241,0.25)" stroke="#818cf8"
-                      strokeWidth="0.4" vectorEffect="non-scaling-stroke" style={{ strokeWidth: "2px" }} />
+                  {/* shaded selected area */}
+                  {points.length >= 3 && (
+                    <polygon points={polyPoints} fill="rgba(99,102,241,0.22)" stroke="none" />
                   )}
+                  {/* solid edges the user actually drew (open path) */}
+                  {points.length >= 2 && (
+                    <polyline points={polyPoints} fill="none" stroke="#818cf8"
+                      vectorEffect="non-scaling-stroke" style={{ strokeWidth: "2px" }} />
+                  )}
+                  {/* dashed auto-close edge: last point → first point */}
+                  {points.length >= 3 && (
+                    <line
+                      x1={points[points.length - 1].x} y1={points[points.length - 1].y}
+                      x2={points[0].x} y2={points[0].y}
+                      stroke="#818cf8" strokeDasharray="3 2" vectorEffect="non-scaling-stroke"
+                      style={{ strokeWidth: "1.5px", opacity: 0.7 }} />
+                  )}
+                  {/* interactive points — drag to move, double-click to delete */}
                   {points.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={p.y} r="1.1"
-                      fill={i === 0 ? "#22c55e" : "#818cf8"} stroke="#fff"
-                      strokeWidth="0.3" vectorEffect="non-scaling-stroke" style={{ strokeWidth: "1.5px" }} />
+                    <g key={i} style={{ pointerEvents: "all", cursor: "grab" }}
+                      onPointerDown={(e) => startDragPoint(i, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => { e.stopPropagation(); deletePoint(i); }}>
+                      {/* large invisible hit target so the dot is easy to grab */}
+                      <circle cx={p.x} cy={p.y} r="3.5" fill="transparent" />
+                      <circle cx={p.x} cy={p.y} r="1.1"
+                        fill={i === 0 ? "#22c55e" : "#818cf8"} stroke="#fff"
+                        vectorEffect="non-scaling-stroke" style={{ strokeWidth: "1.5px" }} />
+                    </g>
                   ))}
                 </svg>
               </div>
