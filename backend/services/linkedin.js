@@ -25,7 +25,9 @@ export function buildAuthUrl(state) {
     client_id:     process.env.LINKEDIN_CLIENT_ID || "",
     redirect_uri:  process.env.LINKEDIN_REDIRECT_URI || "",
     state,
-    scope:         process.env.LINKEDIN_SCOPES || "rw_organization_admin w_organization_social",
+    // If the page URN is configured we only need write access; otherwise we also
+    // need admin access to auto-discover which page the user manages.
+    scope:         process.env.LINKEDIN_SCOPES || (process.env.LINKEDIN_ORG_URN ? "w_organization_social" : "rw_organization_admin w_organization_social"),
   });
   return `${AUTH_URL}?${params}`;
 }

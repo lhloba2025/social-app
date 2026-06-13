@@ -546,16 +546,24 @@ app.get('/auth/linkedin/callback', async (req, res) => {
   try {
     const tokenData = await linkedinExchangeCode(code);
     const accessToken = tokenData.access_token;
-    // Post on behalf of the user's COMPANY PAGE (auto-discovered), not their
-    // personal profile. page_id holds the org URN used as the post author.
-    const org = await linkedinGetAdminOrg(accessToken);
+    // Post on behalf of the user's COMPANY PAGE, not their personal profile.
+    // If LINKEDIN_ORG_URN is configured, use it directly (only needs write
+    // scope). Otherwise auto-discover the page the user administers.
+    let authorUrn, pageName;
+    if (process.env.LINKEDIN_ORG_URN) {
+      authorUrn = process.env.LINKEDIN_ORG_URN;
+      pageName = process.env.LINKEDIN_ORG_NAME || 'LinkedIn Page';
+    } else {
+      const org = await linkedinGetAdminOrg(accessToken);
+      authorUrn = org.urn; pageName = org.name;
+    }
     const expiresAt = new Date(Date.now() + (tokenData.expires_in || 5184000) * 1000).toISOString();
 
     run(`DELETE FROM social_accounts WHERE platform = ? AND tenant_id = ?`, ['linkedin', tenantId]);
     run(
       `INSERT INTO social_accounts (id, platform, username, accountName, isConnected, access_token, page_id, token_expires_at, verifiedAt, tenant_id)
        VALUES (?, 'linkedin', ?, ?, 1, ?, ?, ?, datetime('now'), ?)`,
-      [randomUUID(), org.name, org.name, accessToken, org.urn, expiresAt, tenantId]
+      [randomUUID(), pageName, pageName, accessToken, authorUrn, expiresAt, tenantId]
     );
 
     console.log('[OAuth] LinkedIn connected');
