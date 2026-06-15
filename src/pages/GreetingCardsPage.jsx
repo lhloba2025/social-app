@@ -1292,6 +1292,14 @@ export default function GreetingCardsPage({ language }) {
         const all = await idbGetAllCards();
         const draft = all.find((c) => c.id === DRAFT_ID);
         if (draft?.state) applyDraft(draft.state);
+        // Returning from the AI generator / Studio with a freshly-made template?
+        // Apply it AFTER the draft so it wins, and use it as this card's template.
+        const pending = sessionStorage.getItem("greetingTemplateUrl");
+        if (pending) {
+          sessionStorage.removeItem("greetingTemplateUrl");
+          sessionStorage.removeItem("greetingReturn");
+          setTemplateFromUrl(pending);
+        }
       } catch { /* ignore */ }
       finally { restoredRef.current = true; }
     })();
@@ -2906,14 +2914,14 @@ export default function GreetingCardsPage({ language }) {
               </button>
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <button
-                  onClick={() => navigate("/ImageGen")}
+                  onClick={() => { sessionStorage.setItem("greetingReturn", "1"); navigate("/ImageGen"); }}
                   className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition hover:bg-slate-100"
                   style={{ background: "var(--hv-surface)", border: "1px solid var(--hv-border)", color: "var(--hv-text-soft)" }}
                 >
                   <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--hv-secondary-600,#f43f5e)" }} /> {isRtl ? "أنشئ بالذكاء" : "AI"}
                 </button>
                 <button
-                  onClick={() => navigate("/DesignStudio")}
+                  onClick={() => { sessionStorage.setItem("greetingReturn", "1"); navigate("/DesignStudio"); }}
                   className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition hover:bg-slate-100"
                   style={{ background: "var(--hv-surface)", border: "1px solid var(--hv-border)", color: "var(--hv-text-soft)" }}
                 >

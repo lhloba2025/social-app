@@ -324,6 +324,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  // When the user arrived here from "صمّم بالمنشئ" inside Greeting Cards, show a
+  // one-click button to send the current design back as the card template.
+  const [greetingReturnMode] = useState(() => typeof window !== "undefined" && sessionStorage.getItem("greetingReturn") === "1");
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const [exportedImageUrl, setExportedImageUrl] = useState("");
   const [designName, setDesignName] = useState(loadedDesign?.name || "");
@@ -1252,6 +1255,17 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     setShowExportModal(true);
   };
 
+  // Capture the current canvas and hand it back to Greeting Cards as the template.
+  const handleUseInGreeting = async () => {
+    try {
+      const dataUrl = await captureCanvas("png", 1, 1, false);
+      if (!dataUrl) return;
+      sessionStorage.setItem("greetingTemplateUrl", dataUrl);
+      sessionStorage.removeItem("greetingReturn");
+      navigate("/GreetingCards");
+    } catch { /* ignore */ }
+  };
+
   const runExport = async () => {
     if (!canvasRef.current) return;
 
@@ -1539,6 +1553,11 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
           <LayoutGrid className="w-4 h-4" />
           <span className="text-xs font-semibold hidden sm:block">{isRtl ? "المكتبة" : "Library"}</span>
         </button>
+        {greetingReturnMode && (
+          <button onClick={handleUseInGreeting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition" style={{ background: "var(--hv-secondary, #fb7185)" }}>
+            🎁 <span className="hidden sm:block">{isRtl ? "استخدم في بطاقة التهنئة" : "Use in greeting card"}</span>
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ background: "var(--hv-grad)" }}>
             <Sparkles className="w-4 h-4" />

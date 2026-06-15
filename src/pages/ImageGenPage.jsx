@@ -342,6 +342,14 @@ function CustomGen({ ar }) {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
                 {ar ? "✏️ افتح في منشئ التصاميم (لتعديل النص والشعار)" : "✏️ Open in Design Studio"}
               </button>
+              {sessionStorage.getItem("greetingReturn") === "1" && (
+                <button
+                  onClick={() => { sessionStorage.setItem("greetingTemplateUrl", result); sessionStorage.removeItem("greetingReturn"); navigate("/GreetingCards"); }}
+                  className="hv-btn hv-btn-primary w-full mt-2 py-2.5"
+                >
+                  🎁 {ar ? "استخدم هذه الصورة في بطاقة التهنئة" : "Use in greeting card"}
+                </button>
+              )}
             </div>
           ) : (
             <div className="text-center" style={{ color: "var(--hv-text-faint)" }}><ImagePlus className="w-12 h-12 mx-auto mb-2 opacity-40" /><p className="text-sm">{ar ? "الصورة بتظهر هنا" : "Your image appears here"}</p></div>
