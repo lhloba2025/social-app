@@ -1325,6 +1325,17 @@ export default function GreetingCardsPage({ language }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateUrl, templateW, templateH, templateZoom, templateOffsetX, templateOffsetY, outputSize, fitMode, bgColor, bgMode, bgSolid, bgGrad1, bgGrad2, bgGradAngle, bgTouched, logo, decorations, headings, style, stockObjects, socialBox, showName]);
 
+  // Start a fresh card: wipe the auto-saved working draft, then reload to a
+  // guaranteed-clean slate (avoids missing any of the ~20 design state fields).
+  const handleNewCard = async () => {
+    const ok = window.confirm(isRtl
+      ? "بدء بطاقة جديدة سيمسح البطاقة الحالية من الشاشة.\nإذا تبي تحتفظ فيها، احفظها في المكتبة أول.\nنكمل؟"
+      : "Start a new card? This clears the current card.\nSave it to the library first if you want to keep it.\nContinue?");
+    if (!ok) return;
+    try { await idbDeleteCard(DRAFT_ID); } catch { /* ignore */ }
+    window.location.reload();
+  };
+
   const templateInputRef = useRef(null);
   const namesInputRef = useRef(null);
   const stageRef = useRef(null);
@@ -2858,6 +2869,12 @@ export default function GreetingCardsPage({ language }) {
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {/* ───── CARD tab: Template + Size ───── */}
             {activePanel === "card" && (<>
+            <button
+              onClick={handleNewCard}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 text-sm font-bold transition"
+            >
+              ➕ {isRtl ? "بطاقة جديدة (ابدأ من الصفر)" : "New card (start fresh)"}
+            </button>
             <div className="bg-white border border-[var(--hv-border)] rounded-xl p-4">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">1</span>
@@ -5319,7 +5336,7 @@ export default function GreetingCardsPage({ language }) {
                 onClick={() => setShowLibraryModal(true)}
                 className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[var(--hv-surface-2)] hover:bg-slate-100 text-[var(--hv-text)] text-sm font-semibold transition"
               >
-                📌 {isRtl ? `مك🎨ة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}
+                📌 {isRtl ? `مكتبة البطاقات (${savedCards.length})` : `Cards library (${savedCards.length})`}
               </button>
               <p className="text-[10px] text-[var(--hv-text-faint)] leading-relaxed">
                 {isRtl ? "💡 الحفظ يخزّن البطاقة في متصفحك (localStorage). لن تختفي بعد إعادة التشغيل." : "💡 Saved cards live in your browser's localStorage — they survive a page reload."}
