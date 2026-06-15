@@ -353,18 +353,27 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // `cancelableMap`: post_id → [scheduled/queued records] (used in CANCEL
   // select mode to know what can be unscheduled and which entries to cancel).
   const [scheduledIds, setScheduledIds] = useState(() => new Set());
+  // `publishedIds`: post_ids that already went live (status === "published"),
+  // so the card shows "منشور" instead of "مجدول".
+  const [publishedIds, setPublishedIds] = useState(() => new Set());
   const [cancelableMap, setCancelableMap] = useState(() => new Map());
   React.useEffect(() => {
     let cancelled = false;
     listAllPosts().then((rows) => {
       if (cancelled) return;
       const ids = new Set();
+      const pubIds = new Set();
       const cmap = new Map();
       for (const r of rows || []) {
         if (r.status === "draft") continue; // a draft isn't really scheduled yet
         const key = r.sourcePostId || r.designId;
         if (r.sourcePostId) ids.add(r.sourcePostId);
         if (r.designId) ids.add(r.designId);
+        // Track already-published entries separately.
+        if (r.status === "published") {
+          if (r.sourcePostId) pubIds.add(r.sourcePostId);
+          if (r.designId) pubIds.add(r.designId);
+        }
         // Only not-yet-published entries can be cancelled.
         if (key && ["scheduled", "queued"].includes(r.status)) {
           if (!cmap.has(key)) cmap.set(key, []);
@@ -372,6 +381,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         }
       }
       setScheduledIds(ids);
+      setPublishedIds(pubIds);
       setCancelableMap(cmap);
     }).catch(() => {});
     return () => { cancelled = true; };
@@ -1246,6 +1256,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedPostIds.has(id));
                 const someSelected = postIds.some((id) => selectedPostIds.has(id));
                 const someScheduled = postIds.some((id) => scheduledIds.has(id));
+                const somePublished = postIds.some((id) => publishedIds.has(id));
                 const lockedForSelect = selectMode && selectableIds.length === 0;
                 return (
                   <div
@@ -1274,9 +1285,14 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                               : "hv-card-hover hover:ring-2 hover:ring-indigo-500"
                     }`}
                   >
-                    {/* "Already scheduled" badge — shown when ANY post in the
-                        topic has a calendar entry. */}
-                    {someScheduled && (
+                    {/* Status badge — "منشور" once any post in the topic has gone
+                        live, otherwise "مجدول" if it still has a pending entry. */}
+                    {somePublished ? (
+                      <div className={`absolute z-10 ${isRtl ? "right-2" : "left-2"} bottom-2 px-2 py-0.5 rounded-full bg-indigo-600/90 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow`}>
+                        <Check className="w-3 h-3" />
+                        {isRtl ? "منشور" : "Published"}
+                      </div>
+                    ) : someScheduled && (
                       <div className={`absolute z-10 ${isRtl ? "right-2" : "left-2"} bottom-2 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow`}>
                         <Calendar className="w-3 h-3" />
                         {isRtl ? "مجدول" : "Scheduled"}
