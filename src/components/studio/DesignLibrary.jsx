@@ -357,6 +357,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // so the card shows "منشور" instead of "مجدول".
   const [publishedIds, setPublishedIds] = useState(() => new Set());
   const [cancelableMap, setCancelableMap] = useState(() => new Map());
+  // `publishAtMap`: post_id → publish/scheduled time (ms) — used to order the
+  // library by date & time of publishing.
+  const [publishAtMap, setPublishAtMap] = useState(() => new Map());
   React.useEffect(() => {
     let cancelled = false;
     listAllPosts().then((rows) => {
@@ -364,6 +367,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
       const ids = new Set();
       const pubIds = new Set();
       const cmap = new Map();
+      const pubAt = new Map();
       for (const r of rows || []) {
         if (r.status === "draft") continue; // a draft isn't really scheduled yet
         const key = r.sourcePostId || r.designId;
@@ -374,6 +378,13 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           if (r.sourcePostId) pubIds.add(r.sourcePostId);
           if (r.designId) pubIds.add(r.designId);
         }
+        // Record the latest publish/scheduled time per post for ordering.
+        const ts = parseCreatedDate(r.scheduledAt);
+        if (Number.isFinite(ts)) {
+          for (const k of [r.sourcePostId, r.designId]) {
+            if (k && (!pubAt.has(k) || ts > pubAt.get(k))) pubAt.set(k, ts);
+          }
+        }
         // Only not-yet-published entries can be cancelled.
         if (key && ["scheduled", "queued"].includes(r.status)) {
           if (!cmap.has(key)) cmap.set(key, []);
@@ -383,6 +394,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
       setScheduledIds(ids);
       setPublishedIds(pubIds);
       setCancelableMap(cmap);
+      setPublishAtMap(pubAt);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [localMediaVersion, bulkScheduleQueue, scheduleVersion]);
@@ -938,13 +950,15 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           //    rows doesn't put one format always ahead of the other.
           if (mediaSort === "newest" || mediaSort === "oldest") {
             const dir = mediaSort === "newest" ? -1 : 1;
-            posts.sort((a, b) => {
-              const da = parseCreatedDate(a.items[0]?.created_date);
-              const db = parseCreatedDate(b.items[0]?.created_date);
-              const av = Number.isFinite(da) ? da : 0;
-              const bv = Number.isFinite(db) ? db : 0;
-              return (av - bv) * dir;
-            });
+            // Order by publish/scheduled date-time when the post has one;
+            // fall back to the design's creation date for never-scheduled items.
+            const tsOf = (p) => {
+              const pub = publishAtMap.get(p.post_id);
+              if (Number.isFinite(pub)) return pub;
+              const c = parseCreatedDate(p.items[0]?.created_date);
+              return Number.isFinite(c) ? c : 0;
+            };
+            posts.sort((a, b) => (tsOf(a) - tsOf(b)) * dir);
           } else if (mediaSort === "title") {
             posts.sort((a, b) => (a.caption_title || "").localeCompare(b.caption_title || "", "ar"));
           }
