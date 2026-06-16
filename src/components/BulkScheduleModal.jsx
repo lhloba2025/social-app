@@ -85,7 +85,7 @@ function formatDateLabel(isoDate, isRtl) {
   });
 }
 
-export default function BulkScheduleModal({ isOpen, posts = [], language, onClose, onSuccess }) {
+export default function BulkScheduleModal({ isOpen, posts = [], language, onClose, onSuccess, initialGroupTopics = true }) {
   const isRtl = language === "ar";
 
   // Human-readable name for an aspect id — so warnings say "مربّع 1:1" not
@@ -223,7 +223,10 @@ export default function BulkScheduleModal({ isOpen, posts = [], language, onClos
   // same hook/caption (they came from the same Excel row / idea). Grouping them
   // guarantees the post and its story go out on the SAME day — so "today's post"
   // and "today's story" are about the same subject.
-  const [groupTopics, setGroupTopics] = useState(true);
+  const [groupTopics, setGroupTopics] = useState(initialGroupTopics);
+  // Honour the caller's grouping preference each time the modal opens — the
+  // "smart shuffle" flow needs grouping OFF so the shuffled order is kept.
+  useEffect(() => { if (isOpen) setGroupTopics(initialGroupTopics); }, [isOpen, initialGroupTopics]);
   const topicKey = (p) => ((p.caption_title || p.caption_text || p.items?.[0]?.name || "").trim());
   const units = useMemo(() => {
     if (!groupTopics) return posts.map((p) => ({ key: p.post_id, posts: [p] }));

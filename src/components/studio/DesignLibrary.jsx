@@ -45,6 +45,42 @@ function writeCaptionTitleForMedia(id, title) {
 // gives the same instant everywhere. Local-store rows already use the
 // canonical ISO format from `toISOString()` so they pass through.
 // Returns a finite millisecond timestamp, or `NaN` for unparseable input.
+// Shuffle an array (Fisher–Yates, non-mutating).
+function shuffleArr(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+
+// "Smart" shuffle: randomise the order but spread topics so the same topic
+// (caption_title) doesn't land back-to-back. Greedy — always take the next
+// item from the largest remaining topic-bucket that isn't the one just used.
+function smartShuffleByTopic(posts) {
+  const buckets = new Map();
+  for (const p of posts) {
+    const t = (p.caption_title || "").trim() || `__u_${p.post_id}`;
+    if (!buckets.has(t)) buckets.set(t, []);
+    buckets.get(t).push(p);
+  }
+  const arrs = Array.from(buckets.values()).map(shuffleArr);
+  const out = [];
+  let last = null;
+  while (arrs.some((a) => a.length)) {
+    const nonEmpty = arrs.filter((a) => a.length);
+    const allowed = nonEmpty.filter((a) => a !== last);
+    const pool = allowed.length ? allowed : nonEmpty;
+    const maxLen = Math.max(...pool.map((a) => a.length));
+    const top = pool.filter((a) => a.length === maxLen);
+    const chosen = top[Math.floor(Math.random() * top.length)];
+    out.push(chosen.shift());
+    last = chosen;
+  }
+  return out;
+}
+
 function parseCreatedDate(str) {
   if (!str) return NaN;
   // SQLite "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SSZ"
@@ -346,6 +382,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // Bulk-scheduler modal — `null` when closed, otherwise an array of
   // the post objects the user wants to schedule.
   const [bulkScheduleQueue, setBulkScheduleQueue] = useState(null);
+  // True when the queue was built by "smart shuffle" — keeps grouping OFF in
+  // the schedule modal so the shuffled order is preserved.
+  const [shuffleScheduling, setShuffleScheduling] = useState(false);
   // Bump to force a re-read of scheduled posts after a bulk cancel.
   const [scheduleVersion, setScheduleVersion] = useState(0);
   // `scheduledIds`: post_ids with ANY non-draft entry (used to lock cards in
@@ -1201,6 +1240,19 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         >
                           <Ban className="w-3 h-3" />
                           {isRtl ? "إلغاء جدولة" : "Cancel schedules"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!posts.length) return;
+                            setShuffleScheduling(true);
+                            setBulkScheduleQueue(smartShuffleByTopic(posts));
+                          }}
+                          disabled={!posts.length}
+                          title={isRtl ? "يخلط البوستات بذكاء (يوزّع المواضيع فلا يتكرّر موضوع ورا بعض) ثم يفتح نافذة الجدولة" : "Smart-shuffle posts (spreads topics) then open scheduling"}
+                          className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5 disabled:opacity-40"
+                          style={{ background: "rgba(16,185,129,0.12)", color: "#047857" }}
+                        >
+                          🎲 {isRtl ? "خلط ذكي وجدولة" : "Smart shuffle & schedule"}
                         </button>
                       </>
                     )}
@@ -2176,9 +2228,11 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         isOpen={!!bulkScheduleQueue}
         posts={bulkScheduleQueue || []}
         language={language}
-        onClose={() => setBulkScheduleQueue(null)}
+        initialGroupTopics={!shuffleScheduling}
+        onClose={() => { setBulkScheduleQueue(null); setShuffleScheduling(false); }}
         onSuccess={() => {
           setBulkScheduleQueue(null);
+          setShuffleScheduling(false);
           exitSelectMode();
         }}
       />
