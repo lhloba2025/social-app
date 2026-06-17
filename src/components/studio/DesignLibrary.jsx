@@ -391,6 +391,8 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   const [unpublishMode, setUnpublishMode] = useState(false);
   const [bulkUnpublishing, setBulkUnpublishing] = useState(false);
   const [recsByPost, setRecsByPost] = useState(() => new Map());
+  // Custom display order produced by the "smart shuffle" button (post_id → rank).
+  const [shuffleRank, setShuffleRank] = useState(() => new Map());
   // Bump to force a re-read of scheduled posts after a bulk cancel.
   const [scheduleVersion, setScheduleVersion] = useState(0);
   // `scheduledIds`: post_ids with ANY non-draft entry (used to lock cards in
@@ -1039,7 +1041,15 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           //    Uses normalized timestamps (not localeCompare) so mixing
           //    SQLite "YYYY-MM-DD HH:MM:SS" with ISO "YYYY-MM-DDTHH:MM:SSZ"
           //    rows doesn't put one format always ahead of the other.
-          if (mediaSort === "newest" || mediaSort === "oldest") {
+          if (mediaSort === "shuffle" && shuffleRank.size) {
+            // Custom order from the "smart shuffle" button. Unranked posts
+            // (e.g. added after shuffling) fall to the end.
+            posts.sort((a, b) => {
+              const ra = shuffleRank.has(a.post_id) ? shuffleRank.get(a.post_id) : Infinity;
+              const rb = shuffleRank.has(b.post_id) ? shuffleRank.get(b.post_id) : Infinity;
+              return ra - rb;
+            });
+          } else if (mediaSort === "newest" || mediaSort === "oldest") {
             const dir = mediaSort === "newest" ? -1 : 1;
             // Order by publish/scheduled date-time when the post has one;
             // fall back to the design's creation date for never-scheduled items.
@@ -1238,6 +1248,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     <option value="newest">{isRtl ? "🔽 الأحدث أولاً" : "🔽 Newest first"}</option>
                     <option value="oldest">{isRtl ? "🔼 الأقدم أولاً" : "🔼 Oldest first"}</option>
                     <option value="title">{isRtl ? "🔤 حسب العنوان" : "🔤 By title"}</option>
+                    {mediaSort === "shuffle" && <option value="shuffle">{isRtl ? "🎲 خلط ذكي" : "🎲 Shuffled"}</option>}
                   </select>
                 </div>
 
@@ -1305,15 +1316,18 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         <button
                           onClick={() => {
                             if (!posts.length) return;
-                            setShuffleScheduling(true);
-                            setBulkScheduleQueue(smartShuffleByTopic(posts));
+                            // Reorder the LIBRARY only (no scheduling): build a smart
+                            // shuffled rank and switch the sort to use it.
+                            const order = smartShuffleByTopic(posts);
+                            setShuffleRank(new Map(order.map((p, i) => [p.post_id, i])));
+                            setMediaSort("shuffle");
                           }}
                           disabled={!posts.length}
-                          title={isRtl ? "يخلط البوستات بذكاء (يوزّع المواضيع فلا يتكرّر موضوع ورا بعض) ثم يفتح نافذة الجدولة" : "Smart-shuffle posts (spreads topics) then open scheduling"}
+                          title={isRtl ? "يخلط ترتيب المكتبة بذكاء (يوزّع المواضيع فلا يتكرّر موضوع ورا بعض) — بدون جدولة" : "Smart-shuffle the library order (spreads topics) — no scheduling"}
                           className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5 disabled:opacity-40"
                           style={{ background: "rgba(16,185,129,0.12)", color: "#047857" }}
                         >
-                          🎲 {isRtl ? "خلط ذكي وجدولة" : "Smart shuffle & schedule"}
+                          🎲 {isRtl ? "خلط ذكي" : "Smart shuffle"}
                         </button>
                       </>
                     )}
