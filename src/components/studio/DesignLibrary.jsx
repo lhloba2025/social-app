@@ -385,6 +385,12 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   // True when the queue was built by "smart shuffle" — keeps grouping OFF in
   // the schedule modal so the shuffled order is preserved.
   const [shuffleScheduling, setShuffleScheduling] = useState(false);
+  // "منشور" tab — recycle already-published content. `unpublishMode` is the
+  // select variant; `recsByPost` maps post_id → its schedule records so we can
+  // delete them and return the post to the library as re-schedulable.
+  const [unpublishMode, setUnpublishMode] = useState(false);
+  const [bulkUnpublishing, setBulkUnpublishing] = useState(false);
+  const [recsByPost, setRecsByPost] = useState(() => new Map());
   // Bump to force a re-read of scheduled posts after a bulk cancel.
   const [scheduleVersion, setScheduleVersion] = useState(0);
   // `scheduledIds`: post_ids with ANY non-draft entry (used to lock cards in
@@ -407,11 +413,18 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
       const pubIds = new Set();
       const cmap = new Map();
       const pubAt = new Map();
+      const recsMap = new Map();
       for (const r of rows || []) {
         if (r.status === "draft") continue; // a draft isn't really scheduled yet
         const key = r.sourcePostId || r.designId;
         if (r.sourcePostId) ids.add(r.sourcePostId);
         if (r.designId) ids.add(r.designId);
+        // Keep every non-draft record per post id so "unpublish" can delete them.
+        for (const k of [r.sourcePostId, r.designId]) {
+          if (!k) continue;
+          if (!recsMap.has(k)) recsMap.set(k, []);
+          recsMap.get(k).push(r);
+        }
         // Track already-published entries separately.
         if (r.status === "published") {
           if (r.sourcePostId) pubIds.add(r.sourcePostId);
@@ -434,6 +447,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
       setPublishedIds(pubIds);
       setCancelableMap(cmap);
       setPublishAtMap(pubAt);
+      setRecsByPost(recsMap);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [localMediaVersion, bulkScheduleQueue, scheduleVersion]);
@@ -449,7 +463,23 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   const exitSelectMode = () => {
     setSelectMode(false);
     setCancelMode(false);
+    setUnpublishMode(false);
     clearSelection();
+  };
+
+  // "Unpublish" the selected posts: delete their schedule records (the actual
+  // designs/media stay) so they leave the published/scheduled sets and become
+  // available to schedule again from the library.
+  const handleBulkUnpublish = async () => {
+    const records = Array.from(selectedPostIds).flatMap((id) => recsByPost.get(id) || []);
+    if (records.length === 0) { exitSelectMode(); return; }
+    setBulkUnpublishing(true);
+    for (const rec of records) {
+      try { await cancelSchedule(rec); } catch { /* keep going */ }
+    }
+    setBulkUnpublishing(false);
+    setScheduleVersion((v) => v + 1);
+    exitSelectMode();
   };
 
   // Bulk-cancel: unschedule every scheduled/queued entry tied to the selected
@@ -489,6 +519,16 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
     for (const m of [...mediaList, ...listLocalMedia()]) keys.add(m.post_id || `legacy_${m.id}`);
     return keys.size;
   }, [mediaList, localMediaVersion]);
+
+  // Distinct already-published posts (for the "منشور" tab badge count).
+  const publishedTabCount = React.useMemo(() => {
+    const keys = new Set();
+    for (const m of [...mediaList, ...listLocalMedia()]) {
+      const k = m.post_id || `legacy_${m.id}`;
+      if (publishedIds.has(k)) keys.add(k);
+    }
+    return keys.size;
+  }, [mediaList, localMediaVersion, publishedIds]);
 
   // Get unique sizes
   const uniqueSizes = Array.from(new Set(designs.map(d => {
@@ -719,7 +759,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b" style={{ borderColor: "var(--hv-border)" }}>
           <button
-            onClick={() => setActiveTab("designs")}
+            onClick={() => { exitSelectMode(); setActiveTab("designs"); }}
             className="px-4 py-2 font-semibold text-sm transition border-b-2"
             style={activeTab === "designs"
               ? { borderColor: "var(--hv-primary)", color: "var(--hv-text)" }
@@ -728,13 +768,22 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             {isRtl ? "التصاميم" : "Designs"} ({designs.length})
           </button>
           <button
-            onClick={() => setActiveTab("media")}
+            onClick={() => { exitSelectMode(); setActiveTab("media"); }}
             className="px-4 py-2 font-semibold text-sm transition border-b-2"
             style={activeTab === "media"
               ? { borderColor: "var(--hv-primary)", color: "var(--hv-text)" }
               : { borderColor: "transparent", color: "var(--hv-text-soft)" }}
           >
             {isRtl ? "المكتبة" : "Media"} ({mediaTabCount})
+          </button>
+          <button
+            onClick={() => { exitSelectMode(); setActiveTab("published"); }}
+            className="px-4 py-2 font-semibold text-sm transition border-b-2"
+            style={activeTab === "published"
+              ? { borderColor: "var(--hv-primary)", color: "var(--hv-text)" }
+              : { borderColor: "transparent", color: "var(--hv-text-soft)" }}
+          >
+            {isRtl ? "منشور" : "Published"} ({publishedTabCount})
           </button>
         </div>
 
@@ -842,7 +891,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
         )}
 
         {/* Media Tab */}
-        {activeTab === "media" && (
+        {(activeTab === "media" || activeTab === "published") && (
           <>
         {mediaLoading ? (
           <div className="flex items-center justify-center h-64">
@@ -983,6 +1032,9 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
               return newestTs >= lowerBound;
             });
           }
+          // "منشور" tab: keep only posts that already went live.
+          const isPublishedTab = activeTab === "published";
+          if (isPublishedTab) posts = posts.filter((p) => publishedIds.has(p.post_id));
           // 4) Sort — newest-first (default), oldest-first, or alphabetical by title.
           //    Uses normalized timestamps (not localeCompare) so mixing
           //    SQLite "YYYY-MM-DD HH:MM:SS" with ISO "YYYY-MM-DDTHH:MM:SSZ"
@@ -1223,6 +1275,15 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                         <CheckSquare className="w-3 h-3" />
                         {isRtl ? "إنهاء التحديد" : "Exit select"}
                       </button>
+                    ) : isPublishedTab ? (
+                      <button
+                        onClick={() => { setUnpublishMode(true); setSelectMode(true); }}
+                        className="px-2.5 py-1 rounded-lg font-semibold transition inline-flex items-center gap-1.5"
+                        style={{ background: "rgba(16,185,129,0.12)", color: "#047857" }}
+                      >
+                        <CheckSquare className="w-3 h-3" />
+                        {isRtl ? "تحديد للإرجاع لغير منشور" : "Select to unpublish"}
+                      </button>
                     ) : (
                       <>
                         <button
@@ -1266,17 +1327,21 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setSelectedPostIds(new Set(
-                          (cancelMode
-                            ? posts.filter((p) => cancelableMap.has(p.post_id))
-                            : posts.filter((p) => !scheduledIds.has(p.post_id))
+                          (unpublishMode
+                            ? posts.filter((p) => publishedIds.has(p.post_id))
+                            : cancelMode
+                              ? posts.filter((p) => cancelableMap.has(p.post_id))
+                              : posts.filter((p) => !scheduledIds.has(p.post_id))
                           ).map((p) => p.post_id)
                         ))}
                         className="text-[11px] px-2 py-0.5 rounded"
                         style={{ background: "rgba(79,70,229,0.08)", color: "var(--hv-primary-700)" }}
                       >
-                        {cancelMode
-                          ? (isRtl ? "تحديد كل المجدول" : "Select all scheduled")
-                          : (isRtl ? "تحديد غير المجدول" : "Select unscheduled")}
+                        {unpublishMode
+                          ? (isRtl ? "تحديد الكل" : "Select all")
+                          : cancelMode
+                            ? (isRtl ? "تحديد كل المجدول" : "Select all scheduled")
+                            : (isRtl ? "تحديد غير المجدول" : "Select unscheduled")}
                       </button>
                       <button
                         onClick={clearSelection}
@@ -1316,9 +1381,11 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                 // selectable post_ids are picked. Locking mirrors the per-post
                 // rules — schedule mode locks fully-scheduled topics, cancel
                 // mode only allows topics with cancelable entries.
-                const selectableIds = cancelMode
-                  ? postIds.filter((id) => cancelableMap.has(id))
-                  : postIds.filter((id) => !scheduledIds.has(id));
+                const selectableIds = unpublishMode
+                  ? postIds.filter((id) => publishedIds.has(id))
+                  : cancelMode
+                    ? postIds.filter((id) => cancelableMap.has(id))
+                    : postIds.filter((id) => !scheduledIds.has(id));
                 const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedPostIds.has(id));
                 const someSelected = postIds.some((id) => selectedPostIds.has(id));
                 const someScheduled = postIds.some((id) => scheduledIds.has(id));
@@ -2136,7 +2203,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           still see it. Mirrors the way Gmail / iOS Photos surface
           batch actions — the bar is the visible commitment that
           "you're selecting something to do with it later". */}
-      {activeTab === "media" && selectedPostIds.size > 0 && (
+      {(activeTab === "media" || activeTab === "published") && selectedPostIds.size > 0 && (
         <div className="fixed bottom-4 inset-x-4 z-40 flex justify-center pointer-events-none" dir={isRtl ? "rtl" : "ltr"}>
           <div className="pointer-events-auto hv-card backdrop-blur rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 max-w-2xl w-full" style={{ borderColor: "rgba(79,70,229,0.4)" }}>
             <div className="flex items-center gap-2 flex-1">
@@ -2150,9 +2217,11 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     : `${selectedPostIds.size} post${selectedPostIds.size === 1 ? "" : "s"} selected`}
                 </p>
                 <p className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>
-                  {cancelMode
-                    ? (isRtl ? "إلغاء جدولة المحدد دفعة واحدة" : "Cancel the selected schedules in one go")
-                    : (isRtl ? "اختر طريقة الجدولة لكل منشور دفعة واحدة" : "Schedule them all in one go")}
+                  {unpublishMode
+                    ? (isRtl ? "إرجاعها لغير منشور لتجدولها من جديد" : "Return them to unpublished so they can be re-scheduled")
+                    : cancelMode
+                      ? (isRtl ? "إلغاء جدولة المحدد دفعة واحدة" : "Cancel the selected schedules in one go")
+                      : (isRtl ? "اختر طريقة الجدولة لكل منشور دفعة واحدة" : "Schedule them all in one go")}
                 </p>
               </div>
             </div>
@@ -2162,7 +2231,19 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
             >
               {isRtl ? "إلغاء" : "Cancel"}
             </button>
-            {cancelMode ? (
+            {unpublishMode ? (
+              <button
+                onClick={handleBulkUnpublish}
+                disabled={bulkUnpublishing}
+                className="hv-btn text-sm disabled:opacity-50"
+                style={{ background: "#047857", color: "#fff" }}
+              >
+                <Ban className="w-4 h-4" />
+                {bulkUnpublishing
+                  ? (isRtl ? "جارٍ الإرجاع…" : "Returning…")
+                  : (isRtl ? "↩️ إرجاع لغير منشور" : "Return to unpublished")}
+              </button>
+            ) : cancelMode ? (
               <button
                 onClick={handleBulkCancel}
                 disabled={bulkCancelling}
