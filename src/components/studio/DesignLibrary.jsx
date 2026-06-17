@@ -343,7 +343,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
   const [mediaSearch, setMediaSearch] = useState("");
   const [mediaPlatform, setMediaPlatform] = useState("all");
   const [mediaDateRange, setMediaDateRange] = useState("all"); // all|today|week|month|year
-  const [mediaSort, setMediaSort] = useState("newest");        // newest|oldest|title
+  const [mediaSort, setMediaSort] = useState("schedule");      // schedule|newest|oldest|title|shuffle
 
   // Full-post preview — clicking a media card opens this modal showing
   // every image in the post, the full untruncated caption, and quick
@@ -1041,7 +1041,21 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
           //    Uses normalized timestamps (not localeCompare) so mixing
           //    SQLite "YYYY-MM-DD HH:MM:SS" with ISO "YYYY-MM-DDTHH:MM:SSZ"
           //    rows doesn't put one format always ahead of the other.
-          if (mediaSort === "shuffle" && shuffleRank.size) {
+          if (mediaSort === "schedule") {
+            // By schedule: scheduled/published posts first in publishing order
+            // (soonest first), then unscheduled designs (newest-created first).
+            posts.sort((a, b) => {
+              const pa = publishAtMap.get(a.post_id);
+              const pb = publishAtMap.get(b.post_id);
+              const aHas = Number.isFinite(pa), bHas = Number.isFinite(pb);
+              if (aHas && bHas) return pa - pb;
+              if (aHas) return -1;
+              if (bHas) return 1;
+              const ca = parseCreatedDate(a.items[0]?.created_date);
+              const cb = parseCreatedDate(b.items[0]?.created_date);
+              return (Number.isFinite(cb) ? cb : 0) - (Number.isFinite(ca) ? ca : 0);
+            });
+          } else if (mediaSort === "shuffle" && shuffleRank.size) {
             // Custom order from the "smart shuffle" button. Unranked posts
             // (e.g. added after shuffling) fall to the end.
             posts.sort((a, b) => {
@@ -1245,6 +1259,7 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                     onChange={(e) => setMediaSort(e.target.value)}
                     className="hv-input w-auto px-2 py-1 text-[11px]"
                   >
+                    <option value="schedule">{isRtl ? "🗓️ حسب الجدولة" : "🗓️ By schedule"}</option>
                     <option value="newest">{isRtl ? "🔽 الأحدث أولاً" : "🔽 Newest first"}</option>
                     <option value="oldest">{isRtl ? "🔼 الأقدم أولاً" : "🔼 Oldest first"}</option>
                     <option value="title">{isRtl ? "🔤 حسب العنوان" : "🔤 By title"}</option>
@@ -1263,13 +1278,13 @@ export default function DesignLibrary({ language, onOpen, onNew }) {
                       : `Showing ${visibleTopics} topics (${visibleCount} posts)`}
                   </span>
                   <div className="flex items-center gap-2">
-                    {(mediaSearch || mediaPlatform !== "all" || mediaDateRange !== "all" || mediaSort !== "newest") && (
+                    {(mediaSearch || mediaPlatform !== "all" || mediaDateRange !== "all" || mediaSort !== "schedule") && (
                       <button
                         onClick={() => {
                           setMediaSearch("");
                           setMediaPlatform("all");
                           setMediaDateRange("all");
-                          setMediaSort("newest");
+                          setMediaSort("schedule");
                         }}
                         className="underline"
                         style={{ color: "var(--hv-primary)" }}
