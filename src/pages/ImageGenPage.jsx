@@ -124,9 +124,9 @@ function CustomGen({ ar }) {
   };
 
   return (
-    <div className="p-6 grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 grid lg:grid-cols-12 gap-8 max-w-6xl mx-auto">
       {/* Left: form */}
-      <div className="space-y-4">
+      <div className="lg:col-span-5 space-y-4">
         <div>
           <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "فكرة المشهد / الوصف" : "Scene / description"}</label>
           <textarea value={scene} onChange={(e) => setScene(e.target.value)} rows={3}
@@ -220,14 +220,16 @@ function CustomGen({ ar }) {
         </button>
       </div>
 
-      {/* Right: result */}
-      <div>
-        <div className="hv-card rounded-xl p-3 min-h-[300px] flex items-center justify-center" style={{ background: "#f1f0f8" }}>
+      {/* Right: result — sticky so it stays in view while scrolling the form */}
+      <div className="lg:col-span-7 self-start lg:sticky lg:top-6">
+        <div className="hv-card rounded-2xl p-4 min-h-[360px] flex items-center justify-center" style={{ background: "var(--hv-surface)" }}>
           {loading ? (
             <div className="text-center" style={{ color: "var(--hv-text-soft)" }}><Loader2 className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: "var(--hv-primary)" }} /><p className="text-sm">{ar ? "يرسم صورتك…" : "Drawing…"}</p></div>
           ) : result ? (
             <div className="w-full">
-              <img src={result} alt="generated" className="w-full rounded-lg" />
+              <div className="rounded-xl overflow-hidden shadow-sm" style={{ background: "repeating-conic-gradient(var(--hv-surface-2) 0% 25%, #ffffff 0% 50%) 50% / 20px 20px" }}>
+                <img src={result} alt="generated" className="w-full block rounded-xl" />
+              </div>
               {bgUrl && showEdit && (
                 <div className="mt-3 rounded-lg p-3 space-y-2 border" style={{ background: "var(--hv-surface)", borderColor: "rgba(251,113,133,0.35)" }}>
                   <p className="text-[11px] font-bold" style={{ color: "var(--hv-secondary-600, var(--hv-secondary))" }}>{ar ? "✦ تحرير سريع (يطبّق فوراً بدون إعادة توليد)" : "✦ Quick edit (live)"}</p>
@@ -321,31 +323,48 @@ function CustomGen({ ar }) {
                   <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] underline" style={{ color: "var(--hv-primary)" }}>{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
                 </div>
               )}
-              <div className="flex gap-2 mt-3">
+              {/* Primary actions — balanced pair across the width */}
+              <div className="grid grid-cols-2 gap-2.5 mt-4">
                 <button onClick={handleSave} disabled={saving || saved}
-                  className={`hv-btn flex-1 py-2.5 disabled:opacity-60 ${saved ? "" : "hv-btn-primary"}`}
+                  className={`hv-btn py-2.5 disabled:opacity-60 ${saved ? "" : "hv-btn-primary"}`}
                   style={saved ? { background: "#10b981", color: "#fff" } : undefined}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
                   {saved ? (ar ? "تم الحفظ" : "Saved") : (ar ? "احفظ في المكتبة" : "Save to library")}
                 </button>
-                <a href={result} download={`image_${Date.now()}.png`} className="hv-btn hv-btn-soft px-3 py-2.5 flex items-center"><Download className="w-4 h-4" /></a>
-                <button onClick={handleGenerate} disabled={loading} className="hv-btn hv-btn-ghost px-3 py-2.5 flex items-center"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={handleEditInStudio} disabled={saving}
+                  className="hv-btn hv-btn-accent py-2.5 disabled:opacity-60">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
+                  {ar ? "افتح في المنشئ" : "Open in Studio"}
+                </button>
+              </div>
+
+              {/* Secondary tools — spread evenly across the bar */}
+              <div className="flex items-center justify-between gap-1 mt-2.5 rounded-xl p-1.5 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+                <a href={result} download={`image_${Date.now()}.png`}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white" style={{ color: "var(--hv-text-soft)" }}>
+                  <Download className="w-4 h-4" /> {ar ? "تنزيل" : "Download"}
+                </a>
+                <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
+                <button onClick={handleGenerate} disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white disabled:opacity-50" style={{ color: "var(--hv-text-soft)" }}>
+                  <RefreshCw className="w-4 h-4" /> {ar ? "إعادة توليد" : "Regenerate"}
+                </button>
                 {bgUrl && (
-                  <button onClick={() => setShowEdit((v) => !v)} title={ar ? "تحرير" : "Edit"}
-                    className={`hv-btn px-3 py-2.5 flex items-center gap-1 ${showEdit ? "hv-btn-accent" : "hv-btn-ghost"}`}>
-                    <Palette className="w-4 h-4" />{ar ? "تحرير" : "Edit"}
-                  </button>
+                  <>
+                    <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
+                    <button onClick={() => setShowEdit((v) => !v)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white"
+                      style={showEdit ? { background: "var(--hv-primary)", color: "#fff" } : { color: "var(--hv-text-soft)" }}>
+                      <Palette className="w-4 h-4" /> {ar ? "تحرير" : "Edit"}
+                    </button>
+                  </>
                 )}
               </div>
-              <button onClick={handleEditInStudio} disabled={saving}
-                className="hv-btn hv-btn-ghost w-full mt-2 py-2.5 disabled:opacity-60">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
-                {ar ? "✏️ افتح في منشئ التصاميم (لتعديل النص والشعار)" : "✏️ Open in Design Studio"}
-              </button>
+
               {sessionStorage.getItem("greetingReturn") === "1" && (
                 <button
                   onClick={() => { sessionStorage.setItem("greetingTemplateUrl", result); sessionStorage.removeItem("greetingReturn"); navigate("/GreetingCards"); }}
-                  className="hv-btn hv-btn-primary w-full mt-2 py-2.5"
+                  className="hv-btn hv-btn-primary w-full mt-2.5 py-2.5"
                 >
                   🎁 {ar ? "استخدم هذه الصورة في بطاقة التهنئة" : "Use in greeting card"}
                 </button>
