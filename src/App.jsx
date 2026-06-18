@@ -17,6 +17,7 @@ import ContentCalendar from './pages/ContentCalendar';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ImageGenPage from './pages/ImageGenPage';
+import TeamLinks from './pages/TeamLinks';
 import EngagementPage from './pages/EngagementPage';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
       <Route path="/Engagement" element={<LayoutWrapper currentPageName="Engagement"><EngagementPage language={localStorage.getItem('appLanguage') || 'ar'} /></LayoutWrapper>} />
       <Route path="/DesignLibraryPage" element={<LayoutWrapper currentPageName="DesignLibraryPage"><DesignLibraryPage /></LayoutWrapper>} />
       <Route path="/AccountsPage" element={<LayoutWrapper currentPageName="AccountsPage"><AccountsPage /></LayoutWrapper>} />
+      <Route path="/TeamLinks" element={<LayoutWrapper currentPageName="TeamLinks"><TeamLinks /></LayoutWrapper>} />
       <Route path="/GreetingCards" element={<LayoutWrapper currentPageName="GreetingCards"><GreetingCardsPage /></LayoutWrapper>} />
       <Route path="/PostComposer" element={<LayoutWrapper currentPageName="PostComposer"><PostComposer /></LayoutWrapper>} />
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />

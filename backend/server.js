@@ -845,6 +845,35 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
+// ---- Team links ----
+// Generate an ISOLATED tenant link so a colleague can test the app in their own
+// private workspace (their own designs/library/accounts; they never see the
+// owner's data). Protected by ADMIN_KEY so nobody else can mint tokens. Tenant
+// ids are namespaced "team_*" so a generated link can NEVER reach a real salon.
+function b64urlJson(obj) {
+  return Buffer.from(JSON.stringify(obj)).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+app.get('/api/team-link', (req, res) => {
+  const adminKey = process.env.ADMIN_KEY || '';
+  const provided = req.query.key || req.headers['x-admin-key'] || '';
+  if (!adminKey) return res.status(503).json({ error: 'لم يتم ضبط ADMIN_KEY في الخادم بعد.' });
+  if (provided !== adminKey) return res.status(403).json({ error: 'مفتاح الإدارة غير صحيح.' });
+  const secret = process.env.SOCIAL_JWT_SECRET || '';
+  if (!secret) return res.status(503).json({ error: 'لم يتم ضبط SOCIAL_JWT_SECRET في الخادم.' });
+  const raw = String(req.query.tenant || '').trim();
+  if (!raw) return res.status(400).json({ error: 'اسم/معرّف الزميل مطلوب.' });
+  // Namespace + sanitise so test tenants never collide with real salon ids.
+  const tenant = 'team_' + raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
+  const header  = b64urlJson({ alg: 'HS256', typ: 'JWT' });
+  const payload = b64urlJson({ salon_id: tenant, iat: Math.floor(Date.now() / 1000) });
+  const sig = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const token = `${header}.${payload}.${sig}`;
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
+  res.json({ tenant, token, url: `${proto}://${req.get('host')}/?t=${token}` });
+});
+
 // ---- Health check ----
 app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 

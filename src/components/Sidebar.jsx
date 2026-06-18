@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { path: "/PostsManager", labelAr: "إدارة المنشورات", labelEn: "Posts", icon: ListChecks },
   { path: "/Engagement", labelAr: "صندوق التفاعل", labelEn: "Engagement", icon: MessageCircle },
   { path: "/AccountsPage", labelAr: "ربط الحسابات", labelEn: "Accounts", icon: LinkIcon },
+  { path: "/TeamLinks", labelAr: "روابط الفريق", labelEn: "Team Links", icon: Share2 },
 ];
 
 export default function Sidebar({ language, onLanguageChange }) {
