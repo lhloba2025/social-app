@@ -124,9 +124,9 @@ function CustomGen({ ar }) {
   };
 
   return (
-    <div className="p-6 lg:p-8 grid lg:grid-cols-12 gap-8 max-w-6xl mx-auto">
+    <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
       {/* Left: form */}
-      <div className="lg:col-span-5 space-y-4">
+      <div className="space-y-4">
         <div>
           <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "فكرة المشهد / الوصف" : "Scene / description"}</label>
           <textarea value={scene} onChange={(e) => setScene(e.target.value)} rows={3}
@@ -221,7 +221,7 @@ function CustomGen({ ar }) {
       </div>
 
       {/* Right: result — sticky so it stays in view while scrolling the form */}
-      <div className="lg:col-span-7 self-start lg:sticky lg:top-6">
+      <div className="self-start md:sticky md:top-6">
         <div className="hv-card rounded-2xl p-4 min-h-[360px] flex items-center justify-center" style={{ background: "var(--hv-surface)" }}>
           {loading ? (
             <div className="text-center" style={{ color: "var(--hv-text-soft)" }}><Loader2 className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: "var(--hv-primary)" }} /><p className="text-sm">{ar ? "يرسم صورتك…" : "Drawing…"}</p></div>
@@ -371,7 +371,13 @@ function CustomGen({ ar }) {
               )}
             </div>
           ) : (
-            <div className="text-center" style={{ color: "var(--hv-text-faint)" }}><ImagePlus className="w-12 h-12 mx-auto mb-2 opacity-40" /><p className="text-sm">{ar ? "الصورة بتظهر هنا" : "Your image appears here"}</p></div>
+            <div className="text-center px-6 py-10" style={{ color: "var(--hv-text-faint)" }}>
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "var(--hv-surface-2)" }}>
+                <ImagePlus className="w-8 h-8 opacity-60" style={{ color: "var(--hv-primary)" }} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "صورتك بتظهر هنا" : "Your image appears here"}</p>
+              <p className="text-[11px] mt-1">{ar ? "اكتب الفكرة في النموذج واضغط «ولّد الصورة»" : "Describe it in the form and hit Generate"}</p>
+            </div>
           )}
         </div>
       </div>
