@@ -318,52 +318,6 @@ function CustomGen({ ar }) {
                   <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="text-[10px] underline" style={{ color: "var(--hv-primary)" }}>{ar ? "↺ إعادة الافتراضي" : "↺ Reset"}</button>
                 </div>
               )}
-              {/* Primary actions — balanced pair across the width */}
-              <div className="grid grid-cols-2 gap-2.5 mt-4">
-                <button onClick={handleSave} disabled={saving || saved}
-                  className={`hv-btn py-2.5 disabled:opacity-60 ${saved ? "" : "hv-btn-primary"}`}
-                  style={saved ? { background: "#10b981", color: "#fff" } : undefined}>
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
-                  {saved ? (ar ? "تم الحفظ" : "Saved") : (ar ? "احفظ في المكتبة" : "Save to library")}
-                </button>
-                <button onClick={handleEditInStudio} disabled={saving}
-                  className="hv-btn hv-btn-accent py-2.5 disabled:opacity-60">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
-                  {ar ? "افتح في المنشئ" : "Open in Studio"}
-                </button>
-              </div>
-
-              {/* Secondary tools — spread evenly across the bar */}
-              <div className="flex items-center justify-between gap-1 mt-2.5 rounded-xl p-1.5 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
-                <a href={result} download={`image_${Date.now()}.png`}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white" style={{ color: "var(--hv-text-soft)" }}>
-                  <Download className="w-4 h-4" /> {ar ? "تنزيل" : "Download"}
-                </a>
-                <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
-                <button onClick={handleGenerate} disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white disabled:opacity-50" style={{ color: "var(--hv-text-soft)" }}>
-                  <RefreshCw className="w-4 h-4" /> {ar ? "إعادة توليد" : "Regenerate"}
-                </button>
-                {bgUrl && (
-                  <>
-                    <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
-                    <button onClick={() => setShowEdit((v) => !v)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white"
-                      style={showEdit ? { background: "var(--hv-primary)", color: "#fff" } : { color: "var(--hv-text-soft)" }}>
-                      <Palette className="w-4 h-4" /> {ar ? "تحرير" : "Edit"}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {sessionStorage.getItem("greetingReturn") === "1" && (
-                <button
-                  onClick={() => { sessionStorage.setItem("greetingTemplateUrl", result); sessionStorage.removeItem("greetingReturn"); navigate("/GreetingCards"); }}
-                  className="hv-btn hv-btn-primary w-full mt-2.5 py-2.5"
-                >
-                  🎁 {ar ? "استخدم هذه الصورة في بطاقة التهنئة" : "Use in greeting card"}
-                </button>
-              )}
             </div>
           ) : (
             <div className="text-center px-6 py-10" style={{ color: "var(--hv-text-faint)" }}>
@@ -375,6 +329,52 @@ function CustomGen({ ar }) {
             </div>
           )}
         </div>
+
+        {/* Actions — always visible; enabled once an image exists */}
+        <div className="grid grid-cols-2 gap-2.5 mt-3">
+          <button onClick={handleSave} disabled={!result || saving || saved}
+            className={`hv-btn py-2.5 disabled:opacity-50 ${saved ? "" : "hv-btn-primary"}`}
+            style={saved ? { background: "#10b981", color: "#fff" } : undefined}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
+            {saved ? (ar ? "تم الحفظ" : "Saved") : (ar ? "احفظ في المكتبة" : "Save")}
+          </button>
+          <button onClick={handleEditInStudio} disabled={!result || saving}
+            className="hv-btn hv-btn-accent py-2.5 disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
+            {ar ? "افتح في المنشئ" : "Open in Studio"}
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-1 mt-2.5 rounded-xl p-1.5 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
+          {result ? (
+            <a href={result} download={`image_${Date.now()}.png`}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white" style={{ color: "var(--hv-text-soft)" }}>
+              <Download className="w-4 h-4" /> {ar ? "تنزيل" : "Download"}
+            </a>
+          ) : (
+            <span className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold opacity-40" style={{ color: "var(--hv-text-soft)" }}>
+              <Download className="w-4 h-4" /> {ar ? "تنزيل" : "Download"}
+            </span>
+          )}
+          <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
+          <button onClick={handleGenerate} disabled={!result || loading}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white disabled:opacity-40" style={{ color: "var(--hv-text-soft)" }}>
+            <RefreshCw className="w-4 h-4" /> {ar ? "إعادة توليد" : "Regenerate"}
+          </button>
+          <span className="w-px h-5 flex-shrink-0" style={{ background: "var(--hv-border)" }} />
+          <button onClick={() => setShowEdit((v) => !v)} disabled={!bgUrl}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition hover:bg-white disabled:opacity-40"
+            style={showEdit ? { background: "var(--hv-primary)", color: "#fff" } : { color: "var(--hv-text-soft)" }}>
+            <Palette className="w-4 h-4" /> {ar ? "تحرير" : "Edit"}
+          </button>
+        </div>
+        {result && sessionStorage.getItem("greetingReturn") === "1" && (
+          <button
+            onClick={() => { sessionStorage.setItem("greetingTemplateUrl", result); sessionStorage.removeItem("greetingReturn"); navigate("/GreetingCards"); }}
+            className="hv-btn hv-btn-primary w-full mt-2.5 py-2.5"
+          >
+            🎁 {ar ? "استخدم هذه الصورة في بطاقة التهنئة" : "Use in greeting card"}
+          </button>
+        )}
       </div>
     </div>
   );
