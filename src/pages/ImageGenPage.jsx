@@ -185,29 +185,24 @@ function CustomGen({ ar }) {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 rounded-lg p-2.5 border" style={{ background: "rgba(251,113,133,0.08)", borderColor: "rgba(251,113,133,0.35)" }}>
-          <span className="mt-0.5">🎯</span>
-          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
-            {ar ? "النص يُطبع بدقة عالية بالخط الحقيقي" : "Text is composited in the real font (high precision)"}
-            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الذكاء يرسم المشهد فقط، والنظام يطبع الشعار والهوك والشريط بدقة — والنص يتحدّث مباشرة وتقدر تحرّكه بزر «تحرير»." : "AI paints the scene; the app composites the real logo, hook & bar — text updates live and is editable."}</span>
-          </span>
+        {/* Compact options — two toggles side by side + one short hint */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer border text-[12px] font-semibold transition"
+            style={freeScene ? { background: "rgba(79,70,229,0.07)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+            <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+            🎨 {ar ? "وضع حر" : "Free scene"}
+          </label>
+          <label className="flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer border text-[12px] font-semibold transition"
+            style={bgOnly ? { background: "rgba(79,70,229,0.07)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+            <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+            🖼️ {ar ? "خلفية فقط" : "Background only"}
+          </label>
         </div>
-
-        <label className="flex items-start gap-2 rounded-lg p-2.5 cursor-pointer border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
-          <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--hv-primary)" }} />
-          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
-            {ar ? "🎨 وضع حر — لا تقيّد المشهد" : "🎨 Free scene (don't constrain)"}
-            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "يتبع وصفك حرفياً بدون فرض إضاءة فاتحة أو أثاث (كراسي/مرايا) — مناسب للأجواء الغامقة أو أي ستايل خاص." : "Follows your scene as-is — no forced bright lighting or props. Good for dark/moody styles."}</span>
-          </span>
-        </label>
-
-        <label className="flex items-start gap-2 rounded-lg p-2.5 cursor-pointer border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
-          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--hv-primary)" }} />
-          <span className="text-[12px] leading-relaxed" style={{ color: "var(--hv-text)" }}>
-            {ar ? "خلفية فقط (بدون نص وشعار)" : "Background only (no text/logo)"}
-            <span className="block text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{ar ? "يولّد المشهد نظيف، وتضيف النص والشعار كطبقات تعدّلها في المنشئ." : "Clean scene; add editable text + logo in the Studio."}</span>
-          </span>
-        </label>
+        <p className="text-[10px] leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
+          {ar
+            ? "🎯 الذكاء يرسم المشهد والنظام يطبع الشعار والنص بدقة (يتحدّث ويتحرّك من «تحرير»). «وضع حر» يتبع وصفك حرفياً، و«خلفية فقط» بدون نص أو شعار."
+            : "🎯 AI paints the scene; the app composites logo & text precisely (editable). Free = follow your scene literally; Background only = no text/logo."}
+        </p>
 
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
 
