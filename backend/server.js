@@ -892,6 +892,94 @@ if (process.env.TIKTOK_VERIFY_FILE && process.env.TIKTOK_VERIFY_CONTENT) {
 }
 
 // ---- Serve the built frontend (production / single Railway service) ----
+// ---- Static legal / website pages ----
+// Served as REAL server-rendered HTML (NOT the React SPA shell) so crawlers and
+// reviewers (e.g. TikTok) see the actual content without running JavaScript.
+function legalPage(title, bodyHtml) {
+  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>${title} — Hovera</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Tahoma,Arial,sans-serif;line-height:1.8;color:#1f2937;background:#f7f7fb;margin:0;padding:0}
+  .wrap{max-width:820px;margin:0 auto;padding:32px 20px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:28px 32px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  h1{color:#4f46e5;font-size:28px;margin:0 0 4px}
+  h2{color:#111827;font-size:18px;margin:24px 0 6px}
+  .sub{color:#6b7280;font-size:13px;margin-bottom:20px}
+  a{color:#4f46e5}
+  ul{padding-inline-start:20px}
+  .en{direction:ltr;text-align:left}
+  .foot{margin-top:28px;color:#6b7280;font-size:13px;border-top:1px solid #e5e7eb;padding-top:14px}
+</style></head><body><div class="wrap"><div class="card">${bodyHtml}
+<div class="foot">Hovera — <a href="/about">about</a> · <a href="/privacy">privacy</a> · <a href="/terms">terms</a><br/>تواصل / Contact: <a href="mailto:info.lhloba@gmail.com">info.lhloba@gmail.com</a></div>
+</div></div></body></html>`;
+}
+
+app.get('/privacy', (_, res) => {
+  res.type('html').send(legalPage('سياسة الخصوصية / Privacy Policy', `
+  <h1>سياسة الخصوصية</h1>
+  <div class="sub">Privacy Policy · آخر تحديث: يونيو 2026 / Last updated: June 2026</div>
+  <p>Hovera هو نظام لتصميم وجدولة ونشر محتوى وسائل التواصل الاجتماعي، يساعد الأنشطة التجارية على إنشاء المنشورات ونشرها على حساباتها الخاصة.</p>
+  <p class="en"><strong>Hovera</strong> is a social media content design and scheduling tool that helps businesses create posts and publish them to their own connected social accounts.</p>
+
+  <h2>المعلومات التي نجمعها / Information we collect</h2>
+  <ul class="en">
+    <li><strong>Account connection data:</strong> when you connect a social account (Facebook, Instagram, TikTok, LinkedIn, Snapchat) we receive and store the access tokens and basic account identifiers that platform provides, solely to publish on your behalf. We never receive your password.</li>
+    <li><strong>Content you create:</strong> the designs, images, captions and schedules you make inside the app.</li>
+  </ul>
+
+  <h2>كيف نستخدمها / How we use it</h2>
+  <ul class="en">
+    <li>To provide the service: design, schedule and publish content to the accounts you authorize.</li>
+    <li><strong>TikTok:</strong> we use TikTok Login Kit (<code>user.info.basic</code>) to identify your connected account, and the Content Posting API (<code>video.publish</code>, <code>video.upload</code>) to publish the videos and images you create and schedule to your authorized TikTok account.</li>
+  </ul>
+
+  <h2>المشاركة / Sharing</h2>
+  <p class="en">We do not sell your data. We do not share personal data with third parties, except the social platforms you explicitly choose to publish to.</p>
+
+  <h2>الاحتفاظ والحذف / Retention &amp; deletion</h2>
+  <p class="en">You can disconnect any account at any time, which deletes its stored tokens. To delete all your data, contact us at info.lhloba@gmail.com.</p>
+
+  <h2>الأمان / Security</h2>
+  <p class="en">Tokens are stored securely and all traffic is served over HTTPS.</p>
+  `));
+});
+
+app.get('/terms', (_, res) => {
+  res.type('html').send(legalPage('شروط الاستخدام / Terms of Service', `
+  <h1>شروط الاستخدام</h1>
+  <div class="sub">Terms of Service · آخر تحديث: يونيو 2026 / Last updated: June 2026</div>
+  <p class="en">By using <strong>Hovera</strong> you agree to these terms.</p>
+  <h2>الخدمة / The service</h2>
+  <p class="en">Hovera provides tools to design, schedule and publish social media content to the accounts you connect.</p>
+  <h2>مسؤوليتك / Your responsibilities</h2>
+  <ul class="en">
+    <li>You are responsible for the content you create and publish, and for complying with the rules of each social platform you use.</li>
+    <li>You must own, or be authorized to manage, the social accounts you connect.</li>
+    <li>You must not use the service for unlawful, deceptive, or abusive content.</li>
+  </ul>
+  <h2>إخلاء المسؤولية / Disclaimer</h2>
+  <p class="en">The service is provided "as is" without warranties. We may suspend access for misuse. Third-party platforms (Meta, TikTok, LinkedIn, Snapchat) are governed by their own terms.</p>
+  `));
+});
+
+app.get('/about', (_, res) => {
+  res.type('html').send(legalPage('عن Hovera / About', `
+  <h1>Hovera</h1>
+  <div class="sub">إدارة وسائل التواصل ببساطة للأنشطة التجارية / Social media made simple for businesses</div>
+  <p>Hovera يساعد الأنشطة على تصميم منشورات احترافية، توليد صور بالذكاء الاصطناعي، إنشاء بطاقات تهنئة وقوائم خدمات، وجدولة ونشر المحتوى على حساباتها.</p>
+  <p class="en"><strong>Hovera</strong> lets businesses design professional posts, generate images with AI, build greeting cards and service menus, and schedule &amp; publish content to Facebook, Instagram, TikTok, LinkedIn and Snapchat — all from one place.</p>
+  <h2>المميزات / Features</h2>
+  <ul class="en">
+    <li>Design studio for social posts and stories</li>
+    <li>AI image generation</li>
+    <li>Greeting-card and service-menu builders</li>
+    <li>Scheduling and one-click publishing to connected accounts</li>
+  </ul>
+  <p class="en">Read our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.</p>
+  `));
+});
+
 const distDir = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
