@@ -1289,6 +1289,12 @@ export default function GreetingCardsPage({ language }) {
   useEffect(() => {
     (async () => {
       try {
+        // "New card" was requested → drop the saved draft and start blank.
+        if (sessionStorage.getItem("greeting_force_new") === "1") {
+          sessionStorage.removeItem("greeting_force_new");
+          try { await idbDeleteCard(DRAFT_ID); } catch { /* ignore */ }
+          return;
+        }
         const all = await idbGetAllCards();
         const draft = all.find((c) => c.id === DRAFT_ID);
         if (draft?.state) applyDraft(draft.state);
@@ -1335,12 +1341,14 @@ export default function GreetingCardsPage({ language }) {
 
   // Start a fresh card: wipe the auto-saved working draft, then reload to a
   // guaranteed-clean slate (avoids missing any of the ~20 design state fields).
-  const handleNewCard = async () => {
+  const handleNewCard = () => {
     const ok = window.confirm(isRtl
       ? "بدء بطاقة جديدة سيمسح البطاقة الحالية من الشاشة.\nإذا تبي تحتفظ فيها، احفظها في المكتبة أول.\nنكمل؟"
       : "Start a new card? This clears the current card.\nSave it to the library first if you want to keep it.\nContinue?");
     if (!ok) return;
-    try { await idbDeleteCard(DRAFT_ID); } catch { /* ignore */ }
+    // Reload immediately (no awaiting IndexedDB, which can hang); a flag makes
+    // the next load drop the saved draft and start blank.
+    sessionStorage.setItem("greeting_force_new", "1");
     window.location.reload();
   };
 
