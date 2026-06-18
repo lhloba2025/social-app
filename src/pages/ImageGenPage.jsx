@@ -124,8 +124,8 @@ function CustomGen({ ar }) {
   };
 
   return (
-    <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-      {/* Left: form */}
+    <div className="p-6 md:p-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+      {/* Col 1: content inputs */}
       <div className="space-y-4">
         <div>
           <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "فكرة المشهد / الوصف" : "Scene / description"}</label>
@@ -149,6 +149,17 @@ function CustomGen({ ar }) {
           <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Several words allowed — all get the highlight color."}</p>
         </div>
 
+        {error && <div className="rounded-lg px-3 py-2 text-[12px] leading-relaxed border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
+
+        <button onClick={handleGenerate} disabled={loading || !scene.trim()}
+          className="hv-btn hv-btn-primary w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2">
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+          {loading ? (ar ? "جارٍ التوليد…" : "Generating…") : (ar ? "ولّد الصورة" : "Generate")}
+        </button>
+      </div>
+
+      {/* Col 2: options */}
+      <div className="space-y-4">
         {/* Notification card (logo + title + body) — like an app notification */}
         <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
           <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer" style={{ color: "var(--hv-text)" }}>
@@ -205,18 +216,10 @@ function CustomGen({ ar }) {
         </p>
 
         <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
-
-        {error && <div className="rounded-lg px-3 py-2 text-[12px] leading-relaxed border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
-
-        <button onClick={handleGenerate} disabled={loading || !scene.trim()}
-          className="hv-btn hv-btn-primary w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-          {loading ? (ar ? "جارٍ التوليد…" : "Generating…") : (ar ? "ولّد الصورة" : "Generate")}
-        </button>
       </div>
 
-      {/* Right: result — sticky so it stays in view while scrolling the form */}
-      <div className="self-start md:sticky md:top-6">
+      {/* Col 3: result — sticky so it stays in view while scrolling */}
+      <div className="self-start lg:sticky lg:top-6">
         <div className="hv-card rounded-2xl p-4 min-h-[360px] flex items-center justify-center" style={{ background: "var(--hv-surface)" }}>
           {loading ? (
             <div className="text-center" style={{ color: "var(--hv-text-soft)" }}><Loader2 className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: "var(--hv-primary)" }} /><p className="text-sm">{ar ? "يرسم صورتك…" : "Drawing…"}</p></div>
