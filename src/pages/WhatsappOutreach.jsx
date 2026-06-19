@@ -38,9 +38,18 @@ export default function WhatsappOutreach() {
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [lastAdded, setLastAdded] = useState(0);
+  // WhatsApp Cloud API auto-send
+  const [apiOk, setApiOk] = useState(false);
+  const [tpl, setTpl] = useState("hello_world");
+  const [lang, setLang] = useState("en_US");
+  const [imgUrl, setImgUrl] = useState("");
+  const [useName, setUseName] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => { try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {} }, [contacts]);
   useEffect(() => { try { localStorage.setItem(MSG_KEY, message); } catch {} }, [message]);
+  useEffect(() => { fetch("/api/whatsapp/status").then((r) => r.json()).then((d) => setApiOk(!!d.configured)).catch(() => {}); }, []);
 
   const update = (phone, patch) => setContacts((list) => list.map((c) => (c.phone === phone ? { ...c, ...patch, updatedAt: Date.now() } : c)));
   const remove = (phone) => setContacts((list) => list.filter((c) => c.phone !== phone));
@@ -117,6 +126,30 @@ export default function WhatsappOutreach() {
 
   const linkFor = (c) => `https://wa.me/${c.phone}?text=${encodeURIComponent((message || "").replace(/\{(الاسم|name)\}/gi, c.name || ""))}`;
 
+  // Fully-automatic send (one click) via the WhatsApp Cloud API.
+  const autoSend = async () => {
+    const targets = visible;
+    if (!targets.length || sending) return;
+    if (!window.confirm(isRtl ? `إرسال تلقائي لـ ${targets.length} عميل عبر القالب «${tpl}»؟` : `Auto-send to ${targets.length} via "${tpl}"?`)) return;
+    setSending(true);
+    let ok = 0, fail = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const c = targets[i];
+      try {
+        const res = await fetch("/api/whatsapp/send", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: c.phone, template: tpl.trim(), language: (lang.trim() || "ar"), imageUrl: imgUrl.trim() || undefined, bodyParams: useName ? [c.name || ""] : [] }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) { ok++; update(c.phone, { status: "sent" }); }
+        else fail++;
+      } catch { fail++; }
+      setProgress({ done: i + 1, total: targets.length, ok, fail });
+      await new Promise((r) => setTimeout(r, 800)); // gentle pacing
+    }
+    setSending(false);
+  };
+
   return (
     <div className="hv-page" dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-5xl mx-auto">
@@ -151,6 +184,38 @@ export default function WhatsappOutreach() {
             {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
           </div>
         </div>
+
+        {/* Auto-send via WhatsApp Cloud API */}
+        {apiOk && (
+          <div className="hv-card p-4 mb-4 border-2" style={{ borderColor: "#25D366" }}>
+            <h3 className="text-sm font-bold flex items-center gap-1.5 mb-2" style={{ color: "#128C3E" }}>
+              ⚡ {isRtl ? "إرسال تلقائي (واتساب API) — بضغطة وحدة" : "Auto-send (WhatsApp API)"}
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-2 mb-2">
+              <label className="text-[11px] font-semibold block" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "اسم القالب المعتمد" : "Template name"}
+                <input value={tpl} onChange={(e) => setTpl(e.target.value)} dir="ltr" className="hv-input w-full mt-1 px-2 py-1" />
+              </label>
+              <label className="text-[11px] font-semibold block" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "اللغة" : "Language"}
+                <input value={lang} onChange={(e) => setLang(e.target.value)} dir="ltr" className="hv-input w-full mt-1 px-2 py-1" />
+              </label>
+              <label className="text-[11px] font-semibold block" style={{ color: "var(--hv-text-soft)" }}>{isRtl ? "رابط صورة (اختياري)" : "Image URL (optional)"}
+                <input value={imgUrl} onChange={(e) => setImgUrl(e.target.value)} dir="ltr" className="hv-input w-full mt-1 px-2 py-1" />
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-[11px] mb-2 cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+              <input type="checkbox" checked={useName} onChange={(e) => setUseName(e.target.checked)} style={{ accentColor: "#25D366" }} />
+              {isRtl ? "القالب فيه متغيّر {{1}} — أرسل اسم العميل" : "Template has {{1}} — send contact name"}
+            </label>
+            <button onClick={autoSend} disabled={sending || visible.length === 0}
+              className="hv-btn text-sm disabled:opacity-50" style={{ background: "#25D366", color: "#fff" }}>
+              {sending ? (isRtl ? "جارٍ الإرسال…" : "Sending…") : (isRtl ? `⚡ إرسال تلقائي لـ ${visible.length} (المعروضين)` : `Auto-send to ${visible.length}`)}
+            </button>
+            {progress && <span className="text-[11px] ms-3" style={{ color: "var(--hv-text-soft)" }}>{progress.done}/{progress.total} · {isRtl ? "نجح" : "ok"} {progress.ok} · {isRtl ? "فشل" : "fail"} {progress.fail}</span>}
+            <p className="text-[10px] mt-2 leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
+              {isRtl ? "⚠️ الرقم التجريبي يرسل فقط للأرقام اللي أضفتها في API Setup. للإرسال لكل القائمة تحتاج رقم إنتاج + قالب معتمد." : "Test number only sends to verified recipients; production needs a real number + approved template."}
+            </p>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
