@@ -376,7 +376,7 @@ export default function BulkImageGen({ ar }) {
           <p style={{ color: "var(--hv-text-faint)" }}>{ar ? "انستقرام · فيسبوك · تيك توك · تويتر · لينكدإن · استوري." : "instagram · facebook · tiktok · twitter · linkedin · story."}</p>
           <p style={{ color: "#059669" }}>{ar ? "عمود «استوري» = ينشر ستوري (انستقرام + فيسبوك). الصور بنفس المقاس تُولّد مرة وحدة وتُستخدم لكل منصاتها (أوفر)." : "Same-size images are generated once and reused."}</p>
         </div>
-        <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
+        <BrandKitControls ar={ar} kit={kit} setKit={setKit} logo={logo} setLogo={setLogo} />
       </div>
 
       <div className="hv-card rounded-xl p-4 space-y-3">

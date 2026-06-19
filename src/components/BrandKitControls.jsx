@@ -6,19 +6,15 @@ import { LOGO_KEY, KIT_KEY, FONTS, loadKit, loadLogo } from "@/utils/imagePrompt
 // Self-persisting to localStorage, and notifies the parent via onChange so it
 // can use the current kit/logo when generating. Shared by the custom + bulk
 // image generators so a client's identity is set ONCE and applies everywhere.
-export default function BrandKitControls({ ar, onChange }) {
-  const [logo, setLogo] = useState(loadLogo);
-  const [kit, setKit] = useState(loadKit);
-
+export default function BrandKitControls({ ar, kit, setKit, logo, setLogo }) {
+  // Controlled by the parent (so a top toolbar can edit the same kit). We only
+  // persist the parent-owned values to localStorage when they change.
   useEffect(() => {
     try { if (logo) localStorage.setItem(LOGO_KEY, logo); else localStorage.removeItem(LOGO_KEY); } catch {}
-    onChange?.(kit, logo);
   }, [logo]);
   useEffect(() => {
     try { localStorage.setItem(KIT_KEY, JSON.stringify(kit)); } catch {}
-    onChange?.(kit, logo);
   }, [kit]);
-  useEffect(() => { onChange?.(kit, logo); }, []); // initial
 
   const setKitField = (k, v) => setKit((prev) => ({ ...prev, [k]: v }));
   const onPickLogo = (e) => {

@@ -4,7 +4,7 @@ import { Sparkles, Loader2, ImagePlus, Download, Check, RefreshCw, Palette, Laye
 import { uploadFile } from "@/api/localClient";
 import { addLocalMedia } from "@/utils/localMediaStore";
 import { shrinkBlobToLimit } from "@/utils/imageConvert";
-import { buildPrompt, generateImage, ASPECTS, loadKit, loadLogo, kitContacts, pxForAspect } from "@/utils/imagePrompt";
+import { buildPrompt, generateImage, ASPECTS, FONTS, loadKit, loadLogo, kitContacts, pxForAspect } from "@/utils/imagePrompt";
 import { composeBranded } from "@/utils/composeBrand";
 import BrandKitControls from "@/components/BrandKitControls";
 // Lazy-load the bulk tab so the heavy Excel library only loads when used.
@@ -45,6 +45,7 @@ function CustomGen({ ar }) {
   const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true, cardRotate: 0, logoScrim: true };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
+  const setKitField = (k, v) => setKit((p) => ({ ...p, [k]: v }));
 
   // Re-composite whenever the scene, brand kit, layout, hook or logo changes
   // (but NOT the scene description — that needs a fresh AI generation).
@@ -124,7 +125,30 @@ function CustomGen({ ar }) {
   };
 
   return (
-    <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+    <div className="p-6 md:p-8 grid md:grid-cols-2 gap-x-8 gap-y-5 max-w-6xl mx-auto">
+      {/* Top toolbar — quick text formatting (font + colors), like a design app */}
+      <div className="md:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-3 py-2 shadow-sm" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
+        <span className="text-[11px] font-extrabold flex items-center gap-1.5" style={{ color: "var(--hv-secondary-600, #f43f5e)" }}>
+          <Palette className="w-4 h-4" /> {ar ? "تنسيق النص" : "Text format"}
+        </span>
+        <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
+        <label className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الخط" : "Font"}</span>
+          <select value={kit.font} onChange={(e) => setKitField("font", e.target.value)} className="hv-input !py-1 !w-auto text-[12px]">
+            {FONTS.map((f) => <option key={f.v} value={f.v}>{ar ? f.ar : f.v}</option>)}
+          </select>
+        </label>
+        <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
+        <label className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون النص" : "Text color"}</span>
+          <input type="color" value={kit.mainColor} onChange={(e) => setKitField("mainColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={kit.mainColor} />
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الكلمة المميزة" : "Highlight"}</span>
+          <input type="color" value={kit.highlightColor} onChange={(e) => setKitField("highlightColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={kit.highlightColor} />
+        </label>
+      </div>
+
       {/* Left: form */}
       <div className="space-y-4">
         <div>
@@ -204,7 +228,7 @@ function CustomGen({ ar }) {
             : "🎯 AI paints the scene; the app composites logo & text precisely (editable). Free = follow your scene literally; Background only = no text/logo."}
         </p>
 
-        <BrandKitControls ar={ar} onChange={(k, l) => { setKit(k); setLogo(l); }} />
+        <BrandKitControls ar={ar} kit={kit} setKit={setKit} logo={logo} setLogo={setLogo} />
 
         {error && <div className="rounded-lg px-3 py-2 text-[12px] leading-relaxed border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
 
