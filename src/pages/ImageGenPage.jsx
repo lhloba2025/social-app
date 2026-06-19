@@ -172,6 +172,15 @@ function CustomGen({ ar }) {
           <input type="checkbox" checked={!!kit.changeLogoColor} onChange={(e) => setKitField("changeLogoColor", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
           🎨 {ar ? "تلوين الشعار" : "Recolor logo"}
         </label>
+        <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold px-2 py-1 rounded-lg border transition"
+          style={layout.hookBg !== false ? { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+          <input type="checkbox" checked={layout.hookBg !== false} onChange={(e) => setLayout((p) => ({ ...p, hookBg: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
+          🔲 {ar ? "خلفية النص" : "Text BG"}
+        </label>
+        {layout.hookBg !== false && (
+          <input type="color" value={layout.hookBgColor || "#FFFFFF"} onChange={(e) => setLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={ar ? "لون خلفية النص" : "Text background color"} />
+        )}
       </div>
 
       {/* Left: form */}
