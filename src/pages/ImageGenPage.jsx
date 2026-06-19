@@ -126,26 +126,40 @@ function CustomGen({ ar }) {
 
   return (
     <div className="p-6 md:p-8 grid md:grid-cols-2 gap-x-8 gap-y-5 max-w-6xl mx-auto">
-      {/* Top toolbar — quick text formatting (font + colors), like a design app */}
-      <div className="md:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-3 py-2 shadow-sm" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
-        <span className="text-[11px] font-extrabold flex items-center gap-1.5" style={{ color: "var(--hv-secondary-600, #f43f5e)" }}>
-          <Palette className="w-4 h-4" /> {ar ? "تنسيق النص" : "Text format"}
-        </span>
+      {/* Top toolbar — control center: size, font, colors, quick options */}
+      <div className="md:col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2 shadow-sm" style={{ background: "var(--hv-surface)", borderColor: "var(--hv-border)" }}>
+        <label className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>📐 {ar ? "المقاس" : "Size"}</span>
+          <select value={aspect} onChange={(e) => setAspect(e.target.value)} className="hv-input !py-1 !w-auto text-[12px]">
+            {ASPECTS.map((a) => <option key={a.id} value={a.id}>{ar ? a.ar : a.en}</option>)}
+          </select>
+        </label>
         <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
         <label className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الخط" : "Font"}</span>
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>🅰 {ar ? "الخط" : "Font"}</span>
           <select value={kit.font} onChange={(e) => setKitField("font", e.target.value)} className="hv-input !py-1 !w-auto text-[12px]">
             {FONTS.map((f) => <option key={f.v} value={f.v}>{ar ? f.ar : f.v}</option>)}
           </select>
         </label>
         <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
         <label className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون النص" : "Text color"}</span>
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "لون النص" : "Text"}</span>
           <input type="color" value={kit.mainColor} onChange={(e) => setKitField("mainColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={kit.mainColor} />
         </label>
         <label className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "الكلمة المميزة" : "Highlight"}</span>
+          <span className="text-[11px] font-semibold" style={{ color: "var(--hv-text-soft)" }}>{ar ? "المميزة" : "Highlight"}</span>
           <input type="color" value={kit.highlightColor} onChange={(e) => setKitField("highlightColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={kit.highlightColor} />
+        </label>
+        <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold px-2 py-1 rounded-lg border transition"
+          style={freeScene ? { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+          <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+          🎨 {ar ? "وضع حر" : "Free"}
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold px-2 py-1 rounded-lg border transition"
+          style={bgOnly ? { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+          <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+          🖼️ {ar ? "خلفية فقط" : "BG only"}
         </label>
       </div>
 
@@ -196,32 +210,6 @@ function CustomGen({ ar }) {
           )}
         </div>
 
-        <div>
-          <label className="text-[12px] font-bold block mb-1.5" style={{ color: "var(--hv-text)" }}>{ar ? "المقاس" : "Size"}</label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {ASPECTS.map((a) => (
-              <button key={a.id} onClick={() => setAspect(a.id)}
-                className="py-2 rounded-lg text-[11px] font-bold transition border"
-                style={aspect === a.id ? { background: "var(--hv-primary)", color: "#fff", borderColor: "var(--hv-primary)" } : { background: "var(--hv-surface)", color: "var(--hv-text-soft)", borderColor: "var(--hv-border)" }}>
-                {ar ? a.ar : a.en}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Compact options — two toggles side by side + one short hint */}
-        <div className="grid grid-cols-2 gap-2">
-          <label className="flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer border text-[12px] font-semibold transition"
-            style={freeScene ? { background: "rgba(79,70,229,0.07)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
-            <input type="checkbox" checked={freeScene} onChange={(e) => setFreeScene(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
-            🎨 {ar ? "وضع حر" : "Free scene"}
-          </label>
-          <label className="flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer border text-[12px] font-semibold transition"
-            style={bgOnly ? { background: "rgba(79,70,229,0.07)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
-            <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
-            🖼️ {ar ? "خلفية فقط" : "Background only"}
-          </label>
-        </div>
         <p className="text-[10px] leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
           {ar
             ? "🎯 الذكاء يرسم المشهد والنظام يطبع الشعار والنص بدقة (يتحدّث ويتحرّك من «تحرير»). «وضع حر» يتبع وصفك حرفياً، و«خلفية فقط» بدون نص أو شعار."
