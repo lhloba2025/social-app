@@ -35,17 +35,37 @@ export default function WhatsappOutreach() {
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+      const ncols = aoa.reduce((m, r) => Math.max(m, (r || []).length), 0);
+
+      // Auto-detect the PHONE column = the one with the most valid phone cells
+      // (works no matter where it sits — name/city/address columns are ignored).
+      let phoneCol = 0, best = -1;
+      for (let c = 0; c < ncols; c++) {
+        let cnt = 0;
+        for (const r of aoa) if (normalizePhone(r?.[c]).length >= 10) cnt++;
+        if (cnt > best) { best = cnt; phoneCol = c; }
+      }
+      // NAME column = a header named اسم/name, else the first text (non-phone) column.
+      const header = aoa[0] || [];
+      let nameCol = -1;
+      header.forEach((h, i) => { if (nameCol === -1 && /(اسم|name)/i.test(String(h ?? ""))) nameCol = i; });
+      if (nameCol === -1) {
+        for (let c = 0; c < ncols; c++) {
+          if (c === phoneCol) continue;
+          const sample = aoa.find((r) => r && String(r[c] ?? "").trim());
+          if (sample && normalizePhone(sample[c]).length < 10) { nameCol = c; break; }
+        }
+      }
+
       const out = [];
       const seen = new Set();
       for (const r of aoa) {
-        if (!r || !r.length) continue;
-        const phone = normalizePhone(r[0]);
+        const phone = normalizePhone(r?.[phoneCol]);
         if (!phone || phone.length < 10) continue;   // skips header / invalid rows
         if (seen.has(phone)) continue;               // dedupe
-        seen.add(phone);
-        out.push({ phone, name: (r[1] != null ? String(r[1]) : "").trim() });
+        out.push({ phone, name: nameCol >= 0 ? String(r[nameCol] ?? "").trim() : "" });
       }
-      if (!out.length) { setError(isRtl ? "ما لقيت أرقام صالحة. تأكد إن العمود الأول أرقام الجوال." : "No valid numbers found. First column should be phone numbers."); }
+      if (!out.length) { setError(isRtl ? "ما لقيت أرقام صالحة في الملف. تأكد إن فيه عمود فيه أرقام جوال." : "No valid numbers found — make sure a column has phone numbers."); }
       setRows(out); setBatch(0); setSent(new Set());
     } catch (err) {
       setError((isRtl ? "تعذّر قراءة الملف: " : "Couldn't read file: ") + (err?.message || err));
