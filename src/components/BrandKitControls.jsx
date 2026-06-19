@@ -6,7 +6,7 @@ import { LOGO_KEY, KIT_KEY, FONTS, loadKit, loadLogo } from "@/utils/imagePrompt
 // Self-persisting to localStorage, and notifies the parent via onChange so it
 // can use the current kit/logo when generating. Shared by the custom + bulk
 // image generators so a client's identity is set ONCE and applies everywhere.
-export default function BrandKitControls({ ar, kit, setKit, logo, setLogo }) {
+export default function BrandKitControls({ ar, kit, setKit, logo, setLogo, hideQuickControls = false }) {
   // Controlled by the parent (so a top toolbar can edit the same kit). We only
   // persist the parent-owned values to localStorage when they change.
   useEffect(() => {
@@ -64,35 +64,46 @@ export default function BrandKitControls({ ar, kit, setKit, logo, setLogo }) {
         </label>
       )}
 
-      <div className="flex gap-2">
-        <ColorField label={ar ? "لون النص" : "Text color"} value={kit.mainColor} onCh={(v) => setKitField("mainColor", v)} />
-        <ColorField label={ar ? "لون الكلمة المميزة" : "Highlight color"} value={kit.highlightColor} onCh={(v) => setKitField("highlightColor", v)} />
-      </div>
+      {!hideQuickControls && (
+        <div className="flex gap-2">
+          <ColorField label={ar ? "لون النص" : "Text color"} value={kit.mainColor} onCh={(v) => setKitField("mainColor", v)} />
+          <ColorField label={ar ? "لون الكلمة المميزة" : "Highlight color"} value={kit.highlightColor} onCh={(v) => setKitField("highlightColor", v)} />
+        </div>
+      )}
+
+      {!hideQuickControls && (
+        <div>
+          <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "نوع الخط العربي" : "Arabic font"}</label>
+          <select value={kit.font} onChange={(e) => setKitField("font", e.target.value)} className="hv-input text-[12px]">
+            {FONTS.map((f) => <option key={f.v} value={f.v}>{ar ? f.ar : f.v}</option>)}
+          </select>
+          <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "💡 الذكاء يقرّب الأسلوب فقط. للخط بالضبط استخدم المنشئ." : "💡 AI approximates the style only."}</p>
+        </div>
+      )}
 
       <div>
-        <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--hv-text-soft)" }}>{ar ? "نوع الخط العربي" : "Arabic font"}</label>
-        <select value={kit.font} onChange={(e) => setKitField("font", e.target.value)} className="hv-input text-[12px]">
-          {FONTS.map((f) => <option key={f.v} value={f.v}>{ar ? f.ar : f.v}</option>)}
-        </select>
-        <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "💡 الذكاء يقرّب الأسلوب فقط. للخط بالضبط استخدم المنشئ." : "💡 AI approximates the style only."}</p>
-      </div>
-
-      <div>
-        <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
-          <input type="checkbox" checked={kit.changeLogoColor} onChange={(e) => setKitField("changeLogoColor", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
-          {ar ? "غيّر لون الشعار (افتراضياً يبقى كما هو)" : "Recolor the logo (default: keep as-is)"}
-        </label>
+        {!hideQuickControls && (
+          <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+            <input type="checkbox" checked={kit.changeLogoColor} onChange={(e) => setKitField("changeLogoColor", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+            {ar ? "غيّر لون الشعار (افتراضياً يبقى كما هو)" : "Recolor the logo (default: keep as-is)"}
+          </label>
+        )}
         {kit.changeLogoColor && (
-          <div className="mt-2"><ColorField label={ar ? "لون الشعار" : "Logo color"} value={kit.logoColor} onCh={(v) => setKitField("logoColor", v)} /></div>
+          <div className={hideQuickControls ? "" : "mt-2"}><ColorField label={ar ? "لون الشعار" : "Logo color"} value={kit.logoColor} onCh={(v) => setKitField("logoColor", v)} /></div>
         )}
       </div>
 
       {/* Contact bar (handles) — fixed like the logo, used only when checked. */}
       <div className="border-t pt-3" style={{ borderColor: "var(--hv-border)" }}>
-        <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
-          <input type="checkbox" checked={!!kit.showContact} onChange={(e) => setKitField("showContact", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
-          {ar ? "أضف شريط معرفات التواصل أسفل الصورة" : "Add a contact bar at the bottom"}
-        </label>
+        {!hideQuickControls && (
+          <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
+            <input type="checkbox" checked={!!kit.showContact} onChange={(e) => setKitField("showContact", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+            {ar ? "أضف شريط معرفات التواصل أسفل الصورة" : "Add a contact bar at the bottom"}
+          </label>
+        )}
+        {hideQuickControls && kit.showContact && (
+          <p className="text-[11px] font-bold mb-1" style={{ color: "var(--hv-text-soft)" }}>📇 {ar ? "معرفات التواصل" : "Contact handles"}</p>
+        )}
         {kit.showContact && (
           <div className="mt-2 grid grid-cols-2 gap-2">
             {[

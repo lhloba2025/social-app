@@ -161,6 +161,17 @@ function CustomGen({ ar }) {
           <input type="checkbox" checked={bgOnly} onChange={(e) => setBgOnly(e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
           🖼️ {ar ? "خلفية فقط" : "BG only"}
         </label>
+        <span className="w-px h-6" style={{ background: "var(--hv-border)" }} />
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold px-2 py-1 rounded-lg border transition"
+          style={kit.showContact ? { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+          <input type="checkbox" checked={!!kit.showContact} onChange={(e) => setKitField("showContact", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+          📇 {ar ? "شريط التواصل" : "Contact bar"}
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold px-2 py-1 rounded-lg border transition"
+          style={kit.changeLogoColor ? { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" } : { background: "var(--hv-surface-2)", borderColor: "var(--hv-border)", color: "var(--hv-text-soft)" }}>
+          <input type="checkbox" checked={!!kit.changeLogoColor} onChange={(e) => setKitField("changeLogoColor", e.target.checked)} style={{ accentColor: "var(--hv-primary)" }} />
+          🎨 {ar ? "تلوين الشعار" : "Recolor logo"}
+        </label>
       </div>
 
       {/* Left: form */}
@@ -187,36 +198,13 @@ function CustomGen({ ar }) {
           <p className="text-[10px] mt-1" style={{ color: "var(--hv-text-faint)" }}>{ar ? "تقدر تحدّد أكثر من كلمة — كلها بلون الكلمة المميزة." : "Several words allowed — all get the highlight color."}</p>
         </div>
 
-        {/* Notification card (logo + title + body) — like an app notification */}
-        <div className="rounded-lg p-2.5 space-y-2 border" style={{ background: "var(--hv-surface-2)", borderColor: "var(--hv-border)" }}>
-          <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer" style={{ color: "var(--hv-text)" }}>
-            <input type="checkbox" checked={!!layout.cardOn} onChange={(e) => setLayout((p) => ({ ...p, cardOn: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
-            {ar ? "🔔 بطاقة إشعار (شعار + عنوان + نص)" : "🔔 Notification card"}
-          </label>
-          {layout.cardOn && (
-            <>
-              <input value={layout.cardTitle || ""} onChange={(e) => setLayout((p) => ({ ...p, cardTitle: e.target.value }))}
-                placeholder={ar ? "عنوان البطاقة — مثال: هوفيرا" : "Card title — e.g. Hovera"}
-                className="hv-input w-full" />
-              <textarea value={layout.cardBody || ""} onChange={(e) => setLayout((p) => ({ ...p, cardBody: e.target.value }))} rows={2}
-                placeholder={ar ? "نص البطاقة — مثال: تذكير: موعدك بعد ساعتين في الصالون" : "Card body — e.g. Reminder: your appointment in 2 hours"}
-                className="hv-input w-full resize-none leading-relaxed" />
-              <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: "var(--hv-text-soft)" }}>
-                <input type="checkbox" checked={layout.cardLogo !== false} onChange={(e) => setLayout((p) => ({ ...p, cardLogo: e.target.checked }))} style={{ accentColor: "var(--hv-primary)" }} />
-                {ar ? "إظهار الشعار داخل البطاقة" : "Show logo in card"}
-              </label>
-              <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{ar ? "بعد التوليد، حرّكها وكبّرها من زر «تحرير»." : "After generating, move/resize it from Edit."}</p>
-            </>
-          )}
-        </div>
-
         <p className="text-[10px] leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
           {ar
             ? "🎯 الذكاء يرسم المشهد والنظام يطبع الشعار والنص بدقة (يتحدّث ويتحرّك من «تحرير»). «وضع حر» يتبع وصفك حرفياً، و«خلفية فقط» بدون نص أو شعار."
             : "🎯 AI paints the scene; the app composites logo & text precisely (editable). Free = follow your scene literally; Background only = no text/logo."}
         </p>
 
-        <BrandKitControls ar={ar} kit={kit} setKit={setKit} logo={logo} setLogo={setLogo} />
+        <BrandKitControls ar={ar} kit={kit} setKit={setKit} logo={logo} setLogo={setLogo} hideQuickControls />
 
         {error && <div className="rounded-lg px-3 py-2 text-[12px] leading-relaxed border" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }}>{error}</div>}
 
@@ -250,12 +238,6 @@ function CustomGen({ ar }) {
                     ...(kit.showContact ? [
                       { k: "contactScale", label: ar ? "حجم الشريط" : "Bar size", min: 0.5, max: 2, step: 0.05 },
                       { k: "contactY", label: ar ? "الشريط ↕" : "Bar ↕", min: 0, max: 0.8, step: 0.01 },
-                    ] : []),
-                    ...(layout.cardOn ? [
-                      { k: "cardX", label: ar ? "البطاقة ↔" : "Card ↔", min: 0.15, max: 0.85, step: 0.01 },
-                      { k: "cardY", label: ar ? "البطاقة ↕" : "Card ↕", min: 0.1, max: 0.95, step: 0.01 },
-                      { k: "cardScale", label: ar ? "حجم البطاقة" : "Card size", min: 0.35, max: 0.95, step: 0.01 },
-                      { k: "cardRotate", label: ar ? "ميل البطاقة" : "Card tilt", min: -45, max: 45, step: 1 },
                     ] : []),
                   ].map((s) => (
                     <div key={s.k} className="flex items-center gap-2">
