@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle } from "lucide-react";
+import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/", labelAr: "الرئيسية", labelEn: "Home", icon: Home, exact: true },
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { path: "/ContentCalendar", labelAr: "تقويم المحتوى", labelEn: "Calendar", icon: CalendarDays },
   { path: "/PostsManager", labelAr: "إدارة المنشورات", labelEn: "Posts", icon: ListChecks },
   { path: "/Engagement", labelAr: "صندوق التفاعل", labelEn: "Engagement", icon: MessageCircle },
+  { path: "/WhatsappOutreach", labelAr: "تواصل واتساب", labelEn: "WhatsApp Outreach", icon: Send },
   { path: "/AccountsPage", labelAr: "ربط الحسابات", labelEn: "Accounts", icon: LinkIcon },
   { path: "/TeamLinks", labelAr: "روابط الفريق", labelEn: "Team Links", icon: Share2 },
 ];
