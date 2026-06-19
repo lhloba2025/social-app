@@ -18,6 +18,7 @@ import {
   getIgUserId,
 } from './services/meta.js';
 import { buildAuthUrl as tiktokAuthUrl, exchangeCodeForToken as tiktokExchangeCode } from './services/tiktok.js';
+import { isConfigured as waConfigured, sendTemplate as waSendTemplate, sendText as waSendText } from './services/whatsapp.js';
 import { buildAuthUrl as linkedinAuthUrl, exchangeCodeForToken as linkedinExchangeCode, getMemberUrn as linkedinGetUrn, getAdminOrg as linkedinGetAdminOrg, isConfigured as linkedinConfigured } from './services/linkedin.js';
 import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
 
@@ -872,6 +873,23 @@ app.get('/api/team-link', (req, res) => {
   const token = `${header}.${payload}.${sig}`;
   const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
   res.json({ tenant, token, url: `${proto}://${req.get('host')}/?t=${token}` });
+});
+
+// ---- WhatsApp Cloud API (env-gated) ----
+app.get('/api/whatsapp/status', (_, res) => res.json({ configured: waConfigured() }));
+app.post('/api/whatsapp/send', async (req, res) => {
+  if (!waConfigured()) return res.status(503).json({ error: 'واتساب API غير مفعّل بعد (لم تُضبط المفاتيح في الخادم).' });
+  try {
+    const { to, mode, template, language, bodyParams, imageUrl, text } = req.body || {};
+    if (!to) return res.status(400).json({ error: 'رقم المستلم مطلوب' });
+    const data = mode === 'text'
+      ? await waSendText({ to, text })
+      : await waSendTemplate({ to, template, language, bodyParams, imageUrl });
+    res.json({ success: true, data });
+  } catch (err) {
+    const detail = err?.response?.data?.error?.message || err?.message || 'فشل الإرسال';
+    res.status(502).json({ success: false, error: detail });
+  }
 });
 
 // ---- Health check ----
