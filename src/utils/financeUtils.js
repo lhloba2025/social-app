@@ -14,7 +14,7 @@ export function formatMoney(value, ar = true) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return ar ? `${s} ر.س` : `${s} SAR`;
+  return `${s} ⃁`; // ⃁ = official Saudi Riyal symbol (U+20C1)
 }
 
 // ── VAT calculation ──────────────────────────────────────────────────────────

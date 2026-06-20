@@ -188,9 +188,14 @@ export default function AccountingPage({ language }) {
   const Arrow = ar ? "→" : "←";
   const inputCls = "rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400";
 
+  // Saudi Riyal glyph (⃁, U+20C1) used as an icon instead of a dollar sign.
+  const RiyalIcon = ({ className = "" }) => (
+    <span className={`inline-flex items-center justify-center ${className}`} style={{ fontWeight: 900, fontSize: 14, lineHeight: 1 }}>⃁</span>
+  );
+
   const TABS = [
     { key: "overview", ar: "نظرة عامة", en: "Overview", Icon: Wallet },
-    { key: "transactions", ar: "الحركات", en: "Transactions", Icon: Receipt },
+    { key: "transactions", ar: "الحركات", en: "Transactions", Icon: RiyalIcon },
     { key: "payroll", ar: "الرواتب والعمولات", en: "Payroll", Icon: Users },
     { key: "recurring", ar: "المصروفات المتكرّرة", en: "Recurring", Icon: Repeat },
     { key: "services", ar: "الخدمات", en: "Services", Icon: Scissors },
