@@ -18,6 +18,7 @@ import IconsPanel from "./panels/IconsPanel.jsx";
 import SocialPanel from "./panels/SocialPanel.jsx";
 import OffersPanel from "./panels/OffersPanel.jsx";
 import MenuPanel from "./panels/MenuPanel.jsx";
+import FeaturesPanel from "./panels/FeaturesPanel.jsx";
 import SymbolsPanel from "./panels/SymbolsPanel";
 import HandDrawnPanel from "./panels/HandDrawnPanel";
 import LayersPanel from "./panels/LayersPanel";
@@ -55,6 +56,7 @@ const TABS = [
   { id: "effects", labelAr: "تأثيرات", labelEn: "Effects" },
   { id: "offers", labelAr: "💰 عروض وأسعار", labelEn: "💰 Offers" },
   { id: "menu", labelAr: "📋 قائمة/منيو", labelEn: "📋 Menu" },
+  { id: "features", labelAr: "✨ المميزات", labelEn: "✨ Features" },
 ];
 
 // The 18 tools, organised into logical clusters so the panel reads as tidy
@@ -63,7 +65,7 @@ const TAB_GROUPS = [
   { labelAr: "العلامة",      labelEn: "Brand",    ids: ["brand", "logo", "social", "colors"] },
   { labelAr: "وسائط",       labelEn: "Media",    ids: ["images", "bg"] },
   { labelAr: "إضافة عناصر", labelEn: "Elements", ids: ["text", "shapes", "icons", "symbols", "deco", "frames", "draw"] },
-  { labelAr: "العروض والأسعار", labelEn: "Offers & Pricing", ids: ["offers", "menu"] },
+  { labelAr: "العروض والأسعار", labelEn: "Offers & Pricing", ids: ["offers", "menu", "features"] },
   { labelAr: "ترتيب",        labelEn: "Arrange",  ids: ["layers", "effects", "size"] },
 ];
 
@@ -279,6 +281,31 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     };
   });
   const updateMenu = (patch) => setMenu((m) => ({ ...m, ...patch }));
+
+  // Features showcase (sibling of menu — a hero + grid of feature cards).
+  const [features, setFeatures] = useState(() => {
+    if (initDraft?.features) return initDraft.features;
+    return {
+      show: false,
+      lang: "ar", columns: 2, autoFit: true,
+      title: "كل صالونكِ في نظام واحد", titleEn: "",
+      subtitle: "منظومة إدارة الصالونات", subtitleEn: "",
+      cards: [
+        { icon: "🔗", title: "رابط حجز مباشر", titleEn: "", desc: "رابط خاص لكل صالون", descEn: "" },
+        { icon: "⏰", title: "الحضور والانصراف", titleEn: "", desc: "توثيق دوام الفريق", descEn: "" },
+        { icon: "💳", title: "العربون والمدفوعات", titleEn: "", desc: "دفع آمن ومرن", descEn: "" },
+        { icon: "⭐", title: "الولاء والإحالة", titleEn: "", desc: "نقاط ومكافآت", descEn: "" },
+        { icon: "🔔", title: "الإشعارات والتذكير", titleEn: "", desc: "تذكير تلقائي", descEn: "" },
+        { icon: "📊", title: "تقارير لحظية", titleEn: "", desc: "دخل اليوم بنظرة", descEn: "" },
+      ],
+      accent: "#7c3aed", textColor: "#1e1b3a", bgColor: "#ffffff", cardBg: "#ffffff",
+      showLogo: false, logoUrl: "", logoSize: 22,
+      footer: "", footerEn: "",
+      fontFamily: "Tajawal", fontScale: 1,
+      x: 50, y: 50, width: 82, rotation: 0,
+    };
+  });
+  const updateFeatures = (patch) => setFeatures((m) => ({ ...m, ...patch }));
 
   // Auto-persist the profile whenever the box changes. We exclude
   // positional fields (x/y/show) inside the store, so moving the box
@@ -538,7 +565,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
     };
     // Strip thumbnails from pages before storing — base64 images fill up localStorage (5MB limit)
     const draftPages = pagesData.current.map(({ thumbnail, ...rest }) => rest);
-    const draft = { textLayers, shapes, images, logos, bg, groups, offers, menu, pages: draftPages, currentPageIdx };
+    const draft = { textLayers, shapes, images, logos, bg, groups, offers, menu, features, pages: draftPages, currentPageIdx };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       setLastSavedAt(Date.now());
@@ -551,7 +578,7 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         setAutoSaveStatus("saved");
       } catch { setAutoSaveStatus("idle"); }
     }
-  }, [textLayers, shapes, images, logos, bg, groups, offers, menu]);
+  }, [textLayers, shapes, images, logos, bg, groups, offers, menu, features]);
 
   // Tick to keep "Xs ago" label fresh
   const [, setTickCount] = useState(0);
@@ -1740,6 +1767,9 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
             <div style={{ display: activeTab === "menu" ? "block" : "none" }}>
               <MenuPanel menu={menu} onChange={updateMenu} language={language} />
             </div>
+            <div style={{ display: activeTab === "features" ? "block" : "none" }}>
+              <FeaturesPanel features={features} onChange={updateFeatures} language={language} />
+            </div>
             <div style={{ display: activeTab === "text" ? "block" : "none" }}>
               <TextPanel
                 layers={textLayers}
@@ -2024,6 +2054,8 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
               onUpdateOffers={updateOffers}
               menu={menu}
               onUpdateMenu={updateMenu}
+              features={features}
+              onUpdateFeatures={updateFeatures}
               onAddShape={(payload) => {
                 const newShape = {
                   id: genId(),

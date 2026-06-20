@@ -6,6 +6,7 @@ import { SAUDI_MAP_PATH, SAUDI_REGIONS } from "./data/saudiMapPath";
 import { generateSvgBackground } from "./svgBackgrounds";
 import { findPlatform } from "./data/socialPlatforms.jsx";
 import MenuOverlay from "./MenuOverlay";
+import FeaturesOverlay from "./FeaturesOverlay";
 
 function buildBg(bg) {
   if (!bg) return "#1e293b";
@@ -1105,6 +1106,7 @@ export default function StudioCanvas({
   socialBox, onUpdateSocialBox,
   offers, onUpdateOffers,
   menu, onUpdateMenu,
+  features, onUpdateFeatures,
 }) {
   // Helper that wraps any element's right-click — uses parent handler if provided
   const ctxHandler = (id, type) => onContextMenu ? (e) => onContextMenu(e, id, type) : undefined;
@@ -1443,6 +1445,7 @@ export default function StudioCanvas({
         else if (type === "social") onUpdateSocialBox?.({ x: newX, y: newY });
         else if (type === "offers") onUpdateOffers?.({ x: newX, y: newY });
         else if (type === "menu") onUpdateMenu?.({ x: newX, y: newY });
+        else if (type === "features") onUpdateFeatures?.({ x: newX, y: newY });
         else if (type === "group") {
           const group = groups.find(g => g.id === id);
           if (group) {
@@ -2662,6 +2665,21 @@ export default function StudioCanvas({
             <MenuOverlay
               menu={menu} selected={isSel} isExporting={isExporting} cW={cW} cH={cH}
               onStartDrag={(e) => { e.stopPropagation(); onSelect?.("__menu", "menu"); startDrag(e, "__menu", "menu", menu.x ?? 50, menu.y ?? 50, false); }}
+            />
+          );
+        })()}
+
+        {/* ── Features showcase overlay — hero + grid of feature cards + auto-fit ── */}
+        {features?.show && (() => {
+          const hasCards = features.cards && features.cards.length;
+          if (!hasCards) return null;
+          const cRect = containerRef.current?.getBoundingClientRect();
+          const cW = cRect?.width || 400, cH = cRect?.height || 400;
+          const isSel = selectedId === "__features" && selectedType === "features";
+          return (
+            <FeaturesOverlay
+              features={features} selected={isSel} isExporting={isExporting} cW={cW} cH={cH}
+              onStartDrag={(e) => { e.stopPropagation(); onSelect?.("__features", "features"); startDrag(e, "__features", "features", features.x ?? 50, features.y ?? 50, false); }}
             />
           );
         })()}
