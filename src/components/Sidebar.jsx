@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/", labelAr: "الرئيسية", labelEn: "Home", icon: Home, exact: true },
+  { path: "/", labelAr: "التسويق", labelEn: "Marketing", icon: Home, exact: true },
   { path: "/DesignStudio", labelAr: "منشئ التصاميم", labelEn: "Design Studio", icon: LayoutGrid },
   { path: "/ImageGen", labelAr: "توليد صورة بالذكاء", labelEn: "AI Image", icon: Sparkles },
   { path: "/GreetingCards", labelAr: "بطاقات التهنئة", labelEn: "Greeting Cards", icon: MailPlus },

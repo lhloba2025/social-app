@@ -85,6 +85,8 @@ export const localApi = {
     Media: entity('media'),
     Logo: entity('logos'),
     SocialAccount: entity('social-accounts'),
+    FinanceTransaction: entity('fin-transactions'),
+    FinanceEmployee: entity('fin-employees'),
   },
   uploadFile,
 };

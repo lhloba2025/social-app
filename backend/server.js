@@ -182,6 +182,42 @@ db.run(`
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
+
+  -- ── Accounting / المحاسبة ────────────────────────────────────────────────
+  -- Every income/expense movement for a salon. VAT (ضريبة القيمة المضافة)
+  -- is stored explicitly so KSA tax reports (output vs input tax) are exact.
+  CREATE TABLE IF NOT EXISTS fin_transactions (
+    id TEXT PRIMARY KEY,
+    type TEXT DEFAULT 'income',          -- 'income' | 'expense'
+    category TEXT,                       -- service / rent / salaries ... (key)
+    description TEXT,
+    amount REAL DEFAULT 0,               -- net amount before VAT (الصافي)
+    vat_rate REAL DEFAULT 15,            -- % applied
+    vat_amount REAL DEFAULT 0,           -- VAT value (قيمة الضريبة)
+    total REAL DEFAULT 0,               -- amount + vat_amount (الإجمالي)
+    payment_method TEXT DEFAULT 'cash',  -- cash / mada / transfer / applepay / credit
+    ref_no TEXT,                         -- invoice / receipt reference (من النظام الأساسي)
+    employee_id TEXT,                    -- optional: who performed the service
+    employee_name TEXT,
+    txn_date TEXT,                       -- the accounting date (YYYY-MM-DD)
+    notes TEXT,
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Salon staff for payroll & commissions (الرواتب والعمولات)
+  CREATE TABLE IF NOT EXISTS fin_employees (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    role TEXT,                           -- كوافيرة / مكياج / استقبال ...
+    phone TEXT,
+    base_salary REAL DEFAULT 0,          -- الراتب الأساسي الشهري
+    commission_rate REAL DEFAULT 0,      -- نسبة العمولة %
+    active INTEGER DEFAULT 1,
+    notes TEXT,
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const alterCols = [
@@ -330,11 +366,26 @@ const socialAccountsRouter = () => crudRouter('social_accounts', row => ({
   isConnected: boolField(row.isConnected),
 }));
 const logosRouter = () => crudRouter('logos', row => ({ ...row, isSvg: boolField(row.isSvg) }));
+const finTransactionsRouter = () => crudRouter('fin_transactions', row => ({
+  ...row,
+  amount: Number(row.amount) || 0,
+  vat_rate: Number(row.vat_rate) || 0,
+  vat_amount: Number(row.vat_amount) || 0,
+  total: Number(row.total) || 0,
+}));
+const finEmployeesRouter = () => crudRouter('fin_employees', row => ({
+  ...row,
+  base_salary: Number(row.base_salary) || 0,
+  commission_rate: Number(row.commission_rate) || 0,
+  active: boolField(row.active),
+}));
 for (const prefix of ['', '/api']) {
   app.use(`${prefix}/designs`, crudRouter('designs'));
   app.use(`${prefix}/media`, crudRouter('media'));
   app.use(`${prefix}/logos`, logosRouter());
   app.use(`${prefix}/social-accounts`, socialAccountsRouter());
+  app.use(`${prefix}/fin-transactions`, finTransactionsRouter());
+  app.use(`${prefix}/fin-employees`, finEmployeesRouter());
 }
 
 // ---- Scheduled Posts Routes ----

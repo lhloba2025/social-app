@@ -19,7 +19,9 @@ import Terms from './pages/Terms';
 import ImageGenPage from './pages/ImageGenPage';
 import TeamLinks from './pages/TeamLinks';
 import WhatsappOutreach from './pages/WhatsappOutreach';
+import Marketing from './pages/Marketing';
 import EngagementPage from './pages/EngagementPage';
+import AccountingPage from './pages/AccountingPage';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -56,8 +58,8 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
+        <LayoutWrapper currentPageName="Marketing">
+          <Marketing />
         </LayoutWrapper>
       } />
       {Object.entries(Pages).map(([path, Page]) => (
@@ -83,6 +85,7 @@ const AuthenticatedApp = () => {
       <Route path="/PostComposer" element={<LayoutWrapper currentPageName="PostComposer"><PostComposer /></LayoutWrapper>} />
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />
       <Route path="/ContentCalendar" element={<LayoutWrapper currentPageName="ContentCalendar"><ContentCalendar /></LayoutWrapper>} />
+      <Route path="/Accounting" element={<LayoutWrapper currentPageName="Accounting"><AccountingPage /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
