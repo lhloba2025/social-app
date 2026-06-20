@@ -218,6 +218,36 @@ db.run(`
     tenant_id TEXT DEFAULT 'default',
     created_date TEXT DEFAULT (datetime('now'))
   );
+
+  -- Recurring expenses (المصروفات المتكرّرة) — auto-posted monthly into
+  -- fin_transactions by the daily cron / on-demand endpoint.
+  CREATE TABLE IF NOT EXISTS fin_recurring (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    category TEXT,
+    amount REAL DEFAULT 0,               -- net amount before VAT (الصافي)
+    vat_rate REAL DEFAULT 15,
+    vat_amount REAL DEFAULT 0,
+    total REAL DEFAULT 0,
+    payment_method TEXT DEFAULT 'cash',
+    day_of_month INTEGER DEFAULT 1,      -- post once today's day >= this
+    active INTEGER DEFAULT 1,
+    last_posted_month TEXT,              -- YYYY-MM of the last auto-post (idempotency)
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Services catalog (الخدمات) — used to auto-fill income transactions.
+  CREATE TABLE IF NOT EXISTS fin_services (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    price REAL DEFAULT 0,
+    vat_included INTEGER DEFAULT 0,      -- is price VAT-inclusive?
+    category TEXT,
+    active INTEGER DEFAULT 1,
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const alterCols = [
@@ -240,6 +270,10 @@ const alterCols = [
   `ALTER TABLE logos ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
   `ALTER TABLE social_accounts ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
   `ALTER TABLE scheduled_posts ADD COLUMN tenant_id TEXT DEFAULT 'default'`,
+  // Accounting: trace auto-posted recurring/salary transactions back to their rule.
+  `ALTER TABLE fin_transactions ADD COLUMN recurring_id TEXT`,
+  // Per-employee idempotency marker for the monthly salary auto-post (YYYY-MM).
+  `ALTER TABLE fin_employees ADD COLUMN last_paid_month TEXT`,
 ];
 alterCols.forEach((sql) => {
   try { db.run(sql); } catch { /* column already exists */ }
@@ -379,6 +413,21 @@ const finEmployeesRouter = () => crudRouter('fin_employees', row => ({
   commission_rate: Number(row.commission_rate) || 0,
   active: boolField(row.active),
 }));
+const finRecurringRouter = () => crudRouter('fin_recurring', row => ({
+  ...row,
+  amount: Number(row.amount) || 0,
+  vat_rate: Number(row.vat_rate) || 0,
+  vat_amount: Number(row.vat_amount) || 0,
+  total: Number(row.total) || 0,
+  day_of_month: Number(row.day_of_month) || 1,
+  active: boolField(row.active),
+}));
+const finServicesRouter = () => crudRouter('fin_services', row => ({
+  ...row,
+  price: Number(row.price) || 0,
+  vat_included: boolField(row.vat_included),
+  active: boolField(row.active),
+}));
 for (const prefix of ['', '/api']) {
   app.use(`${prefix}/designs`, crudRouter('designs'));
   app.use(`${prefix}/media`, crudRouter('media'));
@@ -386,6 +435,105 @@ for (const prefix of ['', '/api']) {
   app.use(`${prefix}/social-accounts`, socialAccountsRouter());
   app.use(`${prefix}/fin-transactions`, finTransactionsRouter());
   app.use(`${prefix}/fin-employees`, finEmployeesRouter());
+  app.use(`${prefix}/fin-recurring`, finRecurringRouter());
+  app.use(`${prefix}/fin-services`, finServicesRouter());
+}
+
+// ---- Recurring expenses + salaries auto-posting ----
+// Idempotent monthly posting. A recurring rule posts at most ONCE per calendar
+// month (tracked by last_posted_month = 'YYYY-MM'); a salary posts at most once
+// per month per employee (tracked by fin_employees.last_paid_month). Both are
+// scoped by tenant_id. Safe to run repeatedly (cron + on-demand).
+function currentMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function postRecurringForTenant(tenantId) {
+  const today = new Date();
+  const month = currentMonthStr();
+  const dayOfMonth = today.getDate();
+  const todayDate = `${month}-${String(dayOfMonth).padStart(2, '0')}`;
+  let posted = 0;
+
+  // 1) Recurring expense rules
+  const rules = queryAll(
+    `SELECT * FROM fin_recurring WHERE tenant_id = ? AND active = 1`,
+    [tenantId]
+  );
+  for (const r of rules) {
+    if (r.last_posted_month === month) continue;
+    if (dayOfMonth < (Number(r.day_of_month) || 1)) continue;
+    const net = Number(r.amount) || 0;
+    const vat = Number(r.vat_amount) || 0;
+    const total = Number(r.total) || net + vat;
+    const txId = randomUUID();
+    run(
+      `INSERT INTO fin_transactions
+        (id, type, category, description, amount, vat_rate, vat_amount, total,
+         payment_method, txn_date, recurring_id, tenant_id)
+       VALUES (?, 'expense', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [txId, r.category || 'other_expense', r.name || '', net,
+       Number(r.vat_rate) || 0, vat, total,
+       r.payment_method || 'cash', todayDate, r.id, tenantId]
+    );
+    run(`UPDATE fin_recurring SET last_posted_month = ? WHERE id = ? AND tenant_id = ?`,
+      [month, r.id, tenantId]);
+    posted++;
+  }
+
+  // 2) Salaries — one expense per active employee per month
+  const emps = queryAll(
+    `SELECT * FROM fin_employees WHERE tenant_id = ? AND active = 1`,
+    [tenantId]
+  );
+  for (const e of emps) {
+    if (e.last_paid_month === month) continue;
+    const base = Number(e.base_salary) || 0;
+    if (base <= 0) {
+      // Nothing to pay, but mark so we don't re-check every run.
+      run(`UPDATE fin_employees SET last_paid_month = ? WHERE id = ? AND tenant_id = ?`,
+        [month, e.id, tenantId]);
+      continue;
+    }
+    const txId = randomUUID();
+    run(
+      `INSERT INTO fin_transactions
+        (id, type, category, description, amount, vat_rate, vat_amount, total,
+         payment_method, txn_date, employee_id, employee_name, tenant_id)
+       VALUES (?, 'expense', 'salaries', ?, ?, 0, 0, ?, 'transfer', ?, ?, ?, ?)`,
+      [txId, `راتب ${e.name || ''}`.trim(), base, base, todayDate,
+       e.id, e.name || '', tenantId]
+    );
+    run(`UPDATE fin_employees SET last_paid_month = ? WHERE id = ? AND tenant_id = ?`,
+      [month, e.id, tenantId]);
+    posted++;
+  }
+
+  return posted;
+}
+function postRecurringAllTenants() {
+  const ids = queryAll(
+    `SELECT DISTINCT tenant_id FROM fin_recurring
+     UNION SELECT DISTINCT tenant_id FROM fin_employees`
+  ).map(r => r.tenant_id).filter(Boolean);
+  let total = 0;
+  for (const id of ids) {
+    try { total += postRecurringForTenant(id); }
+    catch (e) { console.error('[post-recurring]', id, e?.message || e); }
+  }
+  return total;
+}
+// On-demand: run the same posting logic for the caller's tenant only.
+for (const prefix of ['', '/api']) {
+  app.post(`${prefix}/fin/post-recurring`, (req, res) => {
+    try {
+      const posted = postRecurringForTenant(req.tenantId);
+      res.json({ posted });
+    } catch (err) {
+      console.error('[POST /fin/post-recurring] Error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
 }
 
 // ---- Scheduled Posts Routes ----
@@ -1075,6 +1223,14 @@ try {
   initScheduler(() => db, save);
   cron.schedule('* * * * *', () => {
     runScheduler().catch(e => console.error('[Scheduler Error]', e?.stack || e));
+  });
+  // Recurring expenses + salaries: check once a day (08:00). Idempotent per
+  // month, so a missed/duplicated run never double-posts.
+  cron.schedule('0 8 * * *', () => {
+    try {
+      const n = postRecurringAllTenants();
+      if (n) console.log(`[recurring] auto-posted ${n} transaction(s)`);
+    } catch (e) { console.error('[recurring] cron failed', e?.stack || e); }
   });
 } catch (err) {
   console.error('[boot] scheduler setup failed (continuing without it):', err?.stack || err);

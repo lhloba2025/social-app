@@ -132,3 +132,15 @@ export function monthStartStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
+
+// Current calendar quarter as { from, to } (YYYY-MM-DD strings). Used as the
+// default period for the VAT return report (الإقرار الضريبي).
+export function quarterRange() {
+  const d = new Date();
+  const q = Math.floor(d.getMonth() / 3);          // 0..3
+  const startMonth = q * 3;                          // 0,3,6,9
+  const from = `${d.getFullYear()}-${String(startMonth + 1).padStart(2, "0")}-01`;
+  const end = new Date(d.getFullYear(), startMonth + 3, 0); // last day of quarter
+  const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+  return { from, to };
+}

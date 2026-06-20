@@ -29,6 +29,7 @@ export default function TransactionModal({
   onSave,
   initial,
   employees = [],
+  services = [],
   ar = true,
   saving = false,
 }) {
@@ -60,6 +61,20 @@ export default function TransactionModal({
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const isExpense = form.type === "expense";
+
+  // Picking a service from the catalog auto-fills the income fields. The user
+  // can still edit everything afterwards; choosing "بدون" clears nothing.
+  const pickService = (id) => {
+    const s = services.find((x) => String(x.id) === String(id));
+    if (!s) return;
+    setForm((f) => ({
+      ...f,
+      description: f.description || s.name || "",
+      amount: String(s.price ?? ""),
+      vatIncluded: s.vat_included === true || s.vat_included === 1,
+      category: s.category || "service",
+    }));
+  };
   const { net, vat, total } = computeVat(form.amount, {
     vatIncluded: form.vatIncluded,
     vatRate: form.vat_rate,
@@ -142,6 +157,27 @@ export default function TransactionModal({
             </button>
           </div>
 
+          {/* Service picker (income only) — auto-fills price, VAT, category */}
+          {!isExpense && services.filter((s) => s.active !== false).length > 0 && (
+            <div>
+              <label className={labelCls}>{ar ? "اختر خدمة (اختياري)" : "Pick a service (optional)"}</label>
+              <select
+                className={inputCls}
+                defaultValue=""
+                onChange={(e) => { pickService(e.target.value); e.target.value = ""; }}
+              >
+                <option value="">{ar ? "— تعبئة سريعة من الخدمات —" : "— Quick fill from services —"}</option>
+                {services
+                  .filter((s) => s.active !== false)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — {Number(s.price) || 0}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
           {/* Category + date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -157,6 +193,13 @@ export default function TransactionModal({
                     {ar ? c.ar : c.en}
                   </option>
                 ))}
+                {/* A service may carry a category not in the standard list. */}
+                {form.category &&
+                  !categoriesFor(form.type).some((c) => c.key === form.category) && (
+                    <option value={form.category}>
+                      {form.category === "service" ? (ar ? "خدمة" : "Service") : form.category}
+                    </option>
+                  )}
               </select>
             </div>
             <div>

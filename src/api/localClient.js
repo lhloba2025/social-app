@@ -87,6 +87,13 @@ export const localApi = {
     SocialAccount: entity('social-accounts'),
     FinanceTransaction: entity('fin-transactions'),
     FinanceEmployee: entity('fin-employees'),
+    FinanceRecurring: entity('fin-recurring'),
+    FinanceService: entity('fin-services'),
   },
   uploadFile,
 };
+
+// Run the recurring/salary auto-posting now for the current tenant.
+export function postRecurringNow() {
+  return req('POST', '/fin/post-recurring');
+}

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Wallet, TrendingUp, TrendingDown, Receipt, Plus, Pencil, Trash2,
   Users, FileSpreadsheet, Landmark, PiggyBank, BadgePercent, Loader2,
+  Repeat, Scissors, Printer, Power, PlayCircle,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,16 +10,20 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import * as XLSX from "xlsx";
-import { localApi } from "@/api/localClient";
+import { localApi, postRecurringNow } from "@/api/localClient";
 import TransactionModal from "@/components/accounting/TransactionModal";
 import EmployeeModal from "@/components/accounting/EmployeeModal";
+import RecurringModal from "@/components/accounting/RecurringModal";
+import ServiceModal from "@/components/accounting/ServiceModal";
 import {
   formatMoney, summarize, inRange, categoryLabel, paymentLabel,
-  categoriesFor, monthStartStr, todayStr, round2,
+  categoriesFor, monthStartStr, todayStr, round2, quarterRange,
 } from "@/utils/financeUtils";
 
 const TX = localApi.entities.FinanceTransaction;
 const EMP = localApi.entities.FinanceEmployee;
+const REC = localApi.entities.FinanceRecurring;
+const SVC = localApi.entities.FinanceService;
 const PIE_COLORS = ["#6366f1", "#fb7185", "#22d3ee", "#34d399", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6", "#64748b"];
 
 export default function AccountingPage({ language }) {
@@ -30,6 +35,8 @@ export default function AccountingPage({ language }) {
 
   const [txModal, setTxModal] = useState({ open: false, initial: null });
   const [empModal, setEmpModal] = useState({ open: false, initial: null });
+  const [recModal, setRecModal] = useState({ open: false, initial: null });
+  const [svcModal, setSvcModal] = useState({ open: false, initial: null });
 
   const { data: allTx = [], isLoading: txLoading } = useQuery({
     queryKey: ["fin-transactions"],
@@ -38,6 +45,14 @@ export default function AccountingPage({ language }) {
   const { data: employees = [] } = useQuery({
     queryKey: ["fin-employees"],
     queryFn: () => EMP.list("-created_date"),
+  });
+  const { data: recurring = [] } = useQuery({
+    queryKey: ["fin-recurring"],
+    queryFn: () => REC.list("-created_date"),
+  });
+  const { data: services = [] } = useQuery({
+    queryKey: ["fin-services"],
+    queryFn: () => SVC.list("-created_date"),
   });
 
   const txInRange = useMemo(
@@ -70,6 +85,48 @@ export default function AccountingPage({ language }) {
   const delEmp = useMutation({
     mutationFn: (id) => EMP.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-employees"] }),
+  });
+  const saveRec = useMutation({
+    mutationFn: (payload) =>
+      recModal.initial ? REC.update(recModal.initial.id, payload) : REC.create(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-recurring"] });
+      setRecModal({ open: false, initial: null });
+    },
+  });
+  const delRec = useMutation({
+    mutationFn: (id) => REC.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-recurring"] }),
+  });
+  const toggleRec = useMutation({
+    mutationFn: ({ id, active }) => REC.update(id, { active }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-recurring"] }),
+  });
+  const saveSvc = useMutation({
+    mutationFn: (payload) =>
+      svcModal.initial ? SVC.update(svcModal.initial.id, payload) : SVC.create(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-services"] });
+      setSvcModal({ open: false, initial: null });
+    },
+  });
+  const delSvc = useMutation({
+    mutationFn: (id) => SVC.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-services"] }),
+  });
+  const postRec = useMutation({
+    mutationFn: () => postRecurringNow(),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["fin-transactions"] });
+      qc.invalidateQueries({ queryKey: ["fin-recurring"] });
+      qc.invalidateQueries({ queryKey: ["fin-employees"] });
+      const n = res?.posted ?? 0;
+      window.alert(
+        ar
+          ? (n > 0 ? `تم تسجيل ${n} حركة متكرّرة لهذا الشهر.` : "لا توجد متكرّرات مستحقة للتسجيل الآن.")
+          : (n > 0 ? `Posted ${n} recurring transaction(s).` : "Nothing due to post right now.")
+      );
+    },
   });
 
   // ── Chart data ───────────────────────────────────────────────────────────
@@ -135,6 +192,8 @@ export default function AccountingPage({ language }) {
     { key: "overview", ar: "نظرة عامة", en: "Overview", Icon: Wallet },
     { key: "transactions", ar: "الحركات", en: "Transactions", Icon: Receipt },
     { key: "payroll", ar: "الرواتب والعمولات", en: "Payroll", Icon: Users },
+    { key: "recurring", ar: "المصروفات المتكرّرة", en: "Recurring", Icon: Repeat },
+    { key: "services", ar: "الخدمات", en: "Services", Icon: Scissors },
     { key: "reports", ar: "التقارير الضريبية", en: "Tax Reports", Icon: Landmark },
   ];
 
@@ -231,7 +290,26 @@ export default function AccountingPage({ language }) {
                 onDelete={(id) => delEmp.mutate(id)}
               />
             )}
-            {tab === "reports" && <ReportsTab ar={ar} stats={stats} rows={txInRange} from={from} to={to} />}
+            {tab === "recurring" && (
+              <RecurringTab
+                ar={ar} rows={recurring}
+                onAdd={() => setRecModal({ open: true, initial: null })}
+                onEdit={(r) => setRecModal({ open: true, initial: r })}
+                onDelete={(id) => delRec.mutate(id)}
+                onToggle={(r) => toggleRec.mutate({ id: r.id, active: !(r.active !== false) })}
+                onPostNow={() => postRec.mutate()}
+                posting={postRec.isPending}
+              />
+            )}
+            {tab === "services" && (
+              <ServicesTab
+                ar={ar} rows={services}
+                onAdd={() => setSvcModal({ open: true, initial: null })}
+                onEdit={(s) => setSvcModal({ open: true, initial: s })}
+                onDelete={(id) => delSvc.mutate(id)}
+              />
+            )}
+            {tab === "reports" && <ReportsTab ar={ar} allTx={allTx} />}
           </>
         )}
       </div>
@@ -240,6 +318,7 @@ export default function AccountingPage({ language }) {
         isOpen={txModal.open}
         initial={txModal.initial}
         employees={employees}
+        services={services}
         ar={ar}
         saving={saveTx.isPending}
         onClose={() => setTxModal({ open: false, initial: null })}
@@ -252,6 +331,22 @@ export default function AccountingPage({ language }) {
         saving={saveEmp.isPending}
         onClose={() => setEmpModal({ open: false, initial: null })}
         onSave={(p) => saveEmp.mutate(p)}
+      />
+      <RecurringModal
+        isOpen={recModal.open}
+        initial={recModal.initial}
+        ar={ar}
+        saving={saveRec.isPending}
+        onClose={() => setRecModal({ open: false, initial: null })}
+        onSave={(p) => saveRec.mutate(p)}
+      />
+      <ServiceModal
+        isOpen={svcModal.open}
+        initial={svcModal.initial}
+        ar={ar}
+        saving={saveSvc.isPending}
+        onClose={() => setSvcModal({ open: false, initial: null })}
+        onSave={(p) => saveSvc.mutate(p)}
       />
     </div>
   );
@@ -457,23 +552,259 @@ function Row({ label, value }) {
   );
 }
 
+// ── Recurring expenses (المصروفات المتكرّرة) ──────────────────────────────────
+function RecurringTab({ ar, rows, onAdd, onEdit, onDelete, onToggle, onPostNow, posting }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          onClick={onPostNow}
+          disabled={posting}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-sm hover:bg-indigo-100 disabled:opacity-50"
+        >
+          {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+          {ar ? "سجّل متكرّرات هذا الشهر الآن" : "Post this month's recurring now"}
+        </button>
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700">
+          <Plus className="w-4 h-4" />
+          {ar ? "إضافة مصروف متكرّر" : "Add Recurring"}
+        </button>
+      </div>
+
+      {rows.length === 0 ? (
+        <Empty ar={ar} big />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs">
+                  <th className="text-start font-bold px-4 py-3">{ar ? "الاسم" : "Name"}</th>
+                  <th className="text-start font-bold px-4 py-3">{ar ? "التصنيف" : "Category"}</th>
+                  <th className="text-start font-bold px-4 py-3">{ar ? "الإجمالي" : "Total"}</th>
+                  <th className="text-start font-bold px-4 py-3 hidden sm:table-cell">{ar ? "اليوم" : "Day"}</th>
+                  <th className="text-start font-bold px-4 py-3 hidden md:table-cell">{ar ? "آخر تسجيل" : "Last posted"}</th>
+                  <th className="text-start font-bold px-4 py-3">{ar ? "الحالة" : "Status"}</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const active = r.active !== false;
+                  return (
+                    <tr key={r.id} className="border-t border-gray-50 hover:bg-gray-50/60">
+                      <td className="px-4 py-3 font-bold text-gray-800">{r.name || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600">
+                          {categoryLabel(r.category, "expense", ar)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-bold text-rose-600 whitespace-nowrap">{formatMoney(r.total, ar)}</td>
+                      <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{r.day_of_month || 1}</td>
+                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{r.last_posted_month || "—"}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => onToggle(r)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${active ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"}`}
+                        >
+                          <Power className="w-3 h-3" />
+                          {active ? (ar ? "مُفعّل" : "Active") : (ar ? "موقوف" : "Paused")}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => onDelete(r.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 text-center">
+        {ar
+          ? "تُسجَّل المصروفات المتكرّرة ورواتب الموظفات تلقائياً مرة واحدة كل شهر. يمكنك أيضاً تسجيلها يدوياً بالزر أعلاه."
+          : "Recurring expenses and employee salaries are auto-posted once a month. You can also post them manually above."}
+      </p>
+    </div>
+  );
+}
+
+// ── Services catalog (الخدمات) ────────────────────────────────────────────────
+function ServicesTab({ ar, rows, onAdd, onEdit, onDelete }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700">
+          <Plus className="w-4 h-4" />
+          {ar ? "إضافة خدمة" : "Add Service"}
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <Empty ar={ar} big />
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {rows.map((s) => {
+            const active = s.active !== false;
+            return (
+              <div key={s.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-gray-900 truncate">{s.name}</p>
+                    <p className="text-xs text-gray-500">{categoryLabel(s.category, "income", ar)}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => onEdit(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => onDelete(s.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="font-extrabold text-indigo-600">{formatMoney(s.price, ar)}</span>
+                  <span className="text-[11px] font-bold text-gray-500">
+                    {(s.vat_included === true || s.vat_included === 1)
+                      ? (ar ? "شامل الضريبة" : "VAT incl.")
+                      : (ar ? "+ ضريبة" : "+ VAT")}
+                    {!active && (ar ? " · غير متاحة" : " · inactive")}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <p className="text-xs text-gray-400 text-center">
+        {ar
+          ? "تظهر هذه الخدمات في نافذة الحركة (إيراد) لتعبئة السعر والضريبة تلقائياً."
+          : "These services appear in the income transaction modal to auto-fill price and VAT."}
+      </p>
+    </div>
+  );
+}
+
 // ── Tax reports (KSA VAT) ────────────────────────────────────────────────────
-function ReportsTab({ ar, stats, rows, from, to }) {
+const BUSINESS_NAME = "هوفيرا";
+
+function ReportsTab({ ar, allTx }) {
+  // The VAT return has its OWN period picker, defaulting to the current quarter,
+  // independent of the page-level date range.
+  const dq = useMemo(() => quarterRange(), []);
+  const [rFrom, setRFrom] = useState(dq.from);
+  const [rTo, setRTo] = useState(dq.to);
+
+  const rows = useMemo(() => allTx.filter((t) => inRange(t, rFrom, rTo)), [allTx, rFrom, rTo]);
+  const stats = useMemo(() => summarize(rows), [rows]);
+
+  const inputCls = "rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400";
+
   const line = (label, value, strong) => (
     <div className={`flex items-center justify-between px-4 py-3 ${strong ? "bg-gray-50 font-extrabold" : ""}`}>
       <span className={strong ? "text-gray-900" : "text-gray-600"}>{label}</span>
       <span className={strong ? "text-indigo-700" : "text-gray-800 font-bold"}>{value}</span>
     </div>
   );
+
+  // Open a dedicated print window with a clean RTL ZATCA-style return and print.
+  const printReport = () => {
+    const row = (label, value, strong) =>
+      `<tr class="${strong ? "strong" : ""}"><td class="lbl">${label}</td><td class="val">${value}</td></tr>`;
+    const html = `<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8" />
+<title>${ar ? "إقرار ضريبة القيمة المضافة" : "VAT Return"} — ${rFrom} / ${rTo}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Tahoma, sans-serif; color:#1f2937; margin:0; padding:32px; }
+  .head { text-align:center; border-bottom:3px solid #4f46e5; padding-bottom:16px; margin-bottom:24px; }
+  .head h1 { margin:0 0 4px; font-size:22px; }
+  .head .biz { font-size:18px; font-weight:800; color:#4f46e5; }
+  .head .period { color:#6b7280; font-size:13px; margin-top:6px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+  td { padding:12px 14px; border:1px solid #e5e7eb; font-size:14px; }
+  td.lbl { color:#374151; }
+  td.val { text-align:left; font-weight:700; white-space:nowrap; }
+  tr.strong td { background:#eef2ff; font-weight:800; color:#3730a3; font-size:15px; }
+  h2 { font-size:15px; margin:0 0 8px; }
+  .note { color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; font-size:12px; }
+  @media print { body { padding:0; } }
+</style></head>
+<body>
+  <div class="head">
+    <div class="biz">${BUSINESS_NAME}</div>
+    <h1>${ar ? "إقرار ضريبة القيمة المضافة" : "VAT Return Summary"}</h1>
+    <div class="period">${ar ? "الفترة" : "Period"}: ${rFrom} ← ${rTo}</div>
+  </div>
+
+  <h2>${ar ? "ملخص الإقرار الضريبي" : "VAT Return"}</h2>
+  <table>
+    ${row(ar ? "المبيعات الخاضعة (الصافي)" : "Taxable sales (net)", formatMoney(stats.income, ar))}
+    ${row(ar ? "ضريبة المخرجات (المحصّلة)" : "Output VAT", formatMoney(stats.outputVat, ar))}
+    ${row(ar ? "المشتريات/المصروفات (الصافي)" : "Purchases (net)", formatMoney(stats.expense, ar))}
+    ${row(ar ? "ضريبة المدخلات (المدفوعة)" : "Input VAT", formatMoney(stats.inputVat, ar))}
+    ${row(ar ? "صافي الضريبة المستحقة للهيئة" : "Net VAT due", formatMoney(stats.vatDue, ar), true)}
+  </table>
+
+  <h2>${ar ? "قائمة الدخل المبسّطة" : "Profit & Loss"}</h2>
+  <table>
+    ${row(ar ? "إجمالي الإيرادات" : "Total revenue", formatMoney(stats.income, ar))}
+    ${row(ar ? "إجمالي المصروفات" : "Total expenses", formatMoney(stats.expense, ar))}
+    ${row(ar ? "صافي الربح" : "Net profit", formatMoney(stats.netProfit, ar), true)}
+  </table>
+
+  <p class="note">${ar
+    ? "هذا التقرير استرشادي لمساعدتك على التنظيم، ولا يُغني عن مراجعة محاسب قانوني معتمد قبل تقديم الإقرار للهيئة (زاتكا)."
+    : "This report is indicative only and does not replace review by a certified accountant before filing with ZATCA."}</p>
+
+  <script>window.onload = function(){ window.print(); };</script>
+</body></html>`;
+    const w = window.open("", "_blank", "width=800,height=900");
+    if (!w) { window.alert(ar ? "فضلاً اسمح بالنوافذ المنبثقة للطباعة." : "Please allow pop-ups to print."); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-4">
+      {/* Period picker (defaults to current quarter) + print */}
+      <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl border border-gray-100 p-3">
+        <span className="text-xs font-bold text-gray-500">{ar ? "فترة الإقرار:" : "Return period:"}</span>
+        <input type="date" className={inputCls} value={rFrom} onChange={(e) => setRFrom(e.target.value)} />
+        <span className="text-gray-400">{ar ? "←" : "→"}</span>
+        <input type="date" className={inputCls} value={rTo} onChange={(e) => setRTo(e.target.value)} />
+        <button
+          onClick={() => { const q = quarterRange(); setRFrom(q.from); setRTo(q.to); }}
+          className="text-xs font-bold text-indigo-600 hover:underline px-2"
+        >
+          {ar ? "هذا الربع" : "This quarter"}
+        </button>
+        <button
+          onClick={printReport}
+          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700"
+        >
+          <Printer className="w-4 h-4" />
+          {ar ? "طباعة / حفظ PDF" : "Print / Save PDF"}
+        </button>
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50">
           <h3 className="font-extrabold text-gray-900 flex items-center gap-2">
             <Landmark className="w-4 h-4 text-indigo-600" />
-            {ar ? "إقرار ضريبة القيمة المضافة" : "VAT Return Summary"}
+            {ar ? `إقرار ضريبة القيمة المضافة — ${BUSINESS_NAME}` : "VAT Return Summary"}
           </h3>
-          <p className="text-xs text-gray-500 mt-0.5">{from} → {to}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{rFrom} → {rTo}</p>
         </div>
         <div className="divide-y divide-gray-50">
           {line(ar ? "المبيعات الخاضعة (الصافي)" : "Taxable sales (net)", formatMoney(stats.income, ar))}
