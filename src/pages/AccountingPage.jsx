@@ -712,6 +712,20 @@ function ReportsTab({ ar, allTx }) {
   const rows = useMemo(() => allTx.filter((t) => inRange(t, rFrom, rTo)), [allTx, rFrom, rTo]);
   const stats = useMemo(() => summarize(rows), [rows]);
 
+  // Detailed P&L: revenue + expenses broken down by category (net amounts).
+  const pnl = useMemo(() => {
+    const inc = {}, exp = {};
+    for (const t of rows) {
+      const amt = Number(t.amount) || 0;
+      if (t.type === "expense") exp[t.category] = (exp[t.category] || 0) + amt;
+      else inc[t.category] = (inc[t.category] || 0) + amt;
+    }
+    const toArr = (obj, type) => Object.entries(obj)
+      .map(([cat, amt]) => ({ cat, label: categoryLabel(cat, type, ar), amt: round2(amt) }))
+      .sort((a, b) => b.amt - a.amt);
+    return { income: toArr(inc, "income"), expense: toArr(exp, "expense") };
+  }, [rows, ar]);
+
   const inputCls = "rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400";
 
   const line = (label, value, strong) => (
@@ -760,10 +774,14 @@ function ReportsTab({ ar, allTx }) {
     ${row(ar ? "صافي الضريبة المستحقة للهيئة" : "Net VAT due", formatMoney(stats.vatDue, ar), true)}
   </table>
 
-  <h2>${ar ? "قائمة الدخل المبسّطة" : "Profit & Loss"}</h2>
+  <h2>${ar ? "قائمة الدخل (الأرباح والخسائر)" : "Profit & Loss"}</h2>
   <table>
-    ${row(ar ? "إجمالي الإيرادات" : "Total revenue", formatMoney(stats.income, ar))}
-    ${row(ar ? "إجمالي المصروفات" : "Total expenses", formatMoney(stats.expense, ar))}
+    <tr><td class="lbl" style="font-weight:800;background:#ecfdf5">${ar ? "الإيرادات حسب الفئة" : "Revenue by category"}</td><td class="val" style="background:#ecfdf5"></td></tr>
+    ${pnl.income.map((r) => row(r.label, formatMoney(r.amt, ar))).join("")}
+    ${row(ar ? "إجمالي الإيرادات" : "Total revenue", formatMoney(stats.income, ar), true)}
+    <tr><td class="lbl" style="font-weight:800;background:#fef2f2">${ar ? "المصروفات حسب الفئة" : "Expenses by category"}</td><td class="val" style="background:#fef2f2"></td></tr>
+    ${pnl.expense.map((r) => row(r.label, formatMoney(r.amt, ar))).join("")}
+    ${row(ar ? "إجمالي المصروفات" : "Total expenses", formatMoney(stats.expense, ar), true)}
     ${row(ar ? "صافي الربح" : "Net profit", formatMoney(stats.netProfit, ar), true)}
   </table>
 
@@ -822,11 +840,17 @@ function ReportsTab({ ar, allTx }) {
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100">
-          <h3 className="font-extrabold text-gray-900">{ar ? "قائمة الدخل المبسّطة" : "Profit & Loss"}</h3>
+          <h3 className="font-extrabold text-gray-900">{ar ? "قائمة الدخل (الأرباح والخسائر)" : "Profit & Loss"}</h3>
         </div>
         <div className="divide-y divide-gray-50">
-          {line(ar ? "إجمالي الإيرادات" : "Total revenue", formatMoney(stats.income, ar))}
-          {line(ar ? "إجمالي المصروفات" : "Total expenses", formatMoney(stats.expense, ar))}
+          <div className="px-4 py-2 text-[11px] font-extrabold text-emerald-700 bg-emerald-50">{ar ? "الإيرادات حسب الفئة" : "Revenue by category"}</div>
+          {pnl.income.length === 0 && <div className="px-4 py-2 text-xs text-gray-400">{ar ? "لا إيرادات في الفترة" : "No revenue"}</div>}
+          {pnl.income.map((r) => <React.Fragment key={`i-${r.cat}`}>{line(r.label, formatMoney(r.amt, ar))}</React.Fragment>)}
+          {line(ar ? "إجمالي الإيرادات" : "Total revenue", formatMoney(stats.income, ar), true)}
+          <div className="px-4 py-2 text-[11px] font-extrabold text-rose-700 bg-rose-50">{ar ? "المصروفات حسب الفئة" : "Expenses by category"}</div>
+          {pnl.expense.length === 0 && <div className="px-4 py-2 text-xs text-gray-400">{ar ? "لا مصروفات في الفترة" : "No expenses"}</div>}
+          {pnl.expense.map((r) => <React.Fragment key={`e-${r.cat}`}>{line(r.label, formatMoney(r.amt, ar))}</React.Fragment>)}
+          {line(ar ? "إجمالي المصروفات" : "Total expenses", formatMoney(stats.expense, ar), true)}
           {line(ar ? "صافي الربح" : "Net profit", formatMoney(stats.netProfit, ar), true)}
         </div>
       </div>
