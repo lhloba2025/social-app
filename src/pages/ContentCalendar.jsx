@@ -135,7 +135,11 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
         <div>
           <p className="font-bold text-xl" style={{ color: 'var(--hv-text)' }}>{formatDayHeader(date, ar)}</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--hv-text-soft)' }}>
-            {posts.length} {ar ? "منشور مجدول" : "scheduled post" + (posts.length === 1 ? "" : "s")}
+            {(() => {
+              const topics = new Set(posts.map(p => `${(p.caption || "").trim()}|${p.scheduleTime || ""}`)).size;
+              const variantsNote = posts.length > topics ? (ar ? ` (${posts.length} نسخة)` : ` (${posts.length} variants)`) : "";
+              return ar ? `${topics} منشور${variantsNote}` : `${topics} post${topics === 1 ? "" : "s"}${variantsNote}`;
+            })()}
             {posts.length > 0 && (
               <> · {ar ? "اضغط على منشور للتعديل" : "click a post to edit"}</>
             )}
@@ -163,19 +167,31 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {posts.map(post => {
-            const s = STATUS_CONFIG[post.status] || STATUS_CONFIG.draft;
+          {(() => {
+            // Group the variants of one topic (same caption + time) into a
+            // SINGLE card — so 2 topics across many platforms/formats don't
+            // look like 8 separate posts.
+            const groups = []; const gmap = new Map();
+            for (const p of posts) {
+              const key = `${(p.caption || "").trim()}|${p.scheduleTime || ""}`;
+              if (!gmap.has(key)) { const g = { key, posts: [], platforms: [], formats: [] }; gmap.set(key, g); groups.push(g); }
+              const g = gmap.get(key); g.posts.push(p);
+              for (const pl of (p.platforms || [])) if (!g.platforms.includes(pl)) g.platforms.push(pl);
+              const ft = p.postType || "feed"; if (!g.formats.includes(ft)) g.formats.push(ft);
+            }
+            return groups.map(g => {
+            const post = g.posts[0];
+            const statuses = [...new Set(g.posts.map(p => p.status))];
+            const s = STATUS_CONFIG[statuses.length === 1 ? statuses[0] : "scheduled"] || STATUS_CONFIG.draft;
             const SIcon = s.icon;
-            const platforms = post.platforms || [];
-            // Only published-eligible statuses get the Publish-Now
-            // button. A "published" or "queued" post should NOT be
-            // re-triggered (would duplicate); "failed" can be retried
-            // by flipping it back to scheduled-now.
-            const canPublishNow = backendUp && ["scheduled", "draft", "failed"].includes(post.status);
-            const canCancel = ["scheduled", "queued"].includes(post.status);
+            const platforms = g.platforms;
+            const pubable = g.posts.filter(p => backendUp && ["scheduled", "draft", "failed"].includes(p.status));
+            const cancelable = g.posts.filter(p => ["scheduled", "queued"].includes(p.status));
+            const canPublishNow = pubable.length > 0;
+            const canCancel = cancelable.length > 0;
             return (
               <div
-                key={post.id}
+                key={g.key}
                 className="hv-card hv-card-hover p-3"
               >
                 {/* Platform pill row — first thing the eye sees so the
@@ -216,21 +232,22 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                           <Clock className="w-2.5 h-2.5" />{post.scheduleTime}
                         </span>
                       )}
-                      {/* Post-type pill — distinguishes a feed post from a
-                          story so two entries for the same image (one feed +
-                          one story) don't look like a meaningless duplicate. */}
-                      <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${
-                        (post.postType || "feed") === "story"
-                          ? "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200"
-                          : "text-sky-600 bg-sky-50 border-sky-200"
-                      }`}>
-                        {(post.postType || "feed") === "story"
-                          ? (ar ? "⭕ ستوري" : "⭕ Story")
-                          : (ar ? "📷 بوست" : "📷 Feed")}
-                      </span>
+                      {/* All formats present in this topic (feed / story). */}
+                      {g.formats.map((ft) => (
+                        <span key={ft} className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${
+                          ft === "story" ? "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200" : "text-sky-600 bg-sky-50 border-sky-200"
+                        }`}>
+                          {ft === "story" ? (ar ? "⭕ ستوري" : "⭕ Story") : (ar ? "📷 بوست" : "📷 Feed")}
+                        </span>
+                      ))}
                       <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${s.cls}`}>
                         <SIcon className="w-2.5 h-2.5" />{ar ? s.ar : s.en}
                       </span>
+                      {g.posts.length > 1 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold" title={ar ? "عدد النسخ (منصات/مقاسات)" : "variants"}>
+                          ×{g.posts.length}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -241,28 +258,18 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                 <div className="flex items-center gap-1.5 mt-2 pt-2 border-t" style={{ borderColor: 'var(--hv-border)' }}>
                   {canPublishNow && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); onPublishNow?.(post.id); }}
-                      title={ar ? "إرسال هذا المنشور الآن" : "Publish this post now"}
+                      onClick={(e) => { e.stopPropagation(); pubable.forEach(p => onPublishNow?.(p.id)); }}
+                      title={ar ? "نشر كل نسخ هذا الموضوع الآن" : "Publish all variants now"}
                       className="flex-1 flex items-center justify-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold transition"
                     >
                       <Rocket className="w-3 h-3" />
                       {ar ? "انشر الآن" : "Publish now"}
                     </button>
                   )}
-                  {post.status === "failed" && backendUp && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onPublishNow?.(post.id); }}
-                      title={ar ? "إعادة المحاولة" : "Retry publishing"}
-                      className="flex-1 flex items-center justify-center gap-1 text-[10px] px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold transition"
-                    >
-                      <RotateCw className="w-3 h-3" />
-                      {ar ? "إعادة" : "Retry"}
-                    </button>
-                  )}
                   {canCancel && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); onCancel?.(post); }}
-                      title={ar ? "إلغاء الجدولة" : "Cancel schedule"}
+                      onClick={(e) => { e.stopPropagation(); cancelable.forEach(p => onCancel?.(p)); }}
+                      title={ar ? "إلغاء جدولة كل النسخ" : "Cancel all variants"}
                       className="flex items-center justify-center gap-1 text-[10px] px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold transition"
                     >
                       <Ban className="w-3 h-3" />
@@ -270,8 +277,8 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                     </button>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); onDelete?.(post.id); }}
-                    title={ar ? "حذف" : "Delete"}
+                    onClick={(e) => { e.stopPropagation(); if (window.confirm(ar ? `حذف كل نسخ هذا الموضوع (${g.posts.length})؟` : `Delete all ${g.posts.length} variants?`)) g.posts.forEach(p => onDelete?.(p.id)); }}
+                    title={ar ? "حذف كل النسخ" : "Delete all"}
                     className="flex items-center justify-center text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-200 transition"
                   >
                     🗑
@@ -279,7 +286,8 @@ function DayDetail({ date, posts, onNewPost, onNavigate, ar, backendUp, onPublis
                 </div>
               </div>
             );
-          })}
+            });
+          })()}
         </div>
       )}
     </div>
