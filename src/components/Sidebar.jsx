@@ -1,21 +1,13 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send } from "lucide-react";
+import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send, Wallet } from "lucide-react";
 
 const NAV_ITEMS = [
+  // Tool items now live on the "التسويق" hub page, so the sidebar stays clean:
+  // the hub (home) + accounting.
   { path: "/", labelAr: "التسويق", labelEn: "Marketing", icon: Home, exact: true },
-  { path: "/DesignStudio", labelAr: "منشئ التصاميم", labelEn: "Design Studio", icon: LayoutGrid },
-  { path: "/ImageGen", labelAr: "توليد صورة بالذكاء", labelEn: "AI Image", icon: Sparkles },
-  { path: "/GreetingCards", labelAr: "بطاقات التهنئة", labelEn: "Greeting Cards", icon: MailPlus },
-  { path: "/DesignLibraryPage", labelAr: "مكتبة التصاميم", labelEn: "Design Library", icon: BookImage },
-  { divider: true, labelAr: "السوشيال ميديا", labelEn: "Social Media" },
-  { path: "/PostComposer", labelAr: "إنشاء منشور", labelEn: "New Post", icon: PenSquare },
-  { path: "/ContentCalendar", labelAr: "تقويم المحتوى", labelEn: "Calendar", icon: CalendarDays },
-  { path: "/PostsManager", labelAr: "إدارة المنشورات", labelEn: "Posts", icon: ListChecks },
-  { path: "/Engagement", labelAr: "صندوق التفاعل", labelEn: "Engagement", icon: MessageCircle },
-  { path: "/WhatsappOutreach", labelAr: "تواصل واتساب", labelEn: "WhatsApp Outreach", icon: Send },
-  { path: "/AccountsPage", labelAr: "ربط الحسابات", labelEn: "Accounts", icon: LinkIcon },
-  { path: "/TeamLinks", labelAr: "روابط الفريق", labelEn: "Team Links", icon: Share2 },
+  { divider: true, labelAr: "المحاسبة", labelEn: "Accounting" },
+  { path: "/Accounting", labelAr: "المحاسبة", labelEn: "Accounting", icon: Wallet },
 ];
 
 export default function Sidebar({ language, onLanguageChange }) {
