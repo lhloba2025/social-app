@@ -18,7 +18,7 @@ import {
   getIgUserId,
 } from './services/meta.js';
 import { buildAuthUrl as tiktokAuthUrl, exchangeCodeForToken as tiktokExchangeCode } from './services/tiktok.js';
-import { isConfigured as waConfigured, sendTemplate as waSendTemplate, sendText as waSendText } from './services/whatsapp.js';
+import { isConfigured as waConfigured, sendTemplate as waSendTemplate, sendText as waSendText, listTemplates as waListTemplates, createTemplate as waCreateTemplate } from './services/whatsapp.js';
 import { buildAuthUrl as linkedinAuthUrl, exchangeCodeForToken as linkedinExchangeCode, getMemberUrn as linkedinGetUrn, getAdminOrg as linkedinGetAdminOrg, isConfigured as linkedinConfigured } from './services/linkedin.js';
 import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
 
@@ -890,6 +890,17 @@ app.post('/api/whatsapp/send', async (req, res) => {
     const detail = err?.response?.data?.error?.message || err?.message || 'فشل الإرسال';
     res.status(502).json({ success: false, error: detail });
   }
+});
+
+app.get('/api/whatsapp/templates', async (_, res) => {
+  if (!waConfigured()) return res.status(503).json({ error: 'واتساب API غير مفعّل بعد.' });
+  try { res.json({ templates: await waListTemplates() }); }
+  catch (err) { res.status(502).json({ error: err?.response?.data?.error?.message || err?.message || 'تعذّر جلب القوالب' }); }
+});
+app.post('/api/whatsapp/templates', async (req, res) => {
+  if (!waConfigured()) return res.status(503).json({ error: 'واتساب API غير مفعّل بعد.' });
+  try { res.json({ success: true, data: await waCreateTemplate(req.body || {}) }); }
+  catch (err) { res.status(502).json({ error: err?.response?.data?.error?.message || err?.message || 'تعذّر إنشاء القالب' }); }
 });
 
 // ---- Health check ----

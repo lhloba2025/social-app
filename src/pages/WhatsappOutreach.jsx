@@ -46,6 +46,13 @@ export default function WhatsappOutreach() {
   const [useName, setUseName] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null);
+  // Template manager
+  const [showTpl, setShowTpl] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [tplForm, setTplForm] = useState({ name: "", category: "MARKETING", language: "ar", body: "", example: "", footer: "" });
+  const [tplBusy, setTplBusy] = useState(false);
+  const [tplMsg, setTplMsg] = useState("");
 
   useEffect(() => { try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch {} }, [contacts]);
   useEffect(() => { try { localStorage.setItem(MSG_KEY, message); } catch {} }, [message]);
@@ -150,6 +157,26 @@ export default function WhatsappOutreach() {
     setSending(false);
   };
 
+  const loadTemplates = async () => {
+    setTplLoading(true); setTplMsg("");
+    try { const r = await fetch("/api/whatsapp/templates"); const d = await r.json(); if (r.ok) setTemplates(d.templates || []); else setTplMsg(d.error || "خطأ"); }
+    catch (e) { setTplMsg(String(e?.message || e)); } finally { setTplLoading(false); }
+  };
+  const openTpl = () => { setShowTpl(true); loadTemplates(); };
+  const createTpl = async () => {
+    if (!tplForm.name.trim() || !tplForm.body.trim()) { setTplMsg(isRtl ? "الاسم والنص مطلوبان" : "Name & body required"); return; }
+    setTplBusy(true); setTplMsg("");
+    try {
+      const r = await fetch("/api/whatsapp/templates", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: tplForm.name, category: tplForm.category, language: tplForm.language || "ar", bodyText: tplForm.body, footerText: tplForm.footer || undefined, examples: tplForm.example ? [tplForm.example] : [] }),
+      });
+      const d = await r.json();
+      if (r.ok && d.success) { setTplMsg(isRtl ? "✅ أُرسل القالب للموافقة" : "✅ Submitted"); setTplForm({ ...tplForm, name: "", body: "", example: "", footer: "" }); loadTemplates(); }
+      else setTplMsg(d.error || "خطأ");
+    } catch (e) { setTplMsg(String(e?.message || e)); } finally { setTplBusy(false); }
+  };
+
   return (
     <div className="hv-page" dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-5xl mx-auto">
@@ -210,6 +237,7 @@ export default function WhatsappOutreach() {
               className="hv-btn text-sm disabled:opacity-50" style={{ background: "#25D366", color: "#fff" }}>
               {sending ? (isRtl ? "جارٍ الإرسال…" : "Sending…") : (isRtl ? `⚡ إرسال تلقائي لـ ${visible.length} (المعروضين)` : `Auto-send to ${visible.length}`)}
             </button>
+            <button onClick={openTpl} className="hv-btn hv-btn-soft text-sm ms-2">📋 {isRtl ? "قوالبي" : "Templates"}</button>
             {progress && <span className="text-[11px] ms-3" style={{ color: "var(--hv-text-soft)" }}>{progress.done}/{progress.total} · {isRtl ? "نجح" : "ok"} {progress.ok} · {isRtl ? "فشل" : "fail"} {progress.fail}</span>}
             <p className="text-[10px] mt-2 leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
               {isRtl ? "⚠️ الرقم التجريبي يرسل فقط للأرقام اللي أضفتها في API Setup. للإرسال لكل القائمة تحتاج رقم إنتاج + قالب معتمد." : "Test number only sends to verified recipients; production needs a real number + approved template."}
@@ -267,6 +295,65 @@ export default function WhatsappOutreach() {
         <p className="text-[11px] mt-4 leading-relaxed" style={{ color: "var(--hv-text-faint)" }}>
           {isRtl ? "ℹ️ العملاء محفوظون في متصفحك. كل زر «فتح وإرسال» يفتح واتساب بالرسالة جاهزة وترسل بنفسك (نظامي وآمن). حدّث حالة العميل من القائمة لمتابعته." : "ℹ️ Contacts are saved in your browser. Each Send opens WhatsApp with your message ready — you press send."}
         </p>
+
+        {/* Templates manager */}
+        {showTpl && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowTpl(false)}>
+            <div className="hv-card rounded-2xl p-5 w-[640px] max-w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir={isRtl ? "rtl" : "ltr"}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-base" style={{ color: "var(--hv-text)" }}>📋 {isRtl ? "قوالبي" : "My templates"}</h3>
+                <button onClick={() => setShowTpl(false)} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-2 mb-4" style={{ borderColor: "var(--hv-border)" }}>
+                <p className="text-xs font-bold" style={{ color: "var(--hv-text)" }}>{isRtl ? "إنشاء قالب جديد" : "Create template"}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <input value={tplForm.name} onChange={(e) => setTplForm({ ...tplForm, name: e.target.value })} placeholder={isRtl ? "الاسم (إنجليزي)" : "name"} dir="ltr" className="hv-input px-2 py-1 text-xs" />
+                  <select value={tplForm.category} onChange={(e) => setTplForm({ ...tplForm, category: e.target.value })} className="hv-input px-2 py-1 text-xs">
+                    <option value="MARKETING">Marketing</option><option value="UTILITY">Utility</option>
+                  </select>
+                  <input value={tplForm.language} onChange={(e) => setTplForm({ ...tplForm, language: e.target.value })} placeholder="ar" dir="ltr" className="hv-input px-2 py-1 text-xs" />
+                </div>
+                <textarea value={tplForm.body} onChange={(e) => setTplForm({ ...tplForm, body: e.target.value })} rows={3}
+                  placeholder={isRtl ? "نص الرسالة… استخدم {{1}} لاسم العميل" : "Body… use {{1}} for name"} className="hv-input w-full text-xs leading-relaxed" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={tplForm.example} onChange={(e) => setTplForm({ ...tplForm, example: e.target.value })} placeholder={isRtl ? "مثال لـ {{1}} (صالون النخبة)" : "example for {{1}}"} className="hv-input px-2 py-1 text-xs" />
+                  <input value={tplForm.footer} onChange={(e) => setTplForm({ ...tplForm, footer: e.target.value })} placeholder={isRtl ? "تذييل (اختياري)" : "footer (optional)"} className="hv-input px-2 py-1 text-xs" />
+                </div>
+                <button onClick={createTpl} disabled={tplBusy} className="hv-btn hv-btn-primary text-xs disabled:opacity-50">
+                  {tplBusy ? (isRtl ? "جارٍ…" : "…") : (isRtl ? "إنشاء وإرسال للموافقة" : "Create & submit")}
+                </button>
+                {tplMsg && <p className="text-[11px]" style={{ color: tplMsg.startsWith("✅") ? "#16a34a" : "#dc2626" }}>{tplMsg}</p>}
+                <p className="text-[10px]" style={{ color: "var(--hv-text-faint)" }}>{isRtl ? "💡 لإضافة صورة في الترويسة، أنشئ القالب من WhatsApp Manager (رفع الصورة يحتاج خطوة إضافية)." : "Image header: use WhatsApp Manager."}</p>
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold" style={{ color: "var(--hv-text)" }}>{isRtl ? "القوالب الموجودة" : "Existing templates"}</p>
+                <button onClick={loadTemplates} className="hv-btn hv-btn-ghost text-xs">{isRtl ? "تحديث" : "Refresh"}</button>
+              </div>
+              {tplLoading ? <p className="text-xs text-slate-400">…</p> : (
+                <div className="space-y-1.5">
+                  {templates.length === 0 && <p className="text-xs text-slate-400">{isRtl ? "لا قوالب بعد" : "None yet"}</p>}
+                  {templates.map((t) => {
+                    const col = t.status === "APPROVED" ? "#16a34a" : t.status === "REJECTED" ? "#dc2626" : "#d97706";
+                    return (
+                      <div key={t.name + t.language} className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: "var(--hv-border)" }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate" dir="ltr" style={{ color: "var(--hv-text)" }}>{t.name}</p>
+                          <p className="text-[10px]" style={{ color: "var(--hv-text-soft)" }}>{t.language} · {t.category}</p>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: col + "22", color: col }}>{t.status}</span>
+                        {t.status === "APPROVED" && (
+                          <button onClick={() => { setTpl(t.name); setLang(t.language); setShowTpl(false); }} className="hv-btn hv-btn-soft text-[10px] px-2 py-1">{isRtl ? "استخدم" : "Use"}</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
