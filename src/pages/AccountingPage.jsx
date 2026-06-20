@@ -798,6 +798,39 @@ function ReportsTab({ ar, allTx }) {
     w.document.close();
   };
 
+  // Export both reports (VAT return + categorised P&L) to an Excel workbook.
+  const exportReportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const vat = [
+      [ar ? "إقرار ضريبة القيمة المضافة" : "VAT Return", BUSINESS_NAME],
+      [ar ? "الفترة" : "Period", `${rFrom} ← ${rTo}`],
+      [],
+      [ar ? "البند" : "Item", ar ? "المبلغ" : "Amount"],
+      [ar ? "المبيعات الخاضعة (الصافي)" : "Taxable sales (net)", stats.income],
+      [ar ? "ضريبة المخرجات" : "Output VAT", stats.outputVat],
+      [ar ? "المشتريات/المصروفات (الصافي)" : "Purchases (net)", stats.expense],
+      [ar ? "ضريبة المدخلات" : "Input VAT", stats.inputVat],
+      [ar ? "صافي الضريبة المستحقة" : "Net VAT due", stats.vatDue],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vat), ar ? "الإقرار الضريبي" : "VAT");
+    const pl = [
+      [ar ? "قائمة الدخل (الأرباح والخسائر)" : "Profit & Loss", BUSINESS_NAME],
+      [ar ? "الفترة" : "Period", `${rFrom} ← ${rTo}`],
+      [],
+      [ar ? "الإيرادات حسب الفئة" : "Revenue by category", ""],
+      ...pnl.income.map((r) => [r.label, r.amt]),
+      [ar ? "إجمالي الإيرادات" : "Total revenue", stats.income],
+      [],
+      [ar ? "المصروفات حسب الفئة" : "Expenses by category", ""],
+      ...pnl.expense.map((r) => [r.label, r.amt]),
+      [ar ? "إجمالي المصروفات" : "Total expenses", stats.expense],
+      [],
+      [ar ? "صافي الربح" : "Net profit", stats.netProfit],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pl), ar ? "قائمة الدخل" : "P&L");
+    XLSX.writeFile(wb, `reports_${rFrom}_${rTo}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       {/* Period picker (defaults to current quarter) + print */}
@@ -812,13 +845,22 @@ function ReportsTab({ ar, allTx }) {
         >
           {ar ? "هذا الربع" : "This quarter"}
         </button>
-        <button
-          onClick={printReport}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700"
-        >
-          <Printer className="w-4 h-4" />
-          {ar ? "طباعة / حفظ PDF" : "Print / Save PDF"}
-        </button>
+        <div className="ms-auto flex items-center gap-2">
+          <button
+            onClick={exportReportExcel}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {ar ? "تصدير إكسل" : "Excel"}
+          </button>
+          <button
+            onClick={printReport}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700"
+          >
+            <Printer className="w-4 h-4" />
+            {ar ? "طباعة / PDF" : "Print / PDF"}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
