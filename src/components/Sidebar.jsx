@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send, Wallet, Users } from "lucide-react";
+import { LayoutGrid, ChevronRight, ChevronLeft, Share2, Languages, BookImage, Link as LinkIcon, Home, CalendarDays, PenSquare, ListChecks, MailPlus, Sparkles, MessageCircle, Send, Wallet } from "lucide-react";
 
 const NAV_ITEMS = [
   // Tool items now live on the "التسويق" hub page, so the sidebar stays clean:
-  // the hub (home) + CRM + accounting.
+  // the hub (home) + accounting.
   { path: "/", labelAr: "التسويق", labelEn: "Marketing", icon: Home, exact: true },
-  { path: "/CRM", labelAr: "إدارة العملاء", labelEn: "CRM", icon: Users },
   { divider: true, labelAr: "المحاسبة", labelEn: "Accounting" },
   { path: "/Accounting", labelAr: "المحاسبة", labelEn: "Accounting", icon: Wallet },
 ];

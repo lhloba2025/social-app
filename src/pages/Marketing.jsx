@@ -3,7 +3,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { LayoutGrid, Sparkles, MailPlus, BookImage, PenSquare, CalendarDays, ListChecks, MessageCircle, Send, Link as LinkIcon, Share2, ArrowLeft, Users } from "lucide-react";
+import { LayoutGrid, Sparkles, MailPlus, BookImage, PenSquare, CalendarDays, ListChecks, MessageCircle, Send, Link as LinkIcon, Share2, ArrowLeft } from "lucide-react";
 
 const GROUPS = [
   {
@@ -23,7 +23,6 @@ const GROUPS = [
       { to: "/PostsManager", icon: ListChecks, ar: "إدارة المنشورات", en: "Posts", dAr: "تابع وعدّل منشوراتك", dEn: "Manage posts" },
       { to: "/Engagement", icon: MessageCircle, ar: "صندوق التفاعل", en: "Engagement", dAr: "ردود ورسائل المنصات", dEn: "Comments & DMs" },
       { to: "/WhatsappOutreach", icon: Send, ar: "تواصل واتساب", en: "WhatsApp Outreach", dAr: "تواصل مع العملاء عبر واتساب", dEn: "Reach leads on WhatsApp" },
-      { to: "/CRM", icon: Users, ar: "إدارة العملاء", en: "CRM", dAr: "تابع عملاءك ومراحلهم", dEn: "Track leads & customers" },
       { to: "/AccountsPage", icon: LinkIcon, ar: "ربط الحسابات", en: "Accounts", dAr: "اربط منصاتك الاجتماعية", dEn: "Connect platforms" },
       { to: "/TeamLinks", icon: Share2, ar: "روابط الفريق", en: "Team Links", dAr: "روابط خاصة للزملاء", dEn: "Private team links" },
     ],

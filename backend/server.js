@@ -248,23 +248,6 @@ db.run(`
     tenant_id TEXT DEFAULT 'default',
     created_date TEXT DEFAULT (datetime('now'))
   );
-
-  -- ── CRM / إدارة العملاء ───────────────────────────────────────────────────
-  -- Simple lead/customer pipeline. Each contact has a stage (new / contacted /
-  -- interested / customer / lost) so the salon can follow up over time.
-  CREATE TABLE IF NOT EXISTS crm_contacts (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    phone TEXT,
-    stage TEXT DEFAULT 'new',            -- new | contacted | interested | customer | lost
-    source TEXT,                         -- where the lead came from
-    note TEXT,
-    next_follow_up TEXT,                 -- YYYY-MM-DD of the next follow-up
-    tags TEXT,                           -- comma-separated tags
-    tenant_id TEXT DEFAULT 'default',
-    created_date TEXT DEFAULT (datetime('now')),
-    updated_date TEXT
-  );
 `);
 
 const alterCols = [
@@ -385,7 +368,7 @@ function crudRouter(table, transform) {
       if (!existing) return res.status(404).json({ error: 'Not found' });
       const updates = { ...req.body };
       delete updates.tenant_id; // never let a client move a row to another tenant
-      if (table === 'designs' || table === 'crm_contacts') updates.updated_date = new Date().toISOString();
+      if (table === 'designs') updates.updated_date = new Date().toISOString();
       const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
       run(
         `UPDATE ${table} SET ${sets} WHERE id = ? AND tenant_id = ?`,
@@ -445,7 +428,6 @@ const finServicesRouter = () => crudRouter('fin_services', row => ({
   vat_included: boolField(row.vat_included),
   active: boolField(row.active),
 }));
-const crmContactsRouter = () => crudRouter('crm_contacts');
 for (const prefix of ['', '/api']) {
   app.use(`${prefix}/designs`, crudRouter('designs'));
   app.use(`${prefix}/media`, crudRouter('media'));
@@ -455,7 +437,6 @@ for (const prefix of ['', '/api']) {
   app.use(`${prefix}/fin-employees`, finEmployeesRouter());
   app.use(`${prefix}/fin-recurring`, finRecurringRouter());
   app.use(`${prefix}/fin-services`, finServicesRouter());
-  app.use(`${prefix}/crm-contacts`, crmContactsRouter());
 }
 
 // ---- Recurring expenses + salaries auto-posting ----
