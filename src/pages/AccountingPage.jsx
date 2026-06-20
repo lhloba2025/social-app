@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Wallet, TrendingUp, TrendingDown, Receipt, Plus, Pencil, Trash2,
   Users, FileSpreadsheet, Landmark, PiggyBank, BadgePercent, Loader2,
-  Repeat, Scissors, Printer, Power, PlayCircle,
+  Repeat, Scissors, Printer, Power, PlayCircle, Calculator,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,6 +15,7 @@ import TransactionModal from "@/components/accounting/TransactionModal";
 import EmployeeModal from "@/components/accounting/EmployeeModal";
 import RecurringModal from "@/components/accounting/RecurringModal";
 import ServiceModal from "@/components/accounting/ServiceModal";
+import PricingTab from "@/components/accounting/PricingTab";
 import {
   formatMoney, summarize, inRange, categoryLabel, paymentLabel,
   categoriesFor, monthStartStr, todayStr, round2, quarterRange,
@@ -199,6 +200,7 @@ export default function AccountingPage({ language }) {
     { key: "payroll", ar: "الرواتب والعمولات", en: "Payroll", Icon: Users },
     { key: "recurring", ar: "المصروفات المتكرّرة", en: "Recurring", Icon: Repeat },
     { key: "services", ar: "الخدمات", en: "Services", Icon: Scissors },
+    { key: "pricing", ar: "التسعير", en: "Pricing", Icon: Calculator },
     { key: "reports", ar: "التقارير الضريبية", en: "Tax Reports", Icon: Landmark },
   ];
 
@@ -314,6 +316,7 @@ export default function AccountingPage({ language }) {
                 onDelete={(id) => delSvc.mutate(id)}
               />
             )}
+            {tab === "pricing" && <PricingTab ar={ar} employees={employees} />}
             {tab === "reports" && <ReportsTab ar={ar} allTx={allTx} />}
           </>
         )}

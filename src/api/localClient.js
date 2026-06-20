@@ -89,6 +89,8 @@ export const localApi = {
     FinanceEmployee: entity('fin-employees'),
     FinanceRecurring: entity('fin-recurring'),
     FinanceService: entity('fin-services'),
+    FinanceMaterial: entity('fin-materials'),
+    FinancePricedService: entity('fin-priced-services'),
   },
   uploadFile,
 };

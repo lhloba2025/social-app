@@ -248,6 +248,32 @@ db.run(`
     tenant_id TEXT DEFAULT 'default',
     created_date TEXT DEFAULT (datetime('now'))
   );
+
+  -- Materials catalog (كتالوج المواد) — reusable ingredients/supplies that feed
+  -- the service pricing engine. cost_per_unit is the unit cost (derived from a
+  -- package price/size by the UI when needed, then stored here).
+  CREATE TABLE IF NOT EXISTS fin_materials (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    unit TEXT,                           -- مل / جرام / قطعة ...
+    cost_per_unit REAL DEFAULT 0,
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Priced services (تسعير الخدمة) — saved outputs of the pricing calculator.
+  CREATE TABLE IF NOT EXISTS fin_priced_services (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    duration_min REAL DEFAULT 0,
+    hourly_rate REAL DEFAULT 0,
+    overhead_pct REAL DEFAULT 30,
+    margin_pct REAL DEFAULT 50,
+    materials_json TEXT,                 -- JSON array of {materialId,name,unit,costPerUnit,qty}
+    suggested_price REAL DEFAULT 0,
+    tenant_id TEXT DEFAULT 'default',
+    created_date TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const alterCols = [
@@ -428,6 +454,18 @@ const finServicesRouter = () => crudRouter('fin_services', row => ({
   vat_included: boolField(row.vat_included),
   active: boolField(row.active),
 }));
+const finMaterialsRouter = () => crudRouter('fin_materials', row => ({
+  ...row,
+  cost_per_unit: Number(row.cost_per_unit) || 0,
+}));
+const finPricedServicesRouter = () => crudRouter('fin_priced_services', row => ({
+  ...row,
+  duration_min: Number(row.duration_min) || 0,
+  hourly_rate: Number(row.hourly_rate) || 0,
+  overhead_pct: Number(row.overhead_pct) || 0,
+  margin_pct: Number(row.margin_pct) || 0,
+  suggested_price: Number(row.suggested_price) || 0,
+}));
 for (const prefix of ['', '/api']) {
   app.use(`${prefix}/designs`, crudRouter('designs'));
   app.use(`${prefix}/media`, crudRouter('media'));
@@ -437,6 +475,8 @@ for (const prefix of ['', '/api']) {
   app.use(`${prefix}/fin-employees`, finEmployeesRouter());
   app.use(`${prefix}/fin-recurring`, finRecurringRouter());
   app.use(`${prefix}/fin-services`, finServicesRouter());
+  app.use(`${prefix}/fin-materials`, finMaterialsRouter());
+  app.use(`${prefix}/fin-priced-services`, finPricedServicesRouter());
 }
 
 // ---- Recurring expenses + salaries auto-posting ----
