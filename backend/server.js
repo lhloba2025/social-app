@@ -276,6 +276,31 @@ db.run(`
     tenant_id TEXT DEFAULT 'default',
     created_date TEXT DEFAULT (datetime('now'))
   );
+
+  -- Per-user (per-tenant) monthly image-generation quota, so colleagues using the
+  -- owner's account/billing can each be capped. 0 in image_limits = use the global
+  -- default stored in app_settings. The owner (tenant 'default') is always unlimited.
+  CREATE TABLE IF NOT EXISTS image_limits (
+    tenant_id TEXT PRIMARY KEY,
+    monthly_limit INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS image_usage (
+    tenant_id TEXT,
+    period TEXT,                         -- YYYY-MM
+    count INTEGER DEFAULT 0,
+    PRIMARY KEY (tenant_id, period)
+  );
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+  -- Every team link the owner mints is remembered here, so the admin screen can
+  -- list all users (even before they generate anything) and manage their quota.
+  CREATE TABLE IF NOT EXISTS team_tenants (
+    tenant_id TEXT PRIMARY KEY,
+    label TEXT,
+    created_date TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const alterCols = [
@@ -1027,6 +1052,44 @@ app.post('/api/engagement/reply', async (req, res) => {
   }
 });
 
+// ---- Per-user image quota (حصّة الصور لكل مستخدم) ----
+// The owner shares their account with colleagues via team links; each colleague
+// (tenant) gets a monthly cap so they can't run up the owner's billing. The owner
+// themselves (tenant 'default') is never limited.
+const DEFAULT_IMAGE_LIMIT_FALLBACK = 30;
+function currentPeriod() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function getSetting(key, fallback = null) {
+  const row = queryOne(`SELECT value FROM app_settings WHERE key = ?`, [key]);
+  return row ? row.value : fallback;
+}
+function setSetting(key, value) {
+  run(`INSERT INTO app_settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
+}
+function globalImageLimit() {
+  const v = parseInt(getSetting('default_image_limit', ''), 10);
+  return Number.isFinite(v) && v > 0 ? v : DEFAULT_IMAGE_LIMIT_FALLBACK;
+}
+// Effective monthly limit for a tenant. Owner = Infinity (unlimited). Otherwise a
+// per-tenant override (> 0) wins, else the global default.
+function tenantImageLimit(tenantId) {
+  if (tenantId === 'default') return Infinity;
+  const row = queryOne(`SELECT monthly_limit FROM image_limits WHERE tenant_id = ?`, [tenantId]);
+  const override = row ? Number(row.monthly_limit) || 0 : 0;
+  return override > 0 ? override : globalImageLimit();
+}
+function imageUsage(tenantId, period = currentPeriod()) {
+  const row = queryOne(`SELECT count FROM image_usage WHERE tenant_id = ? AND period = ?`, [tenantId, period]);
+  return row ? Number(row.count) || 0 : 0;
+}
+function bumpImageUsage(tenantId, period = currentPeriod()) {
+  run(`INSERT INTO image_usage (tenant_id, period, count) VALUES (?, ?, 1)
+       ON CONFLICT(tenant_id, period) DO UPDATE SET count = count + 1`, [tenantId, period]);
+}
+
 // ---- AI image generation (Google Gemini "Nano Banana") ----
 // Generates a branded image from a text prompt + an optional reference logo
 // image, so the whole "write prompt → get image" loop happens inside the app
@@ -1042,6 +1105,19 @@ app.post('/api/generate-image', async (req, res) => {
     const { prompt, referenceImage, aspectRatio, model: modelOverride } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return res.status(400).json({ error: 'النص (البرومبت) مطلوب' });
+    }
+
+    // Enforce the monthly per-user image quota (owner is unlimited).
+    const tenantId = req.tenantId;
+    const limit = tenantImageLimit(tenantId);
+    if (Number.isFinite(limit)) {
+      const used = imageUsage(tenantId);
+      if (used >= limit) {
+        return res.status(429).json({
+          error: `وصلت للحد المسموح من توليد الصور (${limit} صورة لهذا الشهر). تواصل مع مالك الحساب لزيادة الحد.`,
+          limit, used, remaining: 0,
+        });
+      }
     }
     // Default to the cheaper Nano Banana (2.5 Flash Image, ~$0.039/img). In
     // high-precision mode the AI only paints the SCENE (we composite text/logo
@@ -1085,6 +1161,8 @@ app.post('/api/generate-image', async (req, res) => {
       return res.status(502).json({ error: 'لم يُرجع المحرّك صورة. حاول تبسيط الوصف.', detail: textPart || 'no image returned' });
     }
     const mime = inline.mimeType || inline.mime_type || 'image/png';
+    // Count this successful generation against the user's monthly quota.
+    if (Number.isFinite(tenantImageLimit(req.tenantId))) bumpImageUsage(req.tenantId);
     res.json({ dataUrl: `data:${mime};base64,${inline.data}` });
   } catch (err) {
     const detail = err?.response?.data?.error?.message || err?.message || 'خطأ غير معروف';
@@ -1118,8 +1196,92 @@ app.get('/api/team-link', (req, res) => {
   const sig = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64')
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const token = `${header}.${payload}.${sig}`;
+  // Remember the user (so the quota screen can list everyone) + optional initial cap.
+  run(`INSERT INTO team_tenants (tenant_id, label) VALUES (?, ?)
+       ON CONFLICT(tenant_id) DO UPDATE SET label = excluded.label`, [tenant, raw]);
+  const lim = parseInt(req.query.limit, 10);
+  if (Number.isFinite(lim) && lim > 0) {
+    run(`INSERT INTO image_limits (tenant_id, monthly_limit) VALUES (?, ?)
+         ON CONFLICT(tenant_id) DO UPDATE SET monthly_limit = excluded.monthly_limit`, [tenant, lim]);
+  }
   const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
   res.json({ tenant, token, url: `${proto}://${req.get('host')}/?t=${token}` });
+});
+
+// ---- Image-quota: the user's own remaining count (tenant-scoped, no admin key) ----
+for (const prefix of ['', '/api']) {
+  app.get(`${prefix}/image-quota/me`, (req, res) => {
+    const limit = tenantImageLimit(req.tenantId);
+    if (!Number.isFinite(limit)) return res.json({ unlimited: true });
+    const used = imageUsage(req.tenantId);
+    res.json({ unlimited: false, limit, used, remaining: Math.max(0, limit - used), period: currentPeriod() });
+  });
+}
+
+// ---- Image-quota admin (owner manages every user's monthly cap) ----
+function requireAdmin(req, res) {
+  const adminKey = process.env.ADMIN_KEY || '';
+  const provided = req.query.key || req.headers['x-admin-key'] || '';
+  if (!adminKey) { res.status(503).json({ error: 'لم يتم ضبط ADMIN_KEY في الخادم بعد.' }); return false; }
+  if (provided !== adminKey) { res.status(403).json({ error: 'مفتاح الإدارة غير صحيح.' }); return false; }
+  return true;
+}
+// List all users with their usage + effective limit this month.
+app.get('/api/image-admin', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const period = currentPeriod();
+  const def = globalImageLimit();
+  // Union of every tenant we know about: team links, custom limits, any usage.
+  const ids = new Set();
+  for (const r of queryAll(`SELECT tenant_id FROM team_tenants`)) ids.add(r.tenant_id);
+  for (const r of queryAll(`SELECT tenant_id FROM image_limits`)) ids.add(r.tenant_id);
+  for (const r of queryAll(`SELECT DISTINCT tenant_id FROM image_usage WHERE period = ?`, [period])) ids.add(r.tenant_id);
+  ids.delete('default');
+  const labels = {};
+  for (const r of queryAll(`SELECT tenant_id, label FROM team_tenants`)) labels[r.tenant_id] = r.label;
+  const overrides = {};
+  for (const r of queryAll(`SELECT tenant_id, monthly_limit FROM image_limits`)) overrides[r.tenant_id] = Number(r.monthly_limit) || 0;
+  const users = [...ids].map((id) => {
+    const override = overrides[id] || 0;
+    return {
+      tenant: id,
+      label: labels[id] || id.replace(/^team_/, ''),
+      override,                                   // 0 = uses default
+      limit: override > 0 ? override : def,       // effective
+      used: imageUsage(id, period),
+    };
+  }).sort((a, b) => b.used - a.used);
+  res.json({ defaultLimit: def, period, users });
+});
+// Set (or clear) one user's monthly cap. limit <= 0 → fall back to the default.
+app.post('/api/image-admin/limit', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const tenant = String(req.body?.tenant || '').trim();
+  const limit = parseInt(req.body?.limit, 10);
+  if (!tenant) return res.status(400).json({ error: 'tenant مطلوب' });
+  if (Number.isFinite(limit) && limit > 0) {
+    run(`INSERT INTO image_limits (tenant_id, monthly_limit) VALUES (?, ?)
+         ON CONFLICT(tenant_id) DO UPDATE SET monthly_limit = excluded.monthly_limit`, [tenant, limit]);
+  } else {
+    run(`DELETE FROM image_limits WHERE tenant_id = ?`, [tenant]);
+  }
+  res.json({ success: true });
+});
+// Change the global default that applies to every user without a custom cap.
+app.post('/api/image-admin/default', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const limit = parseInt(req.body?.limit, 10);
+  if (!Number.isFinite(limit) || limit <= 0) return res.status(400).json({ error: 'قيمة غير صحيحة' });
+  setSetting('default_image_limit', limit);
+  res.json({ success: true, defaultLimit: limit });
+});
+// Reset a user's usage for the current month (give them a fresh quota now).
+app.post('/api/image-admin/reset', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const tenant = String(req.body?.tenant || '').trim();
+  if (!tenant) return res.status(400).json({ error: 'tenant مطلوب' });
+  run(`DELETE FROM image_usage WHERE tenant_id = ? AND period = ?`, [tenant, currentPeriod()]);
+  res.json({ success: true });
 });
 
 // ---- WhatsApp Cloud API (env-gated) ----

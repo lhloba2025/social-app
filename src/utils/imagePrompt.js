@@ -140,11 +140,17 @@ ${(() => {
 Negative: white box / frame / circle / border / badge / card behind the logo, logo on a white sticker outline, distorted logo, redrawn logo, separated logo parts, multiple logos, duplicated word, repeated word, a word written twice, missing words, incomplete or broken Arabic, garbled or disconnected letters, dropped word, blurry, low quality, watermark, cluttered scene, real third-party brand logos, exclamation marks.`;
 }
 
-// Call the backend generator. Returns a data URL.
+// Call the backend generator. Returns a data URL. Sends the tenant token so the
+// backend counts the generation against the right user's monthly quota.
 export async function generateImage({ prompt, referenceImage, aspectRatio }) {
+  let token = "";
+  try { token = localStorage.getItem("social_tenant_token") || ""; } catch { /* no window */ }
   const res = await fetch("/api/generate-image", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ prompt, referenceImage: referenceImage || undefined, aspectRatio }),
   });
   const data = await res.json().catch(() => ({}));

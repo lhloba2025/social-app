@@ -42,6 +42,18 @@ function CustomGen({ ar }) {
   // re-composited live (move/resize) without re-generating.
   const [bgUrl, setBgUrl] = useState("");
   const [showEdit, setShowEdit] = useState(false);
+  // Remaining monthly image quota for this user (null = owner/unlimited or unknown).
+  const [quota, setQuota] = useState(null);
+  React.useEffect(() => {
+    let on = true;
+    let token = "";
+    try { token = localStorage.getItem("social_tenant_token") || ""; } catch { /* no window */ }
+    fetch("/api/image-quota/me", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (on && d && !d.unlimited) setQuota(d); })
+      .catch(() => {});
+    return () => { on = false; };
+  }, [result]);
   const DEFAULT_LAYOUT = { hookY: 0.26, hookScale: 1, hookX: 0.5, logoY: 0.04, logoScale: 1, logoX: 0.5, contactScale: 1, contactY: 0, hookAlign: "center", hookBg: true, hookBgColor: "#FFFFFF", cardOn: false, cardTitle: "", cardBody: "", cardX: 0.5, cardY: 0.6, cardScale: 0.62, cardLogo: true, cardRotate: 0, logoScrim: true };
   const [layout, setLayout] = useState(DEFAULT_LAYOUT);
   const setLayoutField = (k, v) => setLayout((p) => ({ ...p, [k]: parseFloat(v) }));
@@ -180,6 +192,15 @@ function CustomGen({ ar }) {
         </label>
         {layout.hookBg !== false && (
           <input type="color" value={layout.hookBgColor || "#FFFFFF"} onChange={(e) => setLayout((p) => ({ ...p, hookBgColor: e.target.value }))} className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" title={ar ? "لون خلفية النص" : "Text background color"} />
+        )}
+        {quota && (
+          <span className="ms-auto text-[11px] font-bold px-2.5 py-1 rounded-lg border whitespace-nowrap"
+            style={quota.remaining <= 0
+              ? { background: "#fef2f2", borderColor: "#fecaca", color: "#dc2626" }
+              : { background: "rgba(79,70,229,0.08)", borderColor: "var(--hv-primary)", color: "var(--hv-text)" }}
+            title={ar ? "حصتك الشهرية من توليد الصور" : "Your monthly image quota"}>
+            🖼️ {ar ? "تبقّى لك" : "Left"} {Math.max(0, quota.remaining)} / {quota.limit}
+          </span>
         )}
       </div>
 
