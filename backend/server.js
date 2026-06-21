@@ -255,8 +255,10 @@ db.run(`
   CREATE TABLE IF NOT EXISTS fin_materials (
     id TEXT PRIMARY KEY,
     name TEXT,
-    unit TEXT,                           -- مل / جرام / قطعة ...
-    cost_per_unit REAL DEFAULT 0,
+    unit TEXT,                           -- نوع العبوة: علبة / أنبوب / كيس ...
+    cost_per_unit REAL DEFAULT 0,        -- التكلفة المحسوبة لكل خدمة واحدة
+    package_cost REAL DEFAULT 0,         -- سعر العلبة / الكمية كاملة
+    services_per_package REAL DEFAULT 0, -- كم خدمة تكفيها العلبة
     tenant_id TEXT DEFAULT 'default',
     created_date TEXT DEFAULT (datetime('now'))
   );
@@ -300,6 +302,10 @@ const alterCols = [
   `ALTER TABLE fin_transactions ADD COLUMN recurring_id TEXT`,
   // Per-employee idempotency marker for the monthly salary auto-post (YYYY-MM).
   `ALTER TABLE fin_employees ADD COLUMN last_paid_month TEXT`,
+  // Yield-based material costing: price of one package + how many services it covers,
+  // so staff think in "this box costs X and does N services" instead of per-ml costs.
+  `ALTER TABLE fin_materials ADD COLUMN package_cost REAL DEFAULT 0`,
+  `ALTER TABLE fin_materials ADD COLUMN services_per_package REAL DEFAULT 0`,
 ];
 alterCols.forEach((sql) => {
   try { db.run(sql); } catch { /* column already exists */ }
@@ -457,6 +463,8 @@ const finServicesRouter = () => crudRouter('fin_services', row => ({
 const finMaterialsRouter = () => crudRouter('fin_materials', row => ({
   ...row,
   cost_per_unit: Number(row.cost_per_unit) || 0,
+  package_cost: Number(row.package_cost) || 0,
+  services_per_package: Number(row.services_per_package) || 0,
 }));
 const finPricedServicesRouter = () => crudRouter('fin_priced_services', row => ({
   ...row,

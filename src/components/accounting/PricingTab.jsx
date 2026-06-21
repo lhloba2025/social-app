@@ -202,11 +202,17 @@ export default function PricingTab({ ar, employees = [] }) {
               <div key={mat.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="font-bold text-gray-800 text-sm truncate">{mat.name}</p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] font-bold text-indigo-600">
                     {formatMoney(mat.cost_per_unit, ar)}
-                    <span className="mx-1">/</span>
-                    {mat.unit || (ar ? "وحدة" : "unit")}
+                    <span className="font-normal text-gray-400"> {ar ? "/ خدمة" : "/ service"}</span>
                   </p>
+                  {Number(mat.services_per_package) > 0 && (
+                    <p className="text-[10px] text-gray-400 truncate">
+                      {mat.unit || (ar ? "علبة" : "pack")} {formatMoney(mat.package_cost, ar)}
+                      <span className="mx-1">·</span>
+                      {ar ? "تكفي" : "covers"} {Number(mat.services_per_package)} {ar ? "خدمة" : "svc"}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-0.5 flex-shrink-0">
                   <button onClick={() => setMatModal({ open: true, initial: mat })} className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50">
@@ -354,7 +360,7 @@ export default function PricingTab({ ar, employees = [] }) {
                         className="flex items-center justify-between text-start px-2.5 py-1.5 rounded-lg hover:bg-white text-sm"
                       >
                         <span className="font-bold text-gray-700">{mat.name}</span>
-                        <span className="text-[11px] text-gray-500">{formatMoney(mat.cost_per_unit, ar)}/{mat.unit}</span>
+                        <span className="text-[11px] text-gray-500">{formatMoney(mat.cost_per_unit, ar)} {ar ? "/ خدمة" : "/ svc"}</span>
                       </button>
                     ))}
                   </div>
@@ -371,13 +377,14 @@ export default function PricingTab({ ar, employees = [] }) {
                   return (
                     <div key={i} className="flex items-center gap-2 rounded-xl border border-gray-100 px-2.5 py-2">
                       <span className="flex-1 min-w-0 text-sm font-bold text-gray-700 truncate">{l.name}</span>
+                      <span className="text-[11px] text-gray-300">×</span>
                       <input
-                        type="number" min="0" step="0.01"
+                        type="number" min="0" step="1"
                         value={l.qty}
                         onChange={(e) => setLineQty(i, e.target.value)}
-                        className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-xs text-center outline-none focus:border-indigo-400"
+                        className="w-14 rounded-lg border border-gray-200 px-2 py-1 text-xs text-center outline-none focus:border-indigo-400"
                       />
-                      <span className="text-[11px] text-gray-400 w-8">{l.unit}</span>
+                      <span className="text-[11px] text-gray-400 w-10">{ar ? "حصة" : "use"}</span>
                       <span className="text-xs font-bold text-gray-700 w-20 text-end whitespace-nowrap">{formatMoney(lineCost, ar)}</span>
                       <button onClick={() => removeLine(i)} className="p-1 rounded-lg text-gray-300 hover:text-rose-600 hover:bg-rose-50">
                         <X className="w-3.5 h-3.5" />
