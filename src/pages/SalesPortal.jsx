@@ -10,6 +10,7 @@ import {
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
+  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -108,47 +109,57 @@ export default function SalesPortal({ language }) {
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
 
   return (
-    <div dir={ar ? 'rtl' : 'ltr'} className="h-screen overflow-y-auto bg-slate-950 text-white">
-      {/* الترويسة */}
-      <header className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+    <div dir={ar ? 'rtl' : 'ltr'} className="relative h-screen overflow-y-auto bg-slate-950 text-white">
+      {/* وهج خلفي للعمق */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-48 right-1/4 w-[42rem] h-[42rem] rounded-full bg-indigo-600/10 blur-[130px]" />
+        <div className="absolute -bottom-48 left-1/4 w-[42rem] h-[42rem] rounded-full bg-violet-600/10 blur-[130px]" />
+      </div>
+
+      {/* الترويسة الزجاجية */}
+      <header className="sticky top-0 z-20 bg-slate-950/70 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <HoveraLogo size={36} ar={ar} />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {isAdmin && (
             <Link
               to="/SalesPortalAdmin"
-              className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition"
+              className="flex items-center gap-1.5 text-[13px] font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-1.5 transition"
             >
-              <Shield className="w-4 h-4" /> {ar ? 'إدارة البوابة' : 'Portal Admin'}
+              <Shield className="w-4 h-4 text-indigo-300" /> {ar ? 'إدارة البوابة' : 'Portal Admin'}
             </Link>
           )}
-          <span className="text-sm text-slate-300">
-            {user.name} · <span className="text-slate-500">{roleLabel(user.role, ar)}</span>
-          </span>
-          <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title={ar ? 'خروج' : 'Sign out'}>
-            <LogOut className="w-5 h-5" />
+          <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl ps-1.5 pe-3 py-1">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[12px] font-bold">
+              {(user.name || '?').trim().charAt(0)}
+            </div>
+            <span className="text-[13px] text-slate-200 font-medium">{user.name}</span>
+            <span className="text-[11px] text-slate-500">· {roleLabel(user.role, ar)}</span>
+          </div>
+          <button onClick={logout} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title={ar ? 'خروج' : 'Sign out'}>
+            <LogOut className="w-[18px] h-[18px]" />
           </button>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-4 space-y-4">
+      <div className="relative max-w-6xl mx-auto p-4 space-y-5">
         {/* شريط الإحصائيات */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatCard label={ar ? 'إجمالي الصوالين' : 'Total Salons'} value={stats.total} color="text-white" />
-          <StatCard label={ar ? 'تم التواصل' : 'Contacted'} value={stats.contacted} color="text-blue-400" />
-          <StatCard label={ar ? 'من نصيبي أنا' : 'Assigned to Me'} value={stats.mine} color="text-indigo-400" />
-          <StatCard label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} color="text-emerald-400" />
-          <StatCard label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} color="text-green-400" />
+          <StatCard icon={Store} label={ar ? 'إجمالي الصوالين' : 'Total Salons'} value={stats.total} accent="text-white" />
+          <StatCard icon={PhoneOutgoing} label={ar ? 'تم التواصل' : 'Contacted'} value={stats.contacted} accent="text-blue-400" />
+          <StatCard icon={UserCheck} label={ar ? 'من نصيبي أنا' : 'Assigned to Me'} value={stats.mine} accent="text-indigo-400" />
+          <StatCard icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} accent="text-emerald-400" />
+          <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
         </div>
 
         {/* البحث + الفلاتر */}
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3 space-y-3">
           <div className="relative">
-            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-3' : 'left-3'}`} />
+            <Search className={`absolute top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-500 ${ar ? 'right-3.5' : 'left-3.5'}`} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={ar ? 'ابحث بالاسم أو الجوال أو المدينة أو الحي…' : 'Search by name, phone, city or district…'}
-              className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 ${ar ? 'pr-10 pl-3' : 'pl-10 pr-3'}`}
+              className={`w-full bg-slate-900/60 border border-white/10 rounded-xl py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition ${ar ? 'pr-11 pl-3.5' : 'pl-11 pr-3.5'}`}
             />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
@@ -191,7 +202,7 @@ export default function SalesPortal({ language }) {
                 <button
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-indigo-600 disabled:opacity-60 border border-slate-700 text-white rounded-lg px-5 py-2.5 text-sm font-medium transition"
+                  className="flex items-center gap-2 bg-white/5 hover:bg-white/10 disabled:opacity-60 border border-white/10 text-slate-200 rounded-xl px-6 py-2.5 text-sm font-medium transition"
                 >
                   {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                   {ar ? 'تحميل المزيد' : 'Load more'}
@@ -248,27 +259,37 @@ export default function SalesPortal({ language }) {
 }
 
 // ── مكوّنات فرعية ───────────────────────────────────────────────────────────────
-function StatCard({ label, value, color }) {
+function StatCard({ icon: Icon, label, value, accent }) {
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center">
-      <div className={`text-2xl font-extrabold ${color}`}>{value}</div>
-      <div className="text-xs text-slate-400 mt-0.5">{label}</div>
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className={`text-[26px] leading-none font-extrabold ${accent}`}>{value}</div>
+          <div className="text-[11px] text-slate-400 mt-2 truncate">{label}</div>
+        </div>
+        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <Icon className={`w-[18px] h-[18px] ${accent}`} />
+        </div>
+      </div>
     </div>
   );
 }
 
 function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-    >
-      {allowEmpty && <option value="">{placeholder}</option>}
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none bg-slate-900/60 border border-white/10 rounded-xl ps-3 pe-8 py-2.5 text-[13px] text-slate-200 cursor-pointer focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition"
+      >
+        {allowEmpty && <option value="">{placeholder}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" style={{ insetInlineEnd: '0.6rem' }} />
+    </div>
   );
 }
 
@@ -284,23 +305,30 @@ function SalonCard({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
 
   const location = [salon.city, salon.district].filter(Boolean).join(' · ');
 
+  const initial = (salon.name || '؟').trim().charAt(0) || '؟';
+
   return (
-    <div className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-3.5 transition-colors">
-      {/* الترويسة: الاسم + الحالة */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="font-bold text-white text-[15px] leading-tight truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
+    <div className="group relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] hover:from-white/[0.07] hover:border-white/20 p-4 transition-all duration-200">
+      {/* الترويسة: أفاتار + الاسم + الحالة */}
+      <div className="flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/30 to-violet-600/30 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-base font-bold text-indigo-200">{initial}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-white text-[15px] leading-tight truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
+            <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full flex-shrink-0 ${statusColor(salon.status)}`}>
+              {statusLabel(salon.status, ar)}
+            </span>
+          </div>
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1 truncate">
-            <span className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-400" />{salon.rating || 0}</span>
+            <span className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-400 fill-amber-400" />{salon.rating || 0}</span>
             <span className="text-slate-600">·</span>
             <span>{salon.reviews_count || 0} {ar ? 'مراجعة' : 'rev'}</span>
             {location && <><span className="text-slate-600">·</span>
               <span className="flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />{location}</span></>}
           </div>
         </div>
-        <span className={`text-[10px] text-white px-2 py-0.5 rounded-full flex-shrink-0 ${statusColor(salon.status)}`}>
-          {statusLabel(salon.status, ar)}
-        </span>
       </div>
 
       {/* رقائق الحالة: الملكية + المتابعة (مدمجة) */}
@@ -329,30 +357,30 @@ function SalonCard({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
         </div>
       )}
 
-      {/* الأزرار — شريط مدمج */}
-      <div className="grid grid-cols-5 gap-1.5 mt-3">
-        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-600" />
-        <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-600" disabled={!wa} />
-        <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-600" external />
-        <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-600" />
-        <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-600" />
+      {/* الأزرار — أيقونات أنيقة في شريط نحيف */}
+      <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-white/5">
+        <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-700 hover:text-white" />
+        <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-500/20 hover:text-indigo-300" />
+        <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-500/20 hover:text-rose-300" external />
+        <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-500/20 hover:text-green-300" disabled={!wa} />
+        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-500/20 hover:text-blue-300" />
       </div>
     </div>
   );
 }
 
 function ActionBtn({ href, onClick, icon: Icon, label, color, external, disabled }) {
-  const cls = `flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg bg-slate-800/70 text-slate-400 transition text-[10px] font-medium ${disabled ? 'opacity-40 cursor-not-allowed' : color + ' hover:text-white'}`;
+  const cls = `flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 transition ${disabled ? 'opacity-30 cursor-not-allowed' : color}`;
   if (href && !disabled) {
     return (
-      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className={cls}>
-        <Icon className="w-4 h-4" /> {label}
+      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className={cls} title={label} aria-label={label}>
+        <Icon className="w-[18px] h-[18px]" />
       </a>
     );
   }
   return (
-    <button onClick={disabled ? undefined : onClick} disabled={disabled} className={cls}>
-      <Icon className="w-4 h-4" /> {label}
+    <button onClick={disabled ? undefined : onClick} disabled={disabled} className={cls} title={label} aria-label={label}>
+      <Icon className="w-[18px] h-[18px]" />
     </button>
   );
 }
