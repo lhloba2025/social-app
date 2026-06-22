@@ -4,11 +4,12 @@ import SalesLogin from '@/components/sales/SalesLogin';
 import HoveraLogo from '@/components/sales/HoveraLogo';
 import {
   STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, SORT_OPTIONS,
-  statusLabel, statusColor, typeLabel, waNumber, shortDate, roleLabel, localizedOptions,
+  statusLabel, statusColor, typeLabel, waNumber, shortDate, shortDateTime,
+  timeAgo, followUpState, roleLabel, localizedOptions,
 } from './salesConstants';
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
-  AlertTriangle, CheckCircle2, Loader2, X, Shield,
+  AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -30,6 +31,7 @@ export default function SalesPortal({ language }) {
 
   const [editing, setEditing] = useState(null);   // الصالون قيد التحديث
   const [waSalon, setWaSalon] = useState(null);    // الصالون لنافذة واتساب
+  const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -152,6 +154,7 @@ export default function SalesPortal({ language }) {
                 ar={ar}
                 onUpdate={() => setEditing(s)}
                 onWhatsApp={() => setWaSalon(s)}
+                onLog={() => setLogSalon(s)}
               />
             ))}
           </div>
@@ -180,6 +183,15 @@ export default function SalesPortal({ language }) {
           ar={ar}
           templates={templates}
           onClose={() => setWaSalon(null)}
+        />
+      )}
+
+      {logSalon && (
+        <LogModal
+          salon={logSalon}
+          ar={ar}
+          onClose={() => setLogSalon(null)}
+          onError={(m) => showToast(m, 'err')}
         />
       )}
 
@@ -219,10 +231,12 @@ function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   );
 }
 
-function SalonCard({ salon, me, ar, onUpdate, onWhatsApp }) {
+function SalonCard({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
   const ownedByOther = salon.owner_id && salon.owner_id !== me.id;
   const ownedByMe = salon.owner_id && salon.owner_id === me.id;
   const wa = waNumber(salon.phone);
+  const fuState = followUpState(salon.follow_up);
+  const hasContact = Boolean(salon.last_contact_date);
   const mapUrl = salon.lat != null && salon.lng != null
     ? `https://www.google.com/maps/search/?api=1&query=${salon.lat},${salon.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([salon.name, salon.district, salon.city].filter(Boolean).join(' '))}`;
@@ -266,18 +280,41 @@ function SalonCard({ salon, me, ar, onUpdate, onWhatsApp }) {
         </div>
       )}
       {ownedByMe && (
-        <div className="flex items-center gap-1.5 text-[12px] text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded-lg px-2.5 py-1.5">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          {ar ? 'بمتابعتك أنت' : 'Followed up by you'}
+        <div className="flex items-center justify-between gap-1.5 text-[12px] text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded-lg px-2.5 py-1.5">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            {ar ? 'بمتابعتك أنت' : 'Followed up by you'}
+          </span>
+          {hasContact && (
+            <span className="flex items-center gap-1 text-emerald-400/90" title={shortDateTime(salon.last_contact_date, ar)}>
+              <Clock className="w-3.5 h-3.5" />
+              {ar ? 'آخر تواصل' : 'Last contact'}: {timeAgo(salon.last_contact_date, ar)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* تنبيه موعد المتابعة */}
+      {(fuState === 'due' || fuState === 'overdue') && (
+        <div className={`flex items-center gap-1.5 text-[12px] rounded-lg px-2.5 py-1.5 border ${
+          fuState === 'overdue'
+            ? 'text-rose-300 bg-rose-950/40 border-rose-800/60'
+            : 'text-amber-200 bg-amber-950/40 border-amber-700/60'
+        }`}>
+          <CalendarClock className="w-4 h-4 flex-shrink-0" />
+          {fuState === 'overdue'
+            ? (ar ? `متابعة متأخّرة — كانت ${shortDate(salon.follow_up, ar)}` : `Follow-up overdue — was ${shortDate(salon.follow_up, ar)}`)
+            : (ar ? 'متابعة اليوم' : 'Follow-up due today')}
         </div>
       )}
 
       {/* الأزرار */}
-      <div className="grid grid-cols-4 gap-2 pt-1">
+      <div className="grid grid-cols-5 gap-2 pt-1">
         <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-600" />
         <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-600" disabled={!wa} />
         <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-600" external />
         <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-600" />
+        <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-600" />
       </div>
     </div>
   );
@@ -393,6 +430,48 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
       >
         <MessageCircle className="w-4 h-4" /> {ar ? 'فتح المحادثة بدون قالب' : 'Open chat without a template'}
       </button>
+    </ModalShell>
+  );
+}
+
+function LogModal({ salon, ar, onClose, onError }) {
+  const [log, setLog] = useState(null);   // null = قيد التحميل
+
+  useEffect(() => {
+    let alive = true;
+    salesApi.salonLog(salon.id)
+      .then((rows) => { if (alive) setLog(rows); })
+      .catch((e) => { if (alive) { setLog([]); onError?.(e.message); } });
+    return () => { alive = false; };
+  }, [salon.id]);
+
+  return (
+    <ModalShell ar={ar} title={`${ar ? 'سجل التواصل' : 'Contact Log'}: ${salon.name || (ar ? 'عميل' : 'client')}`} onClose={onClose}>
+      {log === null ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
+      ) : log.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8">
+          {ar ? 'لا يوجد سجل تواصل لهذا العميل بعد.' : 'No contact history for this client yet.'}
+        </p>
+      ) : (
+        <ol className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {log.map((entry) => (
+            <li key={entry.id} className={`relative bg-slate-800/60 border border-slate-700 rounded-lg p-3 ${ar ? 'pr-4' : 'pl-4'}`}>
+              <div className={`absolute top-3 w-1.5 h-1.5 rounded-full ${statusColor(entry.status)} ${ar ? 'right-1' : 'left-1'}`} />
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${statusColor(entry.status)}`}>
+                  {statusLabel(entry.status, ar)}
+                </span>
+                <span className="text-[11px] text-slate-400">{shortDateTime(entry.created_date, ar)}</span>
+              </div>
+              <div className="text-xs text-slate-400 mt-1.5">
+                {ar ? 'بواسطة' : 'by'} <span className="text-slate-200">{entry.user_name || (ar ? 'غير معروف' : 'unknown')}</span>
+              </div>
+              {entry.note && <p className="text-sm text-slate-200 mt-1.5 whitespace-pre-wrap">{entry.note}</p>}
+            </li>
+          ))}
+        </ol>
+      )}
     </ModalShell>
   );
 }

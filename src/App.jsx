@@ -88,8 +88,6 @@ const AuthenticatedApp = () => {
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />
       <Route path="/ContentCalendar" element={<LayoutWrapper currentPageName="ContentCalendar"><ContentCalendar /></LayoutWrapper>} />
       <Route path="/Accounting" element={<LayoutWrapper currentPageName="Accounting"><AccountingPage /></LayoutWrapper>} />
-      <Route path="/SalesPortal" element={<LayoutWrapper currentPageName="SalesPortal"><SalesPortal /></LayoutWrapper>} />
-      <Route path="/SalesPortalAdmin" element={<LayoutWrapper currentPageName="SalesPortalAdmin"><SalesPortalAdmin /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -106,6 +104,12 @@ function App() {
             {/* Public pages — no login (TikTok/Meta reviewers open these directly) */}
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
+
+            {/* Sales Team Portal — standalone app with its own login; must NOT be
+                wrapped in the main Layout/sidebar nor the main app tree. */}
+            <Route path="/SalesPortal" element={<SalesPortal language={localStorage.getItem('appLanguage') || 'ar'} />} />
+            <Route path="/SalesPortalAdmin" element={<SalesPortalAdmin language={localStorage.getItem('appLanguage') || 'ar'} />} />
+
             <Route path="*" element={<AuthenticatedApp />} />
           </Routes>
         </Router>

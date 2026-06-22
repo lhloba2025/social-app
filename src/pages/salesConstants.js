@@ -91,3 +91,43 @@ export function shortDate(value, ar = true) {
     return String(value).split(/[ T]/)[0];
   }
 }
+
+// تاريخ + وقت مختصر (يُستخدم في سجل التواصل).
+export function shortDateTime(value, ar = true) {
+  if (!value) return '';
+  try {
+    const d = new Date(String(value).replace(' ', 'T'));
+    return d.toLocaleString(ar ? 'ar' : 'en', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+// كم مضى على آخر تواصل: نص ودود حسب اللغة (اليوم/أمس/منذ N يوم).
+export function timeAgo(value, ar = true) {
+  if (!value) return '';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '';
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return ar ? 'اليوم' : 'today';
+  if (days === 1) return ar ? 'أمس' : 'yesterday';
+  if (days < 30) return ar ? `قبل ${days} يوم` : `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return ar ? `قبل ${months} شهر` : `${months}mo ago`;
+  return ar ? `قبل ${Math.floor(months / 12)} سنة` : `${Math.floor(months / 12)}y ago`;
+}
+
+// حالة موعد المتابعة بالنسبة لليوم: none | overdue (فات) | due (اليوم) | upcoming (قادم).
+export function followUpState(value) {
+  if (!value) return 'none';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return 'none';
+  d.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (d < today) return 'overdue';
+  if (d.getTime() === today.getTime()) return 'due';
+  return 'upcoming';
+}
