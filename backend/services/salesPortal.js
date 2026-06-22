@@ -262,6 +262,33 @@ export function mountSalesPortal(app, ctx) {
     res.json({ cities, districts });
   });
 
+  // إضافة صالون واحد يدوياً (للمدير فأعلى) — مع منع تكرار رقم الجوال.
+  router.post('/salons', requireRole('admin'), (req, res) => {
+    const b = req.body || {};
+    if (!b.name || !String(b.name).trim()) return res.status(400).json({ error: 'اسم الصالون مطلوب' });
+    const key = phoneKeyOf(b.phone);
+    if (key) {
+      const dup = queryOne(`SELECT name FROM salons WHERE phone_key = ?`, [key]);
+      if (dup) return res.status(409).json({ error: `رقم الجوال مسجّل مسبقاً للصالون: ${dup.name || '—'}` });
+    }
+    const id = randomUUID();
+    insertSalon(run, {
+      id,
+      name: String(b.name).trim(),
+      phone: b.phone || '',
+      phone_key: key,
+      city: b.city || '',
+      district: b.district || '',
+      address: b.address || '',
+      type: b.type === 'booking_platform' ? 'booking_platform' : 'opportunity',
+      rating: parseFloat(b.rating) || 0,
+      reviews_count: parseInt(b.reviews_count, 10) || 0,
+      note: b.note || null,
+      status: 'new',
+    });
+    res.status(201).json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [id])));
+  });
+
   // تحديث حالة عميل + تسجيل في سجل التواصل + تثبيت الملكية لأول متواصل.
   router.put('/salons/:id', requireRole('agent'), (req, res) => {
     const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);

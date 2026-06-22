@@ -10,7 +10,7 @@ import {
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
-  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2,
+  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -37,6 +37,7 @@ export default function SalesPortal({ language }) {
   const [editing, setEditing] = useState(null);   // الصالون قيد التحديث
   const [waSalon, setWaSalon] = useState(null);    // الصالون لنافذة واتساب
   const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
+  const [adding, setAdding] = useState(false);     // نافذة إضافة صالون جديد
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -175,14 +176,24 @@ export default function SalesPortal({ language }) {
 
         {/* البحث + الفلاتر */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3 space-y-3">
-          <div className="relative">
-            <Search className={`absolute top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-500 ${ar ? 'right-3.5' : 'left-3.5'}`} />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={ar ? 'ابحث بالاسم أو الجوال أو المدينة أو الحي…' : 'Search by name, phone, city or district…'}
-              className={`w-full bg-slate-900/60 border border-white/10 rounded-xl py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition ${ar ? 'pr-11 pl-3.5' : 'pl-11 pr-3.5'}`}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className={`absolute top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-500 ${ar ? 'right-3.5' : 'left-3.5'}`} />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={ar ? 'ابحث بالاسم أو الجوال أو المدينة أو الحي…' : 'Search by name, phone, city or district…'}
+                className={`w-full bg-slate-900/60 border border-white/10 rounded-xl py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition ${ar ? 'pr-11 pl-3.5' : 'pl-11 pr-3.5'}`}
+              />
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 flex-shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium rounded-xl px-3.5 text-sm shadow-lg shadow-indigo-900/30 transition"
+              >
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{ar ? 'إضافة صالون' : 'Add Salon'}</span>
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
             <Select value={filters.city} onChange={(v) => setFilters((f) => ({ ...f, city: v }))} placeholder={ar ? 'كل المدن' : 'All Cities'}
@@ -274,6 +285,21 @@ export default function SalesPortal({ language }) {
           salon={logSalon}
           ar={ar}
           onClose={() => setLogSalon(null)}
+          onError={(m) => showToast(m, 'err')}
+        />
+      )}
+
+      {adding && (
+        <AddSalonModal
+          ar={ar}
+          onClose={() => setAdding(false)}
+          onAdded={(salon) => {
+            setAdding(false);
+            showToast(ar ? 'تمت إضافة الصالون' : 'Salon added');
+            setSalons((prev) => [salon, ...prev]);
+            salesApi.salonStats().then(setStats).catch(() => {});
+            salesApi.salonFilters().then(setFilterOpts).catch(() => {});
+          }}
           onError={(m) => showToast(m, 'err')}
         />
       )}
@@ -543,6 +569,63 @@ function LogModal({ salon, ar, onClose, onError }) {
           ))}
         </ol>
       )}
+    </ModalShell>
+  );
+}
+
+function AddSalonModal({ ar, onClose, onAdded, onError }) {
+  const [form, setForm] = useState({ name: '', phone: '', city: '', district: '', type: 'opportunity', note: '' });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    if (!form.name.trim()) return onError(ar ? 'اسم الصالون مطلوب' : 'Salon name is required');
+    setSaving(true);
+    try {
+      const salon = await salesApi.addSalon(form);
+      onAdded(salon);
+    } catch (err) {
+      onError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell ar={ar} title={ar ? 'إضافة صالون جديد' : 'Add New Salon'} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label={ar ? 'اسم الصالون *' : 'Salon name *'}>
+          <input value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: صالون لمسة جمال' : 'e.g. Lamset Jamal'} autoFocus />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={ar ? 'الجوال' : 'Phone'}>
+            <input value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputCls} placeholder="05xxxxxxxx" inputMode="tel" />
+          </Field>
+          <Field label={ar ? 'النوع' : 'Type'}>
+            <select value={form.type} onChange={(e) => set('type', e.target.value)} className={inputCls}>
+              <option value="opportunity">{ar ? 'فرصة' : 'Opportunity'}</option>
+              <option value="booking_platform">{ar ? 'منصة حجز' : 'Booking Platform'}</option>
+            </select>
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={ar ? 'المدينة' : 'City'}>
+            <input value={form.city} onChange={(e) => set('city', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: الرياض' : 'e.g. Riyadh'} />
+          </Field>
+          <Field label={ar ? 'الحي' : 'District'}>
+            <input value={form.district} onChange={(e) => set('district', e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+        <Field label={ar ? 'ملاحظة' : 'Note'}>
+          <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={2} className={inputCls} placeholder={ar ? 'أي ملاحظة أولية…' : 'Any initial note…'} />
+        </Field>
+      </div>
+      <div className="flex gap-2 pt-4">
+        <button onClick={save} disabled={saving} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2">
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />} {ar ? 'إضافة الصالون' : 'Add Salon'}
+        </button>
+        <button onClick={onClose} className="px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">{ar ? 'إلغاء' : 'Cancel'}</button>
+      </div>
     </ModalShell>
   );
 }
