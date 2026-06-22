@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
+  Pencil, Check, Sparkles,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -218,6 +219,9 @@ function TemplatesTab({ ar, showToast }) {
   const [templates, setTemplates] = useState([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -231,13 +235,36 @@ function TemplatesTab({ ar, showToast }) {
     catch (e) { showToast(e.message, 'err'); }
   };
   const remove = async (id) => {
+    if (!window.confirm(ar ? 'حذف هذا القالب؟' : 'Delete this template?')) return;
     try { await salesApi.deleteTemplate(id); showToast(ar ? 'تم حذف القالب' : 'Template deleted'); load(); }
     catch (e) { showToast(e.message, 'err'); }
+  };
+  const startEdit = (tpl) => { setEditingId(tpl.id); setEditBody(tpl.body); };
+  const saveEdit = async (id) => {
+    if (!editBody.trim()) return;
+    try { await salesApi.updateTemplate(id, editBody.trim()); setEditingId(null); showToast(ar ? 'تم حفظ التعديل' : 'Changes saved'); load(); }
+    catch (e) { showToast(e.message, 'err'); }
+  };
+  const seedDefaults = async () => {
+    setSeeding(true);
+    try {
+      const r = await salesApi.seedDefaultTemplates();
+      showToast(r.added > 0
+        ? (ar ? `تمت إضافة ${r.added} قالباً جاهزاً` : `Added ${r.added} ready templates`)
+        : (ar ? 'القوالب الجاهزة موجودة مسبقاً' : 'Ready templates already exist'));
+      load();
+    } catch (e) { showToast(e.message, 'err'); } finally { setSeeding(false); }
   };
 
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-lg">{ar ? 'قوالب ردود الواتساب' : 'WhatsApp Reply Templates'}</h2>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="font-bold text-lg">{ar ? 'قوالب ردود الواتساب' : 'WhatsApp Reply Templates'}</h2>
+        <button onClick={seedDefaults} disabled={seeding} className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm transition disabled:opacity-60">
+          {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {ar ? 'إضافة القوالب الجاهزة' : 'Add Ready Templates'}
+        </button>
+      </div>
+
       <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-2">
         <textarea
           value={body}
@@ -259,12 +286,33 @@ function TemplatesTab({ ar, showToast }) {
       ) : (
         <div className="space-y-2">
           {templates.map((tpl) => (
-            <div key={tpl.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex items-start justify-between gap-3">
-              <p className="text-sm text-slate-200 whitespace-pre-wrap">{tpl.body}</p>
-              <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400 flex-shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div key={tpl.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3">
+              {editingId === tpl.id ? (
+                <div className="space-y-2">
+                  <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={4} className={inputCls} autoFocus />
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg">{ar ? 'إلغاء' : 'Cancel'}</button>
+                    <button onClick={() => saveEdit(tpl.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+                      <Check className="w-4 h-4" /> {ar ? 'حفظ' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm text-slate-200 whitespace-pre-wrap flex-1">{tpl.body}</p>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => startEdit(tpl)} className="text-slate-500 hover:text-indigo-400" title={ar ? 'تعديل' : 'Edit'}><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'حذف' : 'Delete'}><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
-          {templates.length === 0 && <p className="text-slate-500 text-center py-6">{ar ? 'لا توجد قوالب بعد.' : 'No templates yet.'}</p>}
+          {templates.length === 0 && (
+            <p className="text-slate-500 text-center py-6">
+              {ar ? 'لا توجد قوالب بعد. اضغط «إضافة القوالب الجاهزة» للبدء.' : 'No templates yet. Click “Add Ready Templates” to start.'}
+            </p>
+          )}
         </div>
       )}
     </div>

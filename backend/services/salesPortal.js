@@ -38,6 +38,17 @@ function phoneKeyOf(phone) {
 
 const nowIso = () => new Date().toISOString();
 
+// قوالب واتساب جاهزة للمبيعات — {me} يُستبدل تلقائياً باسم العضو. كلها قابلة
+// للتعديل والحذف من صفحة الإدارة بعد إضافتها.
+const DEFAULT_WA_TEMPLATES = [
+  'السلام عليكم ورحمة الله، معك {me} من هوفيرا 🌿\nنوفّر لكم منصة حجوزات إلكترونية تنظّم مواعيد صالونكم وتزيد عملاءكم. حابة أعرض عليكم التفاصيل، متى يناسبكم؟',
+  'مرحباً، معك {me} من هوفيرا 🌸\nتواصلت معكم سابقاً بخصوص منصة الحجوزات، حبيت أتأكد وصلتكم رسالتي؟ يسعدني خدمتكم في أي وقت.',
+  'أهلاً وسهلاً، معك {me} من هوفيرا ✨\nعندنا الآن عرض خاص على اشتراك المنصة لفترة محدودة. تحبون أرسل لكم التفاصيل والأسعار؟',
+  'تمام، معك {me} من هوفيرا ✅\nتم تحديد موعد زيارتنا لكم بإذن الله. أي استفسار قبل الموعد أنا بخدمتكم.',
+  'شكراً لثقتكم بهوفيرا 💜\nمعك {me}، وأي مساعدة بخصوص المنصة لا تترددون بالتواصل. نتمنى لكم التوفيق والمزيد من العملاء.',
+  'مساء الخير، معك {me} من هوفيرا 🌷\nحبيت أذكّركم بعرض منصة الحجوزات، لا يفوتكم. جاهزة لأي سؤال.',
+];
+
 export function mountSalesPortal(app, ctx) {
   const { queryAll, queryOne, run } = ctx;
 
@@ -128,10 +139,9 @@ export function mountSalesPortal(app, ctx) {
 
   // زرع قالب واتساب افتراضي لو لا توجد قوالب.
   if ((queryOne(`SELECT COUNT(*) AS c FROM wa_templates`)?.c ?? 0) === 0) {
-    run(`INSERT INTO wa_templates (id, body) VALUES (?, ?)`, [
-      randomUUID(),
-      'السلام عليكم، معك {me} من هوفيرا. نوفّر لكم منصة حجوزات تزيد عملاءكم. هل لديكم دقيقة للتعرّف على العرض؟',
-    ]);
+    for (const body of DEFAULT_WA_TEMPLATES) {
+      run(`INSERT INTO wa_templates (id, body) VALUES (?, ?)`, [randomUUID(), body]);
+    }
   }
 
   // ── أدوات مساعدة للمصادقة ───────────────────────────────────────────────────
@@ -351,9 +361,33 @@ export function mountSalesPortal(app, ctx) {
     res.status(201).json({ id, body: body.trim() });
   });
 
+  // تعديل نص قالب موجود.
+  router.put('/templates/:id', requireRole('admin'), (req, res) => {
+    const { body } = req.body || {};
+    if (!body || !body.trim()) return res.status(400).json({ error: 'نص القالب مطلوب' });
+    const existing = queryOne(`SELECT id FROM wa_templates WHERE id = ?`, [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'القالب غير موجود' });
+    run(`UPDATE wa_templates SET body = ? WHERE id = ?`, [body.trim(), req.params.id]);
+    res.json({ id: req.params.id, body: body.trim() });
+  });
+
   router.delete('/templates/:id', requireRole('admin'), (req, res) => {
     run(`DELETE FROM wa_templates WHERE id = ?`, [req.params.id]);
     res.json({ success: true });
+  });
+
+  // إضافة القوالب الجاهزة (لا تُكرّر قالباً موجوداً بنفس النص). للتركيبات القديمة
+  // التي زُرعت قبل توسيع المجموعة الافتراضية.
+  router.post('/templates/seed-defaults', requireRole('admin'), (req, res) => {
+    const existing = new Set(queryAll(`SELECT body FROM wa_templates`).map((r) => r.body));
+    let added = 0;
+    for (const body of DEFAULT_WA_TEMPLATES) {
+      if (!existing.has(body)) {
+        run(`INSERT INTO wa_templates (id, body) VALUES (?, ?)`, [randomUUID(), body]);
+        added++;
+      }
+    }
+    res.json({ added });
   });
 
   // ── البيانات والنُّسخ — للسوبر أدمن فقط ──────────────────────────────────────

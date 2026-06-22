@@ -84,7 +84,9 @@ export const salesApi = {
   // القوالب
   templates() { return req('GET', '/templates'); },
   addTemplate(body) { return req('POST', '/templates', { body }); },
+  updateTemplate(id, body) { return req('PUT', `/templates/${id}`, { body }); },
   deleteTemplate(id) { return req('DELETE', `/templates/${id}`); },
+  seedDefaultTemplates() { return req('POST', '/templates/seed-defaults'); },
 
   // البيانات والنُّسخ
   async backup() {
