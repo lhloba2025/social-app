@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
-  Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock,
+  Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -62,6 +62,11 @@ export default function SalesPortalAdmin({ language }) {
           <span className="text-slate-500 text-sm hidden md:inline">{ar ? 'إدارة بوابة فريق المبيعات' : 'Sales Team Portal Admin'}</span>
         </div>
         <div className="flex items-center gap-3">
+          {isSuper && (
+            <Link to="/" className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition" title={ar ? 'النظام الرئيسي' : 'Main System'}>
+              <Home className="w-4 h-4" /> <span className="hidden sm:inline">{ar ? 'النظام' : 'System'}</span>
+            </Link>
+          )}
           <Link to="/SalesPortal" className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition">
             <BackIcon className="w-4 h-4" /> {ar ? 'صفحة الفريق' : 'Team Page'}
           </Link>

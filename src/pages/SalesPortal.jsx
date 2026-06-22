@@ -10,7 +10,7 @@ import {
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
-  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus,
+  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus, Home,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -142,6 +142,15 @@ export default function SalesPortal({ language }) {
       <header className="sticky top-0 z-20 bg-slate-950/70 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <HoveraLogo size={36} ar={ar} />
         <div className="flex items-center gap-2.5">
+          {user.role === 'super_admin' && (
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 text-[13px] font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-1.5 transition"
+              title={ar ? 'النظام الرئيسي' : 'Main System'}
+            >
+              <Home className="w-4 h-4 text-slate-300" /> <span className="hidden sm:inline">{ar ? 'النظام' : 'System'}</span>
+            </Link>
+          )}
           {isAdmin && (
             <Link
               to="/SalesPortalAdmin"
