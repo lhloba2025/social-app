@@ -301,6 +301,58 @@ export function mountSalesPortal(app, ctx) {
     res.json(rows);
   });
 
+  // ── لوحة متابعة الفريق — للمدير فأعلى ────────────────────────────────────────
+  // تكشف: مين تأخّر في التواصل، أي عميلة مهملة، ومتابعات فائتة. تُحسب من جدول
+  // الصوالين (last_contact_date / follow_up / owner). لا تتضمّن نص محادثات
+  // الواتساب — تلك تبقى داخل تطبيق واتساب على جوال المندوب.
+  router.get('/oversight', requireRole('admin'), (req, res) => {
+    const STALE_DAYS = 3;                 // عميلة نشطة بلا تواصل ≥ ٣ أيام = مهملة
+    const CLOSED = new Set(['subscribed', 'not_interested']); // حالات لا تحتاج متابعة
+    const now = Date.now();
+    const todayStr = nowIso().slice(0, 10);
+    const daysSince = (d) => {
+      if (!d) return null;
+      const t = new Date(String(d).replace(' ', 'T')).getTime();
+      return isNaN(t) ? null : Math.floor((now - t) / 86400000);
+    };
+
+    const owned = queryAll(`SELECT * FROM salons WHERE owner_id IS NOT NULL AND owner_id != ''`).map(parseSalon);
+    const active = owned.filter((s) => !CLOSED.has(s.status || 'new'));
+
+    // العملاء النشطون مرتّبون من الأقدم تواصلاً (الأكثر إهمالاً أولاً).
+    const neglected = active
+      .map((s) => ({
+        id: s.id, name: s.name, owner_id: s.owner_id, owner_name: s.owner_name,
+        status: s.status, last_contact_date: s.last_contact_date, follow_up: s.follow_up,
+        days_since: daysSince(s.last_contact_date || s.created_date),
+        follow_up_overdue: Boolean(s.follow_up && s.follow_up < todayStr),
+      }))
+      .sort((a, b) => (b.days_since ?? 0) - (a.days_since ?? 0));
+
+    // تجميع لكل عضو فريق.
+    const members = queryAll(`SELECT id, display_name, role FROM sales_users ORDER BY display_name`);
+    const byMember = members.map((m) => {
+      const mine = active.filter((s) => s.owner_id === m.id);
+      const lastActivity = mine.reduce((acc, s) => {
+        const d = s.last_contact_date || '';
+        return d > acc ? d : acc;
+      }, '');
+      return {
+        user_id: m.id, name: m.display_name, role: m.role,
+        active: mine.length,
+        stale: mine.filter((s) => (daysSince(s.last_contact_date || s.created_date) ?? 0) >= STALE_DAYS).length,
+        overdue: mine.filter((s) => s.follow_up && s.follow_up < todayStr).length,
+        last_activity: lastActivity || null,
+      };
+    });
+
+    res.json({
+      stale_days: STALE_DAYS,
+      neglected: neglected.slice(0, 200),
+      by_member: byMember,
+    });
+  });
+
   // ── أعضاء الفريق — للمدير فأعلى ──────────────────────────────────────────────
   router.get('/members', requireRole('admin'), (req, res) => {
     const users = queryAll(`SELECT id, username, display_name, role, created_date FROM sales_users ORDER BY created_date`);

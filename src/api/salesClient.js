@@ -76,6 +76,9 @@ export const salesApi = {
   updateSalon(id, data) { return req('PUT', `/salons/${id}`, data); },
   salonLog(id) { return req('GET', `/salons/${id}/log`); },
 
+  // متابعة الفريق (للمدير)
+  oversight() { return req('GET', '/oversight'); },
+
   // الأعضاء
   members() { return req('GET', '/members'); },
   addMember(data) { return req('POST', '/members', data); },

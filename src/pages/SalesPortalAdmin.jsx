@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { salesApi, getStoredUser, clearSession } from '@/api/salesClient';
 import SalesLogin from '@/components/sales/SalesLogin';
 import HoveraLogo from '@/components/sales/HoveraLogo';
-import { roleLabel } from './salesConstants';
+import { roleLabel, statusLabel, statusColor, shortDate, timeAgo } from './salesConstants';
 import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
-  Pencil, Check, Sparkles,
+  Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
   const ar = language !== 'en';
   const [user, setUser] = useState(getStoredUser());
-  const [tab, setTab] = useState('members');
+  const [tab, setTab] = useState('oversight');
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'ok') => {
@@ -48,6 +48,7 @@ export default function SalesPortalAdmin({ language }) {
   }
 
   const TABS = [
+    { id: 'oversight', label: ar ? 'متابعة الفريق' : 'Team Oversight', icon: Gauge },
     { id: 'members', label: ar ? 'أعضاء الفريق' : 'Team Members', icon: Users },
     { id: 'templates', label: ar ? 'قوالب الواتساب' : 'WhatsApp Templates', icon: MessageSquare },
     ...(isSuper ? [{ id: 'data', label: ar ? 'البيانات والنُّسخ' : 'Data & Backups', icon: Database }] : []),
@@ -71,12 +72,12 @@ export default function SalesPortalAdmin({ language }) {
 
       <div className="max-w-5xl mx-auto p-4">
         {/* التبويبات */}
-        <div className="flex gap-2 mb-4 border-b border-slate-800">
+        <div className="flex gap-2 mb-4 border-b border-slate-800 overflow-x-auto">
           {TABS.map((tb) => (
             <button
               key={tb.id}
               onClick={() => setTab(tb.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap flex-shrink-0 ${
                 tab === tb.id ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
@@ -85,6 +86,7 @@ export default function SalesPortalAdmin({ language }) {
           ))}
         </div>
 
+        {tab === 'oversight' && <OversightTab ar={ar} showToast={showToast} />}
         {tab === 'members' && <MembersTab user={user} ar={ar} showToast={showToast} />}
         {tab === 'templates' && <TemplatesTab ar={ar} showToast={showToast} />}
         {tab === 'data' && isSuper && <DataTab ar={ar} showToast={showToast} />}
@@ -95,6 +97,130 @@ export default function SalesPortalAdmin({ language }) {
           toast.type === 'err' ? 'bg-rose-600' : 'bg-emerald-600'
         } text-white`}>{toast.msg}</div>
       )}
+    </div>
+  );
+}
+
+// ── متابعة الفريق ───────────────────────────────────────────────────────────────
+function OversightTab({ ar, showToast }) {
+  const [data, setData] = useState(null);   // null = قيد التحميل
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    salesApi.oversight()
+      .then(setData)
+      .catch((e) => showToast(e.message, 'err'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  if (loading && !data) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>;
+  }
+  if (!data) return null;
+
+  const staleDays = data.stale_days ?? 3;
+  const neglected = data.neglected || [];
+  const byMember = (data.by_member || []).filter((m) => m.active > 0);
+  const totalOverdue = neglected.filter((n) => n.follow_up_overdue).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          {ar
+            ? 'يعرض من تأخّر في المتابعة وأي عميلة مهملة — مبني على آخر تواصل والمواعيد. (لا يشمل نص محادثات الواتساب نفسها.)'
+            : 'Shows who is behind and which clients are neglected — based on last contact & dates. (WhatsApp message text is not included.)'}
+        </p>
+        <button onClick={load} className="text-slate-400 hover:text-white flex-shrink-0" title={ar ? 'تحديث' : 'Refresh'}>
+          <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* ملخّص لكل عضو */}
+      <div>
+        <h3 className="font-bold mb-2 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'أداء الأعضاء' : 'Member Performance'}</h3>
+        {byMember.length === 0 ? (
+          <p className="text-slate-500 text-sm py-4">{ar ? 'لا يوجد أعضاء لديهم عملاء بعد.' : 'No members own clients yet.'}</p>
+        ) : (
+          <div className="space-y-2">
+            {byMember.map((m) => (
+              <div key={m.user_id} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-white">{m.name}</span>
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {m.last_activity ? (ar ? `آخر نشاط ${timeAgo(m.last_activity, ar)}` : `active ${timeAgo(m.last_activity, ar)}`) : (ar ? 'لا نشاط' : 'no activity')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2.5">
+                  <OvStat label={ar ? 'عملاء نشطين' : 'Active'} value={m.active} tone="text-white" />
+                  <OvStat label={ar ? `مهمل (≥${staleDays}ي)` : `Stale (≥${staleDays}d)`} value={m.stale} tone={m.stale > 0 ? 'text-amber-400' : 'text-slate-500'} />
+                  <OvStat label={ar ? 'متابعة فائتة' : 'Overdue'} value={m.overdue} tone={m.overdue > 0 ? 'text-rose-400' : 'text-slate-500'} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* العملاء الأكثر إهمالاً */}
+      <div>
+        <h3 className="font-bold mb-2 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400" />
+          {ar ? 'عملاء تأخّر التواصل معهم' : 'Clients Awaiting Follow-up'}
+          {totalOverdue > 0 && (
+            <span className="text-[11px] bg-rose-600 text-white px-2 py-0.5 rounded-full">
+              {ar ? `${totalOverdue} متابعة فائتة` : `${totalOverdue} overdue`}
+            </span>
+          )}
+        </h3>
+        {neglected.length === 0 ? (
+          <p className="text-slate-500 text-sm py-4">{ar ? 'ما فيه عملاء نشطين بحاجة متابعة. 👏' : 'No active clients awaiting follow-up. 👏'}</p>
+        ) : (
+          <div className="space-y-2">
+            {neglected.map((n) => (
+              <div key={n.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-white truncate">{n.name || (ar ? 'بدون اسم' : 'Unnamed')}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {ar ? 'المسؤول' : 'Owner'}: <span className="text-slate-200">{n.owner_name || '—'}</span>
+                    </div>
+                  </div>
+                  <span className={`text-[11px] text-white px-2 py-1 rounded-full flex-shrink-0 ${statusColor(n.status)}`}>
+                    {statusLabel(n.status, ar)}
+                  </span>
+                </div>
+                <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2 text-[12px]">
+                  <span className={`flex items-center gap-1 ${(n.days_since ?? 0) >= staleDays ? 'text-amber-300' : 'text-slate-400'}`}>
+                    <Clock className="w-3.5 h-3.5" />
+                    {n.last_contact_date
+                      ? (ar ? `آخر تواصل ${timeAgo(n.last_contact_date, ar)}` : `last ${timeAgo(n.last_contact_date, ar)}`)
+                      : (ar ? 'لم يُتواصل بعد' : 'never contacted')}
+                  </span>
+                  {n.follow_up_overdue && (
+                    <span className="flex items-center gap-1 text-rose-300">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {ar ? `متابعة فائتة (${shortDate(n.follow_up, ar)})` : `overdue (${shortDate(n.follow_up, ar)})`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OvStat({ label, value, tone }) {
+  return (
+    <div className="bg-slate-800 rounded-lg py-2 text-center">
+      <div className={`text-lg font-bold ${tone}`}>{value}</div>
+      <div className="text-[10px] text-slate-400">{label}</div>
     </div>
   );
 }
