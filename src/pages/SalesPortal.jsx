@@ -10,7 +10,7 @@ import {
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
-  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown,
+  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -23,6 +23,7 @@ export default function SalesPortal({ language }) {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [salons, setSalons] = useState([]);
   const [filterOpts, setFilterOpts] = useState({ cities: [], districts: [] });
+  const [members, setMembers] = useState([]);   // للمديرين: فلترة حسب المندوب
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,7 +31,7 @@ export default function SalesPortal({ language }) {
   const [toast, setToast] = useState(null);
 
   const [q, setQ] = useState('');
-  const [filters, setFilters] = useState({ city: '', district: '', type: '', owner: 'all', status: '' });
+  const [filters, setFilters] = useState({ city: '', district: '', type: '', owner: 'all', status: '', ownerId: '' });
   const [sort, setSort] = useState('-updated_date');
 
   const [editing, setEditing] = useState(null);   // الصالون قيد التحديث
@@ -46,6 +47,10 @@ export default function SalesPortal({ language }) {
   const buildParams = useCallback((offset) => {
     const params = { search: q, sort, ...filters, limit: PAGE_SIZE, offset };
     if (params.owner === 'all') delete params.owner;
+    // فلتر المندوب (للمديرين): قيمة 'none' = متاح، وأي قيمة أخرى = معرّف المندوب.
+    if (params.ownerId === 'none') params.owner = 'none';
+    else if (params.ownerId) params.owner_id = params.ownerId;
+    delete params.ownerId;
     return params;
   }, [q, sort, filters]);
 
@@ -87,6 +92,9 @@ export default function SalesPortal({ language }) {
     if (!user) return;
     salesApi.salonFilters().then(setFilterOpts).catch(() => {});
     salesApi.templates().then(setTemplates).catch(() => {});
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      salesApi.members().then(setMembers).catch(() => {});
+    }
   }, [user]);
 
   // إعادة جلب الصوالين عند تغيّر البحث/الفلاتر/الترتيب (مع تأخير بسيط للبحث).
@@ -107,6 +115,20 @@ export default function SalesPortal({ language }) {
   };
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+  const isSuper = user.role === 'super_admin';
+
+  // حذف صالون (سوبر أدمن فقط) — مع تأكيد، ثم إزالته من القائمة وتحديث الإحصائيات.
+  const handleDelete = async (salon) => {
+    if (!window.confirm(ar ? `حذف «${salon.name || 'هذا الصالون'}» نهائياً؟ لا يمكن التراجع.` : `Delete "${salon.name}" permanently? This cannot be undone.`)) return;
+    try {
+      await salesApi.deleteSalon(salon.id);
+      setSalons((prev) => prev.filter((s) => s.id !== salon.id));
+      showToast(ar ? 'تم حذف الصالون' : 'Salon deleted');
+      salesApi.salonStats().then(setStats).catch(() => {});
+    } catch (err) {
+      showToast(err.message, 'err');
+    }
+  };
 
   return (
     <div dir={ar ? 'rtl' : 'ltr'} className="relative h-screen overflow-y-auto bg-slate-950 text-white">
@@ -169,8 +191,16 @@ export default function SalesPortal({ language }) {
               options={filterOpts.districts.map((c) => ({ value: c, label: c }))} />
             <Select value={filters.type} onChange={(v) => setFilters((f) => ({ ...f, type: v }))} placeholder={ar ? 'كل الأنواع' : 'All Types'}
               options={localizedOptions(TYPE_OPTIONS, ar)} />
-            <Select value={filters.owner} onChange={(v) => setFilters((f) => ({ ...f, owner: v }))} placeholder={ar ? 'الملكية' : 'Ownership'}
-              options={[{ value: 'all', label: ar ? 'الكل' : 'All' }, { value: 'mine', label: ar ? 'من نصيبي' : 'Mine' }, { value: 'none', label: ar ? 'بدون مالك' : 'Unassigned' }]} />
+            {isAdmin ? (
+              <Select value={filters.ownerId} onChange={(v) => setFilters((f) => ({ ...f, ownerId: v }))} placeholder={ar ? 'كل المناديب' : 'All Reps'}
+                options={[
+                  { value: 'none', label: ar ? 'متاح (بدون مندوب)' : 'Available (unassigned)' },
+                  ...members.map((m) => ({ value: m.id, label: m.display_name })),
+                ]} />
+            ) : (
+              <Select value={filters.owner} onChange={(v) => setFilters((f) => ({ ...f, owner: v }))} placeholder={ar ? 'الملكية' : 'Ownership'}
+                options={[{ value: 'all', label: ar ? 'الكل' : 'All' }, { value: 'mine', label: ar ? 'من نصيبي' : 'Mine' }, { value: 'none', label: ar ? 'بدون مالك' : 'Unassigned' }]} />
+            )}
             <Select value={filters.status} onChange={(v) => setFilters((f) => ({ ...f, status: v }))} placeholder={ar ? 'كل الحالات' : 'All Statuses'}
               options={localizedOptions(STATUS_OPTIONS, ar)} />
             <Select value={sort} onChange={setSort} placeholder={ar ? 'ترتيب' : 'Sort'} options={localizedOptions(SORT_OPTIONS, ar)} allowEmpty={false} />
@@ -194,6 +224,7 @@ export default function SalesPortal({ language }) {
                   onUpdate={() => setEditing(s)}
                   onWhatsApp={() => setWaSalon(s)}
                   onLog={() => setLogSalon(s)}
+                  onDelete={isSuper ? () => handleDelete(s) : undefined}
                 />
               ))}
             </div>
@@ -293,7 +324,7 @@ function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   );
 }
 
-function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
+function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onDelete }) {
   const ownedByMe = salon.owner_id && salon.owner_id === me.id;
   const owner = salon.owner_name;
   const wa = waNumber(salon.phone);
@@ -350,6 +381,7 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
         <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-500/15 hover:text-indigo-300" />
         <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-500/15 hover:text-rose-300" external className="hidden sm:flex" />
         <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-700 hover:text-white" className="hidden sm:flex" />
+        {onDelete && <ActionBtn onClick={onDelete} icon={Trash2} label={ar ? 'حذف' : 'Delete'} color="hover:bg-rose-500/20 hover:text-rose-400" />}
       </div>
     </div>
   );

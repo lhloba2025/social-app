@@ -206,7 +206,7 @@ export function mountSalesPortal(app, ctx) {
   }
 
   router.get('/salons', requireRole('agent'), (req, res) => {
-    const { search, city, district, type, owner, status, sort, limit, offset } = req.query;
+    const { search, city, district, type, owner, owner_id, status, sort, limit, offset } = req.query;
     const me = req.salesUser.id;
     let rows = queryAll(`SELECT * FROM salons`).map(parseSalon);
 
@@ -223,6 +223,7 @@ export function mountSalesPortal(app, ctx) {
     if (status)   rows = rows.filter((r) => (r.status || 'new') === status);
     if (owner === 'mine') rows = rows.filter((r) => r.owner_id === me);
     if (owner === 'none') rows = rows.filter((r) => !r.owner_id);
+    if (owner_id)         rows = rows.filter((r) => r.owner_id === owner_id);
 
     // الترتيب
     const sorters = {
