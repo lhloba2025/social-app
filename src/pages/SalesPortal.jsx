@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 
 const EMPTY_STATS = { total: 0, contacted: 0, mine: 0, interested: 0, subscribed: 0 };
+const PAGE_SIZE = 30;   // عدد الصوالين لكل دفعة — يمنع تحميل الآلاف دفعة واحدة على الجوال.
 
 export default function SalesPortal({ language }) {
   const ar = language !== 'en';
@@ -23,6 +24,8 @@ export default function SalesPortal({ language }) {
   const [filterOpts, setFilterOpts] = useState({ cities: [], districts: [] });
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [toast, setToast] = useState(null);
 
   const [q, setQ] = useState('');
@@ -38,13 +41,23 @@ export default function SalesPortal({ language }) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // بناء معاملات الطلب (بحث + فلاتر + ترتيب + ترقيم).
+  const buildParams = useCallback((offset) => {
+    const params = { search: q, sort, ...filters, limit: PAGE_SIZE, offset };
+    if (params.owner === 'all') delete params.owner;
+    return params;
+  }, [q, sort, filters]);
+
+  // تحميل الدفعة الأولى (يستبدل القائمة) — يُستدعى عند تغيّر البحث/الفلاتر.
   const loadSalons = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { search: q, sort, ...filters };
-      if (params.owner === 'all') delete params.owner;
-      const [list, st] = await Promise.all([salesApi.salons(params), salesApi.salonStats()]);
+      const [list, st] = await Promise.all([
+        salesApi.salons(buildParams(0)),
+        salesApi.salonStats(),
+      ]);
       setSalons(list);
+      setHasMore(list.length === PAGE_SIZE);
       setStats(st);
     } catch (err) {
       if (/الجلسة|session/i.test(err.message)) { setUser(null); }
@@ -52,7 +65,21 @@ export default function SalesPortal({ language }) {
     } finally {
       setLoading(false);
     }
-  }, [q, sort, filters]);
+  }, [buildParams]);
+
+  // تحميل دفعة إضافية وإلحاقها بالقائمة الحالية.
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const more = await salesApi.salons(buildParams(salons.length));
+      setSalons((prev) => [...prev, ...more]);
+      setHasMore(more.length === PAGE_SIZE);
+    } catch (err) {
+      showToast(err.message, 'err');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // تحميل أولي للبيانات الثابتة (فلاتر + قوالب) بعد الدخول.
   useEffect(() => {
@@ -145,19 +172,33 @@ export default function SalesPortal({ language }) {
         ) : salons.length === 0 ? (
           <div className="text-center py-16 text-slate-500">{ar ? 'لا توجد نتائج مطابقة.' : 'No matching results.'}</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {salons.map((s) => (
-              <SalonCard
-                key={s.id}
-                salon={s}
-                me={user}
-                ar={ar}
-                onUpdate={() => setEditing(s)}
-                onWhatsApp={() => setWaSalon(s)}
-                onLog={() => setLogSalon(s)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {salons.map((s) => (
+                <SalonCard
+                  key={s.id}
+                  salon={s}
+                  me={user}
+                  ar={ar}
+                  onUpdate={() => setEditing(s)}
+                  onWhatsApp={() => setWaSalon(s)}
+                  onLog={() => setLogSalon(s)}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-indigo-600 disabled:opacity-60 border border-slate-700 text-white rounded-lg px-5 py-2.5 text-sm font-medium transition"
+                >
+                  {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {ar ? 'تحميل المزيد' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

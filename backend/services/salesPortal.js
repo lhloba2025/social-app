@@ -206,7 +206,7 @@ export function mountSalesPortal(app, ctx) {
   }
 
   router.get('/salons', requireRole('agent'), (req, res) => {
-    const { search, city, district, type, owner, status, sort } = req.query;
+    const { search, city, district, type, owner, status, sort, limit, offset } = req.query;
     const me = req.salesUser.id;
     let rows = queryAll(`SELECT * FROM salons`).map(parseSalon);
 
@@ -233,7 +233,11 @@ export function mountSalesPortal(app, ctx) {
     };
     rows.sort(sorters[sort] || sorters['-updated_date']);
 
-    res.json(rows);
+    // ترقيم الصفحات: نرسل دفعة محدودة فقط (limit/offset) لتفادي تحميل آلاف
+    // الصوالين دفعة واحدة على الجوال. بدون limit نرجّع الكل (توافق رجعي).
+    const lim = Math.min(parseInt(limit, 10) || 0, 1000);
+    const off = Math.max(parseInt(offset, 10) || 0, 0);
+    res.json(lim > 0 ? rows.slice(off, off + lim) : rows);
   });
 
   router.get('/salons/stats', requireRole('agent'), (req, res) => {
