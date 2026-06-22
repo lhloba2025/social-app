@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { salesApi } from '@/api/salesClient';
 import HoveraLogo from './HoveraLogo';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, Languages } from 'lucide-react';
 
 // بوابة الدخول لفريق المبيعات. تُستدعى من الصفحتين عند غياب الجلسة.
-export default function SalesLogin({ onSuccess, ar = true }) {
+export default function SalesLogin({ onSuccess, ar = true, onToggleLang }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,6 +34,13 @@ export default function SalesLogin({ onSuccess, ar = true }) {
 
       <div className="relative w-full max-w-sm">
         <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-8 shadow-2xl shadow-indigo-950/40">
+          {onToggleLang && (
+            <div className="flex justify-end -mt-3 -me-3 mb-1">
+              <button onClick={onToggleLang} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition" title={ar ? 'English' : 'العربية'}>
+                <Languages className="w-3.5 h-3.5" /> {ar ? 'EN' : 'ع'}
+              </button>
+            </div>
+          )}
           <div className="flex flex-col items-center gap-3 mb-8">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-600/20 border border-white/10">
               <HoveraLogo size={56} withText={false} ar={ar} />

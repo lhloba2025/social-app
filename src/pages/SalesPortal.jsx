@@ -10,7 +10,7 @@ import {
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
-  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus, Home,
+  Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus, Home, Languages,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -18,7 +18,13 @@ const EMPTY_STATS = { total: 0, contacted: 0, mine: 0, interested: 0, subscribed
 const PAGE_SIZE = 30;   // عدد الصوالين لكل دفعة — يمنع تحميل الآلاف دفعة واحدة على الجوال.
 
 export default function SalesPortal({ language }) {
-  const ar = language !== 'en';
+  const [lang, setLang] = useState(language || localStorage.getItem('appLanguage') || 'ar');
+  const ar = lang !== 'en';
+  const toggleLang = () => {
+    const next = ar ? 'en' : 'ar';
+    localStorage.setItem('appLanguage', next);
+    setLang(next);
+  };
   const [user, setUser] = useState(getStoredUser());
   const [stats, setStats] = useState(EMPTY_STATS);
   const [salons, setSalons] = useState([]);
@@ -106,7 +112,7 @@ export default function SalesPortal({ language }) {
   }, [user, loadSalons]);
 
   if (!user) {
-    return <SalesLogin onSuccess={setUser} ar={ar} />;
+    return <SalesLogin onSuccess={setUser} ar={ar} onToggleLang={toggleLang} />;
   }
 
   const logout = async () => {
@@ -166,6 +172,9 @@ export default function SalesPortal({ language }) {
             <span className="text-[13px] text-slate-200 font-medium">{user.name}</span>
             <span className="text-[11px] text-slate-500">· {roleLabel(user.role, ar)}</span>
           </div>
+          <button onClick={toggleLang} className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition" title={ar ? 'English' : 'العربية'}>
+            <Languages className="w-4 h-4" /> {ar ? 'EN' : 'ع'}
+          </button>
           <button onClick={logout} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title={ar ? 'خروج' : 'Sign out'}>
             <LogOut className="w-[18px] h-[18px]" />
           </button>

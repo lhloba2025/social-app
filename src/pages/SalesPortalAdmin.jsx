@@ -7,11 +7,17 @@ import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
-  Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home,
+  Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
-  const ar = language !== 'en';
+  const [lang, setLang] = useState(language || localStorage.getItem('appLanguage') || 'ar');
+  const ar = lang !== 'en';
+  const toggleLang = () => {
+    const next = ar ? 'en' : 'ar';
+    localStorage.setItem('appLanguage', next);
+    setLang(next);
+  };
   const [user, setUser] = useState(getStoredUser());
   const [tab, setTab] = useState('oversight');
   const [toast, setToast] = useState(null);
@@ -21,7 +27,7 @@ export default function SalesPortalAdmin({ language }) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  if (!user) return <SalesLogin onSuccess={setUser} ar={ar} />;
+  if (!user) return <SalesLogin onSuccess={setUser} ar={ar} onToggleLang={toggleLang} />;
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
   const isSuper = user.role === 'super_admin';
@@ -71,6 +77,9 @@ export default function SalesPortalAdmin({ language }) {
             <BackIcon className="w-4 h-4" /> {ar ? 'صفحة الفريق' : 'Team Page'}
           </Link>
           <span className="text-sm text-slate-300">{user.name} · <span className="text-slate-500">{roleLabel(user.role, ar)}</span></span>
+          <button onClick={toggleLang} className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 transition" title={ar ? 'English' : 'العربية'}>
+            <Languages className="w-4 h-4" /> {ar ? 'EN' : 'ع'}
+          </button>
           <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title={ar ? 'خروج' : 'Sign out'}><LogOut className="w-5 h-5" /></button>
         </div>
       </header>
