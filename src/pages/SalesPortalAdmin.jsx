@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { salesApi, getStoredUser, clearSession } from '@/api/salesClient';
 import SalesLogin from '@/components/sales/SalesLogin';
 import HoveraLogo from '@/components/sales/HoveraLogo';
-import { ROLE_LABELS } from './salesConstants';
+import { roleLabel } from './salesConstants';
 import { Link } from 'react-router-dom';
 import {
-  Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight,
+  Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
 } from 'lucide-react';
 
-export default function SalesPortalAdmin() {
+export default function SalesPortalAdmin({ language }) {
+  const ar = language !== 'en';
   const [user, setUser] = useState(getStoredUser());
   const [tab, setTab] = useState('members');
   const [toast, setToast] = useState(null);
@@ -19,10 +20,11 @@ export default function SalesPortalAdmin() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  if (!user) return <SalesLogin onSuccess={setUser} />;
+  if (!user) return <SalesLogin onSuccess={setUser} ar={ar} />;
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
   const isSuper = user.role === 'super_admin';
+  const BackIcon = ar ? ArrowRight : ArrowLeft;
 
   const logout = async () => {
     await salesApi.logout();
@@ -33,58 +35,58 @@ export default function SalesPortalAdmin() {
   // عضو فريق عادي لا يدخل صفحة الإدارة.
   if (!isAdmin) {
     return (
-      <div dir="rtl" className="h-screen flex flex-col items-center justify-center bg-slate-950 text-center p-4 gap-4">
+      <div dir={ar ? 'rtl' : 'ltr'} className="h-screen flex flex-col items-center justify-center bg-slate-950 text-center p-4 gap-4">
         <ShieldAlert className="w-14 h-14 text-rose-500" />
-        <h2 className="text-xl font-bold text-white">هذه الصفحة للمديرين فقط</h2>
-        <p className="text-slate-400">ليست لديك صلاحية الوصول لإدارة البوابة.</p>
+        <h2 className="text-xl font-bold text-white">{ar ? 'هذه الصفحة للمديرين فقط' : 'This page is for admins only'}</h2>
+        <p className="text-slate-400">{ar ? 'ليست لديك صلاحية الوصول لإدارة البوابة.' : 'You don’t have permission to access portal administration.'}</p>
         <Link to="/SalesPortal" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-2 flex items-center gap-2">
-          <ArrowRight className="w-4 h-4" /> العودة لصفحة الفريق
+          <BackIcon className="w-4 h-4" /> {ar ? 'العودة لصفحة الفريق' : 'Back to Team Page'}
         </Link>
       </div>
     );
   }
 
   const TABS = [
-    { id: 'members', label: 'أعضاء الفريق', icon: Users },
-    { id: 'templates', label: 'قوالب الواتساب', icon: MessageSquare },
-    ...(isSuper ? [{ id: 'data', label: 'البيانات والنُّسخ', icon: Database }] : []),
+    { id: 'members', label: ar ? 'أعضاء الفريق' : 'Team Members', icon: Users },
+    { id: 'templates', label: ar ? 'قوالب الواتساب' : 'WhatsApp Templates', icon: MessageSquare },
+    ...(isSuper ? [{ id: 'data', label: ar ? 'البيانات والنُّسخ' : 'Data & Backups', icon: Database }] : []),
   ];
 
   return (
-    <div dir="rtl" className="h-screen overflow-y-auto bg-slate-950 text-white">
+    <div dir={ar ? 'rtl' : 'ltr'} className="h-screen overflow-y-auto bg-slate-950 text-white">
       <header className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <HoveraLogo size={36} />
-          <span className="text-slate-500 text-sm hidden md:inline">إدارة بوابة فريق المبيعات</span>
+          <HoveraLogo size={36} ar={ar} />
+          <span className="text-slate-500 text-sm hidden md:inline">{ar ? 'إدارة بوابة فريق المبيعات' : 'Sales Team Portal Admin'}</span>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/SalesPortal" className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition">
-            <ArrowRight className="w-4 h-4" /> صفحة الفريق
+            <BackIcon className="w-4 h-4" /> {ar ? 'صفحة الفريق' : 'Team Page'}
           </Link>
-          <span className="text-sm text-slate-300">{user.name} · <span className="text-slate-500">{ROLE_LABELS[user.role]}</span></span>
-          <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title="خروج"><LogOut className="w-5 h-5" /></button>
+          <span className="text-sm text-slate-300">{user.name} · <span className="text-slate-500">{roleLabel(user.role, ar)}</span></span>
+          <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title={ar ? 'خروج' : 'Sign out'}><LogOut className="w-5 h-5" /></button>
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto p-4">
         {/* التبويبات */}
         <div className="flex gap-2 mb-4 border-b border-slate-800">
-          {TABS.map((t) => (
+          {TABS.map((tb) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tb.id}
+              onClick={() => setTab(tb.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
-                tab === t.id ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-white'
+                tab === tb.id ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
-              <t.icon className="w-4 h-4" /> {t.label}
+              <tb.icon className="w-4 h-4" /> {tb.label}
             </button>
           ))}
         </div>
 
-        {tab === 'members' && <MembersTab user={user} showToast={showToast} />}
-        {tab === 'templates' && <TemplatesTab showToast={showToast} />}
-        {tab === 'data' && isSuper && <DataTab showToast={showToast} />}
+        {tab === 'members' && <MembersTab user={user} ar={ar} showToast={showToast} />}
+        {tab === 'templates' && <TemplatesTab ar={ar} showToast={showToast} />}
+        {tab === 'data' && isSuper && <DataTab ar={ar} showToast={showToast} />}
       </div>
 
       {toast && (
@@ -97,7 +99,7 @@ export default function SalesPortalAdmin() {
 }
 
 // ── أعضاء الفريق ────────────────────────────────────────────────────────────────
-function MembersTab({ user, showToast }) {
+function MembersTab({ user, ar, showToast }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -109,17 +111,17 @@ function MembersTab({ user, showToast }) {
   useEffect(load, []);
 
   const remove = async (m) => {
-    if (!window.confirm(`حذف العضو «${m.display_name}»؟`)) return;
-    try { await salesApi.deleteMember(m.id); showToast('تم حذف العضو'); load(); }
+    if (!window.confirm(ar ? `حذف العضو «${m.display_name}»؟` : `Delete member “${m.display_name}”?`)) return;
+    try { await salesApi.deleteMember(m.id); showToast(ar ? 'تم حذف العضو' : 'Member deleted'); load(); }
     catch (e) { showToast(e.message, 'err'); }
   };
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h2 className="font-bold text-lg">أعضاء الفريق</h2>
+        <h2 className="font-bold text-lg">{ar ? 'أعضاء الفريق' : 'Team Members'}</h2>
         <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">
-          <Plus className="w-4 h-4" /> إضافة عضو
+          <Plus className="w-4 h-4" /> {ar ? 'إضافة عضو' : 'Add Member'}
         </button>
       </div>
 
@@ -132,18 +134,18 @@ function MembersTab({ user, showToast }) {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="font-bold text-white">{m.display_name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{m.username} · {ROLE_LABELS[m.role]}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{m.username} · {roleLabel(m.role, ar)}</div>
                 </div>
                 {m.id !== user.id && (
-                  <button onClick={() => remove(m)} className="text-slate-500 hover:text-rose-400" title="حذف">
+                  <button onClick={() => remove(m)} className="text-slate-500 hover:text-rose-400" title={ar ? 'حذف' : 'Delete'}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
               <div className="grid grid-cols-3 gap-2 mt-3">
-                <MemberStat label="عدد عملائه" value={m.stats.clients} />
-                <MemberStat label="تواصله اليوم" value={m.stats.today} />
-                <MemberStat label="هذا الشهر" value={m.stats.month} />
+                <MemberStat label={ar ? 'عدد عملائه' : 'Clients'} value={m.stats.clients} />
+                <MemberStat label={ar ? 'تواصله اليوم' : 'Today'} value={m.stats.today} />
+                <MemberStat label={ar ? 'هذا الشهر' : 'This Month'} value={m.stats.month} />
               </div>
             </div>
           ))}
@@ -152,9 +154,10 @@ function MembersTab({ user, showToast }) {
 
       {adding && (
         <AddMemberModal
+          ar={ar}
           canCreateSuper={user.role === 'super_admin'}
           onClose={() => setAdding(false)}
-          onAdded={() => { setAdding(false); showToast('تمت إضافة العضو'); load(); }}
+          onAdded={() => { setAdding(false); showToast(ar ? 'تمت إضافة العضو' : 'Member added'); load(); }}
           onError={(m) => showToast(m, 'err')}
         />
       )}
@@ -171,14 +174,14 @@ function MemberStat({ label, value }) {
   );
 }
 
-function AddMemberModal({ canCreateSuper, onClose, onAdded, onError }) {
+function AddMemberModal({ ar, canCreateSuper, onClose, onAdded, onError }) {
   const [form, setForm] = useState({ display_name: '', username: '', password: '', role: 'agent' });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
     if (!form.display_name || !form.username || !form.password) {
-      return onError('الرجاء تعبئة كل الحقول');
+      return onError(ar ? 'الرجاء تعبئة كل الحقول' : 'Please fill in all fields');
     }
     setSaving(true);
     try { await salesApi.addMember(form); onAdded(); }
@@ -187,31 +190,31 @@ function AddMemberModal({ canCreateSuper, onClose, onAdded, onError }) {
   };
 
   return (
-    <ModalShell title="إضافة عضو جديد" onClose={onClose}>
+    <ModalShell ar={ar} title={ar ? 'إضافة عضو جديد' : 'Add New Member'} onClose={onClose}>
       <div className="space-y-3">
-        <Labeled label="الاسم الظاهر"><input value={form.display_name} onChange={(e) => set('display_name', e.target.value)} className={inputCls} placeholder="مثال: محمد العتيبي" /></Labeled>
-        <Labeled label="اسم المستخدم"><input value={form.username} onChange={(e) => set('username', e.target.value)} className={inputCls} placeholder="username" /></Labeled>
-        <Labeled label="كلمة المرور"><input type="text" value={form.password} onChange={(e) => set('password', e.target.value)} className={inputCls} placeholder="كلمة مرور قوية" /></Labeled>
-        <Labeled label="الدور">
+        <Labeled label={ar ? 'الاسم الظاهر' : 'Display Name'}><input value={form.display_name} onChange={(e) => set('display_name', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: محمد العتيبي' : 'e.g. Mohammed Alotaibi'} /></Labeled>
+        <Labeled label={ar ? 'اسم المستخدم' : 'Username'}><input value={form.username} onChange={(e) => set('username', e.target.value)} className={inputCls} placeholder="username" /></Labeled>
+        <Labeled label={ar ? 'كلمة المرور' : 'Password'}><input type="text" value={form.password} onChange={(e) => set('password', e.target.value)} className={inputCls} placeholder={ar ? 'كلمة مرور قوية' : 'Strong password'} /></Labeled>
+        <Labeled label={ar ? 'الدور' : 'Role'}>
           <select value={form.role} onChange={(e) => set('role', e.target.value)} className={inputCls}>
-            <option value="agent">عضو فريق</option>
-            <option value="admin">مدير</option>
-            {canCreateSuper && <option value="super_admin">سوبر أدمن</option>}
+            <option value="agent">{ar ? 'عضو فريق' : 'Sales Agent'}</option>
+            <option value="admin">{ar ? 'مدير' : 'Admin'}</option>
+            {canCreateSuper && <option value="super_admin">{ar ? 'سوبر أدمن' : 'Super Admin'}</option>}
           </select>
         </Labeled>
       </div>
       <div className="flex gap-2 pt-4">
         <button onClick={save} disabled={saving} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />} حفظ
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />} {ar ? 'حفظ' : 'Save'}
         </button>
-        <button onClick={onClose} className="px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">إلغاء</button>
+        <button onClick={onClose} className="px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">{ar ? 'إلغاء' : 'Cancel'}</button>
       </div>
     </ModalShell>
   );
 }
 
 // ── قوالب الواتساب ──────────────────────────────────────────────────────────────
-function TemplatesTab({ showToast }) {
+function TemplatesTab({ ar, showToast }) {
   const [templates, setTemplates] = useState([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
@@ -224,29 +227,29 @@ function TemplatesTab({ showToast }) {
 
   const add = async () => {
     if (!body.trim()) return;
-    try { await salesApi.addTemplate(body.trim()); setBody(''); showToast('تمت إضافة القالب'); load(); }
+    try { await salesApi.addTemplate(body.trim()); setBody(''); showToast(ar ? 'تمت إضافة القالب' : 'Template added'); load(); }
     catch (e) { showToast(e.message, 'err'); }
   };
   const remove = async (id) => {
-    try { await salesApi.deleteTemplate(id); showToast('تم حذف القالب'); load(); }
+    try { await salesApi.deleteTemplate(id); showToast(ar ? 'تم حذف القالب' : 'Template deleted'); load(); }
     catch (e) { showToast(e.message, 'err'); }
   };
 
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-lg">قوالب ردود الواتساب</h2>
+      <h2 className="font-bold text-lg">{ar ? 'قوالب ردود الواتساب' : 'WhatsApp Reply Templates'}</h2>
       <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-2">
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={3}
           className={inputCls}
-          placeholder="اكتب نص القالب… استخدم {me} ليُستبدل تلقائياً باسم العضو."
+          placeholder={ar ? 'اكتب نص القالب… استخدم {me} ليُستبدل تلقائياً باسم العضو.' : 'Write the template… use {me} to auto-insert the member’s name.'}
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">المتغيّر {'{me}'} يُستبدل باسم العضو عند الإرسال.</span>
+          <span className="text-xs text-slate-500">{ar ? 'المتغيّر {me} يُستبدل باسم العضو عند الإرسال.' : 'The {me} variable is replaced with the member’s name on send.'}</span>
           <button onClick={add} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">
-            <Plus className="w-4 h-4" /> إضافة
+            <Plus className="w-4 h-4" /> {ar ? 'إضافة' : 'Add'}
           </button>
         </div>
       </div>
@@ -255,13 +258,13 @@ function TemplatesTab({ showToast }) {
         <div className="flex justify-center py-8"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
       ) : (
         <div className="space-y-2">
-          {templates.map((t) => (
-            <div key={t.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex items-start justify-between gap-3">
-              <p className="text-sm text-slate-200 whitespace-pre-wrap">{t.body}</p>
-              <button onClick={() => remove(t.id)} className="text-slate-500 hover:text-rose-400 flex-shrink-0"><Trash2 className="w-4 h-4" /></button>
+          {templates.map((tpl) => (
+            <div key={tpl.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex items-start justify-between gap-3">
+              <p className="text-sm text-slate-200 whitespace-pre-wrap">{tpl.body}</p>
+              <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400 flex-shrink-0"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
-          {templates.length === 0 && <p className="text-slate-500 text-center py-6">لا توجد قوالب بعد.</p>}
+          {templates.length === 0 && <p className="text-slate-500 text-center py-6">{ar ? 'لا توجد قوالب بعد.' : 'No templates yet.'}</p>}
         </div>
       )}
     </div>
@@ -269,7 +272,7 @@ function TemplatesTab({ showToast }) {
 }
 
 // ── البيانات والنُّسخ ────────────────────────────────────────────────────────────
-function DataTab({ showToast }) {
+function DataTab({ ar, showToast }) {
   const [busy, setBusy] = useState('');
 
   const downloadBlob = async (res, filename) => {
@@ -282,13 +285,13 @@ function DataTab({ showToast }) {
 
   const backup = async () => {
     setBusy('backup');
-    try { await downloadBlob(await salesApi.backup(), 'hovera-backup.json'); showToast('تم تنزيل النسخة الاحتياطية'); }
+    try { await downloadBlob(await salesApi.backup(), 'hovera-backup.json'); showToast(ar ? 'تم تنزيل النسخة الاحتياطية' : 'Backup downloaded'); }
     catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
   };
 
   const exportExcel = async () => {
     setBusy('export');
-    try { await downloadBlob(await salesApi.exportExcel(), 'hovera-salons.xlsx'); showToast('تم تصدير الإكسل'); }
+    try { await downloadBlob(await salesApi.exportExcel(), 'hovera-salons.xlsx'); showToast(ar ? 'تم تصدير الإكسل' : 'Excel exported'); }
     catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
   };
 
@@ -298,37 +301,41 @@ function DataTab({ showToast }) {
       const text = await file.text();
       const data = JSON.parse(text);
       const r = await salesApi.importBackup(data);
-      showToast(`تم الدمج: أُضيف ${r.added} · حُدّث ${r.updated} · تُجوهل ${r.skipped}`);
-    } catch (e) { showToast(e.message || 'ملف غير صالح', 'err'); } finally { setBusy(''); }
+      showToast(ar
+        ? `تم الدمج: أُضيف ${r.added} · حُدّث ${r.updated} · تُجوهل ${r.skipped}`
+        : `Merged: added ${r.added} · updated ${r.updated} · skipped ${r.skipped}`);
+    } catch (e) { showToast(e.message || (ar ? 'ملف غير صالح' : 'Invalid file'), 'err'); } finally { setBusy(''); }
   };
 
   const uploadExcel = async (file) => {
     setBusy('upload');
     try {
       const r = await salesApi.uploadExcel(file);
-      showToast(`تم الرفع: أُضيف ${r.added} صفّاً · تُجوهل ${r.skipped} مكرّراً`);
+      showToast(ar
+        ? `تم الرفع: أُضيف ${r.added} صفّاً · تُجوهل ${r.skipped} مكرّراً`
+        : `Uploaded: added ${r.added} rows · skipped ${r.skipped} duplicates`);
     } catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
   };
 
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-lg">البيانات والنُّسخ</h2>
+      <h2 className="font-bold text-lg">{ar ? 'البيانات والنُّسخ' : 'Data & Backups'}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <DataCard
-          icon={Download} title="نسخة احتياطية" desc="تنزيل كل بيانات البوابة كملف JSON."
-          actionLabel="تنزيل النسخة" loading={busy === 'backup'} onClick={backup}
+          icon={Download} title={ar ? 'نسخة احتياطية' : 'Backup'} desc={ar ? 'تنزيل كل بيانات البوابة كملف JSON.' : 'Download all portal data as a JSON file.'}
+          actionLabel={ar ? 'تنزيل النسخة' : 'Download Backup'} loading={busy === 'backup'} onClick={backup}
         />
         <DataCardFile
-          icon={Upload} title="استيراد نسخة" desc="دمج نسخة سابقة — يحدّث الأحدث فقط ولا يمسح."
-          actionLabel="اختيار ملف JSON" accept=".json" loading={busy === 'import'} onFile={importBackup}
+          icon={Upload} title={ar ? 'استيراد نسخة' : 'Import Backup'} desc={ar ? 'دمج نسخة سابقة — يحدّث الأحدث فقط ولا يمسح.' : 'Merge a previous backup — updates newest only, never deletes.'}
+          actionLabel={ar ? 'اختيار ملف JSON' : 'Choose JSON file'} accept=".json" loading={busy === 'import'} onFile={importBackup}
         />
         <DataCard
-          icon={FileDown} title="تصدير إكسل" desc="تصدير قائمة الصوالين كملف إكسل."
-          actionLabel="تصدير إكسل" loading={busy === 'export'} onClick={exportExcel}
+          icon={FileDown} title={ar ? 'تصدير إكسل' : 'Export Excel'} desc={ar ? 'تصدير قائمة الصوالين كملف إكسل.' : 'Export the salons list as an Excel file.'}
+          actionLabel={ar ? 'تصدير إكسل' : 'Export Excel'} loading={busy === 'export'} onClick={exportExcel}
         />
         <DataCardFile
-          icon={FileSpreadsheet} title="رفع إكسل صوالين" desc="إضافة صوالين جديدة — يمنع تكرار الأرقام ولا يمسح القديم."
-          actionLabel="اختيار ملف إكسل" accept=".xlsx,.xls" loading={busy === 'upload'} onFile={uploadExcel}
+          icon={FileSpreadsheet} title={ar ? 'رفع إكسل صوالين' : 'Upload Salons Excel'} desc={ar ? 'إضافة صوالين جديدة — يمنع تكرار الأرقام ولا يمسح القديم.' : 'Add new salons — prevents duplicate numbers, never deletes existing.'}
+          actionLabel={ar ? 'اختيار ملف إكسل' : 'Choose Excel file'} accept=".xlsx,.xls" loading={busy === 'upload'} onFile={uploadExcel}
         />
       </div>
     </div>
@@ -366,9 +373,9 @@ function DataCardFile({ icon: Icon, title, desc, actionLabel, accept, loading, o
 }
 
 // ── أدوات مشتركة ────────────────────────────────────────────────────────────────
-function ModalShell({ title, onClose, children }) {
+function ModalShell({ title, ar, onClose, children }) {
   return (
-    <div dir="rtl" className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+    <div dir={ar ? 'rtl' : 'ltr'} className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-white">{title}</h3>

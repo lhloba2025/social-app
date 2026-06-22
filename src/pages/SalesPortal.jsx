@@ -4,7 +4,7 @@ import SalesLogin from '@/components/sales/SalesLogin';
 import HoveraLogo from '@/components/sales/HoveraLogo';
 import {
   STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, SORT_OPTIONS,
-  statusLabel, statusColor, typeLabel, waNumber, shortDate, ROLE_LABELS,
+  statusLabel, statusColor, typeLabel, waNumber, shortDate, roleLabel, localizedOptions,
 } from './salesConstants';
 import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
@@ -14,7 +14,8 @@ import { Link } from 'react-router-dom';
 
 const EMPTY_STATS = { total: 0, contacted: 0, mine: 0, interested: 0, subscribed: 0 };
 
-export default function SalesPortal() {
+export default function SalesPortal({ language }) {
+  const ar = language !== 'en';
   const [user, setUser] = useState(getStoredUser());
   const [stats, setStats] = useState(EMPTY_STATS);
   const [salons, setSalons] = useState([]);
@@ -44,7 +45,7 @@ export default function SalesPortal() {
       setSalons(list);
       setStats(st);
     } catch (err) {
-      if (/الجلسة/.test(err.message)) { setUser(null); }
+      if (/الجلسة|session/i.test(err.message)) { setUser(null); }
       else showToast(err.message, 'err');
     } finally {
       setLoading(false);
@@ -66,7 +67,7 @@ export default function SalesPortal() {
   }, [user, loadSalons]);
 
   if (!user) {
-    return <SalesLogin onSuccess={setUser} />;
+    return <SalesLogin onSuccess={setUser} ar={ar} />;
   }
 
   const logout = async () => {
@@ -78,23 +79,23 @@ export default function SalesPortal() {
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
 
   return (
-    <div dir="rtl" className="h-screen overflow-y-auto bg-slate-950 text-white">
+    <div dir={ar ? 'rtl' : 'ltr'} className="h-screen overflow-y-auto bg-slate-950 text-white">
       {/* الترويسة */}
       <header className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700 px-4 py-3 flex items-center justify-between">
-        <HoveraLogo size={36} />
+        <HoveraLogo size={36} ar={ar} />
         <div className="flex items-center gap-3">
           {isAdmin && (
             <Link
               to="/SalesPortalAdmin"
               className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition"
             >
-              <Shield className="w-4 h-4" /> إدارة البوابة
+              <Shield className="w-4 h-4" /> {ar ? 'إدارة البوابة' : 'Portal Admin'}
             </Link>
           )}
           <span className="text-sm text-slate-300">
-            {user.name} · <span className="text-slate-500">{ROLE_LABELS[user.role]}</span>
+            {user.name} · <span className="text-slate-500">{roleLabel(user.role, ar)}</span>
           </span>
-          <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title="خروج">
+          <button onClick={logout} className="text-slate-400 hover:text-rose-400 transition" title={ar ? 'خروج' : 'Sign out'}>
             <LogOut className="w-5 h-5" />
           </button>
         </div>
@@ -103,36 +104,36 @@ export default function SalesPortal() {
       <div className="max-w-6xl mx-auto p-4 space-y-4">
         {/* شريط الإحصائيات */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatCard label="إجمالي الصوالين" value={stats.total} color="text-white" />
-          <StatCard label="تم التواصل" value={stats.contacted} color="text-blue-400" />
-          <StatCard label="من نصيبي أنا" value={stats.mine} color="text-indigo-400" />
-          <StatCard label="مهتمين" value={stats.interested} color="text-emerald-400" />
-          <StatCard label="مشتركين" value={stats.subscribed} color="text-green-400" />
+          <StatCard label={ar ? 'إجمالي الصوالين' : 'Total Salons'} value={stats.total} color="text-white" />
+          <StatCard label={ar ? 'تم التواصل' : 'Contacted'} value={stats.contacted} color="text-blue-400" />
+          <StatCard label={ar ? 'من نصيبي أنا' : 'Assigned to Me'} value={stats.mine} color="text-indigo-400" />
+          <StatCard label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} color="text-emerald-400" />
+          <StatCard label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} color="text-green-400" />
         </div>
 
         {/* البحث + الفلاتر */}
         <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
           <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-3' : 'left-3'}`} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="ابحث بالاسم أو الجوال أو المدينة أو الحي…"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pr-10 pl-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              placeholder={ar ? 'ابحث بالاسم أو الجوال أو المدينة أو الحي…' : 'Search by name, phone, city or district…'}
+              className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 ${ar ? 'pr-10 pl-3' : 'pl-10 pr-3'}`}
             />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-            <Select value={filters.city} onChange={(v) => setFilters((f) => ({ ...f, city: v }))} placeholder="كل المدن"
+            <Select value={filters.city} onChange={(v) => setFilters((f) => ({ ...f, city: v }))} placeholder={ar ? 'كل المدن' : 'All Cities'}
               options={filterOpts.cities.map((c) => ({ value: c, label: c }))} />
-            <Select value={filters.district} onChange={(v) => setFilters((f) => ({ ...f, district: v }))} placeholder="كل الأحياء"
+            <Select value={filters.district} onChange={(v) => setFilters((f) => ({ ...f, district: v }))} placeholder={ar ? 'كل الأحياء' : 'All Districts'}
               options={filterOpts.districts.map((c) => ({ value: c, label: c }))} />
-            <Select value={filters.type} onChange={(v) => setFilters((f) => ({ ...f, type: v }))} placeholder="كل الأنواع"
-              options={TYPE_OPTIONS} />
-            <Select value={filters.owner} onChange={(v) => setFilters((f) => ({ ...f, owner: v }))} placeholder="الملكية"
-              options={[{ value: 'all', label: 'الكل' }, { value: 'mine', label: 'من نصيبي' }, { value: 'none', label: 'بدون مالك' }]} />
-            <Select value={filters.status} onChange={(v) => setFilters((f) => ({ ...f, status: v }))} placeholder="كل الحالات"
-              options={STATUS_OPTIONS} />
-            <Select value={sort} onChange={setSort} placeholder="ترتيب" options={SORT_OPTIONS} allowEmpty={false} />
+            <Select value={filters.type} onChange={(v) => setFilters((f) => ({ ...f, type: v }))} placeholder={ar ? 'كل الأنواع' : 'All Types'}
+              options={localizedOptions(TYPE_OPTIONS, ar)} />
+            <Select value={filters.owner} onChange={(v) => setFilters((f) => ({ ...f, owner: v }))} placeholder={ar ? 'الملكية' : 'Ownership'}
+              options={[{ value: 'all', label: ar ? 'الكل' : 'All' }, { value: 'mine', label: ar ? 'من نصيبي' : 'Mine' }, { value: 'none', label: ar ? 'بدون مالك' : 'Unassigned' }]} />
+            <Select value={filters.status} onChange={(v) => setFilters((f) => ({ ...f, status: v }))} placeholder={ar ? 'كل الحالات' : 'All Statuses'}
+              options={localizedOptions(STATUS_OPTIONS, ar)} />
+            <Select value={sort} onChange={setSort} placeholder={ar ? 'ترتيب' : 'Sort'} options={localizedOptions(SORT_OPTIONS, ar)} allowEmpty={false} />
           </div>
         </div>
 
@@ -140,7 +141,7 @@ export default function SalesPortal() {
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
         ) : salons.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">لا توجد نتائج مطابقة.</div>
+          <div className="text-center py-16 text-slate-500">{ar ? 'لا توجد نتائج مطابقة.' : 'No matching results.'}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {salons.map((s) => (
@@ -148,6 +149,7 @@ export default function SalesPortal() {
                 key={s.id}
                 salon={s}
                 me={user}
+                ar={ar}
                 onUpdate={() => setEditing(s)}
                 onWhatsApp={() => setWaSalon(s)}
               />
@@ -159,10 +161,11 @@ export default function SalesPortal() {
       {editing && (
         <UpdateModal
           salon={editing}
+          ar={ar}
           onClose={() => setEditing(null)}
           onSaved={(updated) => {
             setEditing(null);
-            showToast('تم حفظ التحديث');
+            showToast(ar ? 'تم حفظ التحديث' : 'Update saved');
             setSalons((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
             salesApi.salonStats().then(setStats).catch(() => {});
           }}
@@ -174,6 +177,7 @@ export default function SalesPortal() {
         <WhatsAppModal
           salon={waSalon}
           me={user}
+          ar={ar}
           templates={templates}
           onClose={() => setWaSalon(null)}
         />
@@ -215,7 +219,7 @@ function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   );
 }
 
-function SalonCard({ salon, me, onUpdate, onWhatsApp }) {
+function SalonCard({ salon, me, ar, onUpdate, onWhatsApp }) {
   const ownedByOther = salon.owner_id && salon.owner_id !== me.id;
   const ownedByMe = salon.owner_id && salon.owner_id === me.id;
   const wa = waNumber(salon.phone);
@@ -227,27 +231,27 @@ function SalonCard({ salon, me, onUpdate, onWhatsApp }) {
     <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-bold text-white truncate">{salon.name || 'بدون اسم'}</h3>
+          <h3 className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
           <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
             <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> {salon.rating || 0}</span>
-            <span>{salon.reviews_count || 0} مراجعة</span>
-            <span>{typeLabel(salon.type)}</span>
+            <span>{salon.reviews_count || 0} {ar ? 'مراجعة' : 'reviews'}</span>
+            <span>{typeLabel(salon.type, ar)}</span>
           </div>
         </div>
         <span className={`text-[11px] text-white px-2 py-1 rounded-full ${statusColor(salon.status)}`}>
-          {statusLabel(salon.status)}
+          {statusLabel(salon.status, ar)}
         </span>
       </div>
 
       <div className="text-sm text-slate-300 flex items-center gap-1">
         <MapPin className="w-3.5 h-3.5 text-slate-500" />
-        {[salon.city, salon.district].filter(Boolean).join(' · ') || 'موقع غير محدد'}
+        {[salon.city, salon.district].filter(Boolean).join(' · ') || (ar ? 'موقع غير محدد' : 'Location not set')}
       </div>
 
       {salon.tags?.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {salon.tags.map((t, i) => (
-            <span key={i} className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">{t}</span>
+          {salon.tags.map((tag, i) => (
+            <span key={i} className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">{tag}</span>
           ))}
         </div>
       )}
@@ -256,22 +260,24 @@ function SalonCard({ salon, me, onUpdate, onWhatsApp }) {
       {ownedByOther && (
         <div className="flex items-center gap-1.5 text-[12px] text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded-lg px-2.5 py-1.5">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          سبق التواصل من قبل: {salon.owner_name} · {shortDate(salon.last_contact_date)}
+          {ar
+            ? <>سبق التواصل من قبل: {salon.owner_name} · {shortDate(salon.last_contact_date, ar)}</>
+            : <>Already contacted by: {salon.owner_name} · {shortDate(salon.last_contact_date, ar)}</>}
         </div>
       )}
       {ownedByMe && (
         <div className="flex items-center gap-1.5 text-[12px] text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded-lg px-2.5 py-1.5">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          بمتابعتك أنت
+          {ar ? 'بمتابعتك أنت' : 'Followed up by you'}
         </div>
       )}
 
       {/* الأزرار */}
       <div className="grid grid-cols-4 gap-2 pt-1">
-        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label="اتصال" color="hover:bg-blue-600" />
-        <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label="واتساب" color="hover:bg-green-600" disabled={!wa} />
-        <ActionBtn href={mapUrl} icon={MapPin} label="خريطة" color="hover:bg-rose-600" external />
-        <ActionBtn onClick={onUpdate} icon={RefreshCw} label="تحديث" color="hover:bg-indigo-600" />
+        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-600" />
+        <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-600" disabled={!wa} />
+        <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-600" external />
+        <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-600" />
       </div>
     </div>
   );
@@ -293,7 +299,7 @@ function ActionBtn({ href, onClick, icon: Icon, label, color, external, disabled
   );
 }
 
-function UpdateModal({ salon, onClose, onSaved, onError }) {
+function UpdateModal({ salon, ar, onClose, onSaved, onError }) {
   const [form, setForm] = useState({
     status: salon.status || 'new',
     visit_result: salon.visit_result || '',
@@ -318,44 +324,44 @@ function UpdateModal({ salon, onClose, onSaved, onError }) {
   };
 
   return (
-    <ModalShell title={`تحديث: ${salon.name || 'عميل'}`} onClose={onClose}>
+    <ModalShell ar={ar} title={`${ar ? 'تحديث' : 'Update'}: ${salon.name || (ar ? 'عميل' : 'client')}`} onClose={onClose}>
       <div className="space-y-3">
-        <Field label="الحالة">
+        <Field label={ar ? 'الحالة' : 'Status'}>
           <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputCls}>
-            {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
           </select>
         </Field>
-        <Field label="نتيجة الزيارة">
-          <input value={form.visit_result} onChange={(e) => set('visit_result', e.target.value)} className={inputCls} placeholder="مثال: تمت الزيارة، طلب وقتاً للتفكير" />
+        <Field label={ar ? 'نتيجة الزيارة' : 'Visit Result'}>
+          <input value={form.visit_result} onChange={(e) => set('visit_result', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: تمت الزيارة، طلب وقتاً للتفكير' : 'e.g. Visited, asked for time to decide'} />
         </Field>
-        <Field label="نوع الاشتراك">
-          <input value={form.subscription_type} onChange={(e) => set('subscription_type', e.target.value)} className={inputCls} placeholder="مثال: شهري، سنوي" />
+        <Field label={ar ? 'نوع الاشتراك' : 'Subscription Type'}>
+          <input value={form.subscription_type} onChange={(e) => set('subscription_type', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: شهري، سنوي' : 'e.g. Monthly, Yearly'} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="المتابعة">
+          <Field label={ar ? 'المتابعة' : 'Follow-up'}>
             <input type="date" value={form.follow_up} onChange={(e) => set('follow_up', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="الأولوية">
+          <Field label={ar ? 'الأولوية' : 'Priority'}>
             <select value={form.priority} onChange={(e) => set('priority', e.target.value)} className={inputCls}>
-              {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{ar ? p.ar : p.en}</option>)}
             </select>
           </Field>
         </div>
-        <Field label="ملاحظة">
-          <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} className={inputCls} placeholder="أي ملاحظة عن هذا التواصل…" />
+        <Field label={ar ? 'ملاحظة' : 'Note'}>
+          <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} className={inputCls} placeholder={ar ? 'أي ملاحظة عن هذا التواصل…' : 'Any note about this contact…'} />
         </Field>
       </div>
       <div className="flex gap-2 pt-4">
         <button onClick={save} disabled={saving} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />} حفظ التحديث
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />} {ar ? 'حفظ التحديث' : 'Save Update'}
         </button>
-        <button onClick={onClose} className="px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">إلغاء</button>
+        <button onClick={onClose} className="px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">{ar ? 'إلغاء' : 'Cancel'}</button>
       </div>
     </ModalShell>
   );
 }
 
-function WhatsAppModal({ salon, me, templates, onClose }) {
+function WhatsAppModal({ salon, me, ar, templates, onClose }) {
   const wa = waNumber(salon.phone);
   const fill = (body) => (body || '').replaceAll('{me}', me.name || '');
   const open = (body) => {
@@ -365,18 +371,18 @@ function WhatsAppModal({ salon, me, templates, onClose }) {
   };
 
   return (
-    <ModalShell title={`واتساب: ${salon.name || 'عميل'}`} onClose={onClose}>
+    <ModalShell ar={ar} title={`${ar ? 'واتساب' : 'WhatsApp'}: ${salon.name || (ar ? 'عميل' : 'client')}`} onClose={onClose}>
       {templates.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-6">لا توجد قوالب جاهزة بعد.</p>
+        <p className="text-slate-400 text-sm text-center py-6">{ar ? 'لا توجد قوالب جاهزة بعد.' : 'No ready templates yet.'}</p>
       ) : (
         <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-          {templates.map((t) => (
+          {templates.map((tpl) => (
             <button
-              key={t.id}
-              onClick={() => open(t.body)}
-              className="w-full text-right bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition"
+              key={tpl.id}
+              onClick={() => open(tpl.body)}
+              className={`w-full bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition ${ar ? 'text-right' : 'text-left'}`}
             >
-              {fill(t.body)}
+              {fill(tpl.body)}
             </button>
           ))}
         </div>
@@ -385,15 +391,15 @@ function WhatsAppModal({ salon, me, templates, onClose }) {
         onClick={() => window.open(`https://wa.me/${wa}`, '_blank')}
         className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2"
       >
-        <MessageCircle className="w-4 h-4" /> فتح المحادثة بدون قالب
+        <MessageCircle className="w-4 h-4" /> {ar ? 'فتح المحادثة بدون قالب' : 'Open chat without a template'}
       </button>
     </ModalShell>
   );
 }
 
-function ModalShell({ title, onClose, children }) {
+function ModalShell({ title, ar, onClose, children }) {
   return (
-    <div dir="rtl" className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+    <div dir={ar ? 'rtl' : 'ltr'} className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-white">{title}</h3>
