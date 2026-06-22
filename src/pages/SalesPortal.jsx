@@ -442,9 +442,11 @@ function UpdateModal({ salon, ar, onClose, onSaved, onError }) {
 function WhatsAppModal({ salon, me, ar, templates, onClose }) {
   const wa = waNumber(salon.phone);
   const fill = (body) => (body || '').replaceAll('{me}', me.name || '');
-  const open = (body) => {
-    const text = encodeURIComponent(fill(body));
-    window.open(`https://wa.me/${wa}?text=${text}`, '_blank');
+  // فتح تطبيق واتساب مباشرة عبر رابط التطبيق (whatsapp://) — يتجاوز صفحة
+  // "Welcome to WhatsApp" التي يعرضها رابط wa.me في المتصفّح.
+  const openChat = (body) => {
+    const q = body ? `&text=${encodeURIComponent(fill(body))}` : '';
+    window.location.href = `whatsapp://send?phone=${wa}${q}`;
     onClose();
   };
 
@@ -457,7 +459,7 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
           {templates.map((tpl) => (
             <button
               key={tpl.id}
-              onClick={() => open(tpl.body)}
+              onClick={() => openChat(tpl.body)}
               className={`w-full bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition ${ar ? 'text-right' : 'text-left'}`}
             >
               {fill(tpl.body)}
@@ -466,7 +468,7 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
         </div>
       )}
       <button
-        onClick={() => window.open(`https://wa.me/${wa}`, '_blank')}
+        onClick={() => openChat('')}
         className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2"
       >
         <MessageCircle className="w-4 h-4" /> {ar ? 'فتح المحادثة بدون قالب' : 'Open chat without a template'}
