@@ -74,6 +74,7 @@ export const salesApi = {
   salonStats() { return req('GET', '/salons/stats'); },
   salonFilters() { return req('GET', '/salons/filters'); },
   updateSalon(id, data) { return req('PUT', `/salons/${id}`, data); },
+  deleteSalon(id) { return req('DELETE', `/salons/${id}`); },
   salonLog(id) { return req('GET', `/salons/${id}/log`); },
 
   // متابعة الفريق (للمدير)

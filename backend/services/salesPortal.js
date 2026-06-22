@@ -301,6 +301,15 @@ export function mountSalesPortal(app, ctx) {
     res.json(rows);
   });
 
+  // حذف صالون نهائياً (للسوبر أدمن فقط) — يحذف سجلّ تواصله المرتبط أيضاً.
+  router.delete('/salons/:id', requireRole('super_admin'), (req, res) => {
+    const salon = queryOne(`SELECT id FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    run(`DELETE FROM salons WHERE id = ?`, [req.params.id]);
+    run(`DELETE FROM contact_log WHERE salon_id = ?`, [req.params.id]);
+    res.json({ success: true });
+  });
+
   // ── لوحة متابعة الفريق — للمدير فأعلى ────────────────────────────────────────
   // تكشف: مين تأخّر في التواصل، أي عميلة مهملة، ومتابعات فائتة. تُحسب من جدول
   // الصوالين (last_contact_date / follow_up / owner). لا تتضمّن نص محادثات
