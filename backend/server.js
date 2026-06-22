@@ -21,6 +21,7 @@ import { buildAuthUrl as tiktokAuthUrl, exchangeCodeForToken as tiktokExchangeCo
 import { isConfigured as waConfigured, sendTemplate as waSendTemplate, sendText as waSendText, listTemplates as waListTemplates, createTemplate as waCreateTemplate } from './services/whatsapp.js';
 import { buildAuthUrl as linkedinAuthUrl, exchangeCodeForToken as linkedinExchangeCode, getMemberUrn as linkedinGetUrn, getAdminOrg as linkedinGetAdminOrg, isConfigured as linkedinConfigured } from './services/linkedin.js';
 import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
+import { mountSalesPortal } from './services/salesPortal.js';
 
 dotenv.config();
 
@@ -678,6 +679,12 @@ postsRouter.delete('/:id', (req, res) => {
 });
 
 app.use('/api/posts', postsRouter);
+
+// ---- Hovera sales-team portal ----
+// Self-contained module: its own tables (sales_users, sales_sessions, salons,
+// contact_log, wa_templates) + role-based auth enforced on the server. Mounted
+// before the SPA catch-all so /api/sales/* resolves to the API, not index.html.
+mountSalesPortal(app, { queryAll, queryOne, run });
 
 // ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {

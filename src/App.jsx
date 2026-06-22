@@ -22,6 +22,8 @@ import WhatsappOutreach from './pages/WhatsappOutreach';
 import Marketing from './pages/Marketing';
 import EngagementPage from './pages/EngagementPage';
 import AccountingPage from './pages/AccountingPage';
+import SalesPortal from './pages/SalesPortal';
+import SalesPortalAdmin from './pages/SalesPortalAdmin';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -86,6 +88,8 @@ const AuthenticatedApp = () => {
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />
       <Route path="/ContentCalendar" element={<LayoutWrapper currentPageName="ContentCalendar"><ContentCalendar /></LayoutWrapper>} />
       <Route path="/Accounting" element={<LayoutWrapper currentPageName="Accounting"><AccountingPage /></LayoutWrapper>} />
+      <Route path="/SalesPortal" element={<LayoutWrapper currentPageName="SalesPortal"><SalesPortal /></LayoutWrapper>} />
+      <Route path="/SalesPortalAdmin" element={<LayoutWrapper currentPageName="SalesPortalAdmin"><SalesPortalAdmin /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
