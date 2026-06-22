@@ -22,7 +22,7 @@ export default function SalesPortal({ language }) {
   const [user, setUser] = useState(getStoredUser());
   const [stats, setStats] = useState(EMPTY_STATS);
   const [salons, setSalons] = useState([]);
-  const [filterOpts, setFilterOpts] = useState({ cities: [], districts: [] });
+  const [filterOpts, setFilterOpts] = useState({ cities: [], districts: [], districtsByCity: {} });
   const [members, setMembers] = useState([]);   // للمديرين: فلترة حسب المندوب
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -196,10 +196,11 @@ export default function SalesPortal({ language }) {
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-            <Select value={filters.city} onChange={(v) => setFilters((f) => ({ ...f, city: v }))} placeholder={ar ? 'كل المدن' : 'All Cities'}
+            <Select value={filters.city} onChange={(v) => setFilters((f) => ({ ...f, city: v, district: '' }))} placeholder={ar ? 'كل المدن' : 'All Cities'}
               options={filterOpts.cities.map((c) => ({ value: c, label: c }))} />
-            <Select value={filters.district} onChange={(v) => setFilters((f) => ({ ...f, district: v }))} placeholder={ar ? 'كل الأحياء' : 'All Districts'}
-              options={filterOpts.districts.map((c) => ({ value: c, label: c }))} />
+            <Select value={filters.district} onChange={(v) => setFilters((f) => ({ ...f, district: v }))}
+              placeholder={filters.city ? (ar ? 'كل أحياء المدينة' : 'All Districts') : (ar ? 'اختر مدينة أولاً' : 'Select a city first')}
+              options={(filters.city ? (filterOpts.districtsByCity?.[filters.city] || []) : filterOpts.districts).map((c) => ({ value: c, label: c }))} />
             <Select value={filters.type} onChange={(v) => setFilters((f) => ({ ...f, type: v }))} placeholder={ar ? 'كل الأنواع' : 'All Types'}
               options={localizedOptions(TYPE_OPTIONS, ar)} />
             {isAdmin ? (

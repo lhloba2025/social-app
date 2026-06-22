@@ -259,7 +259,16 @@ export function mountSalesPortal(app, ctx) {
     const rows = queryAll(`SELECT DISTINCT city, district FROM salons`);
     const cities = [...new Set(rows.map((r) => r.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
     const districts = [...new Set(rows.map((r) => r.district).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
-    res.json({ cities, districts });
+    // أحياء كل مدينة على حدة — لتقييد قائمة الأحياء بالمدينة المختارة في الواجهة.
+    const districtsByCity = {};
+    for (const r of rows) {
+      if (!r.city || !r.district) continue;
+      (districtsByCity[r.city] ||= []).push(r.district);
+    }
+    for (const c of Object.keys(districtsByCity)) {
+      districtsByCity[c] = [...new Set(districtsByCity[c])].sort((a, b) => a.localeCompare(b, 'ar'));
+    }
+    res.json({ cities, districts, districtsByCity });
   });
 
   // إضافة صالون واحد يدوياً (للمدير فأعلى) — مع منع تكرار رقم الجوال.
