@@ -442,12 +442,12 @@ function UpdateModal({ salon, ar, onClose, onSaved, onError }) {
 function WhatsAppModal({ salon, me, ar, templates, onClose }) {
   const wa = waNumber(salon.phone);
   const fill = (body) => (body || '').replaceAll('{me}', me.name || '');
-  // فتح تطبيق واتساب مباشرة عبر رابط التطبيق (whatsapp://) — يتجاوز صفحة
-  // "Welcome to WhatsApp" التي يعرضها رابط wa.me في المتصفّح.
-  const openChat = (body) => {
-    const q = body ? `&text=${encodeURIComponent(fill(body))}` : '';
-    window.location.href = `whatsapp://send?phone=${wa}${q}`;
-    onClose();
+  // رابط واتساب الرسمي (wa.me). نستخدمه كرابط <a> تُضغط مباشرة — وهذه أفضل
+  // طريقة ليفتح iOS التطبيق فوراً عبر الـ Universal Link بدون تأكيد "Open".
+  // (استخدام window.open/تبويب جديد هو ما كان يعرض صفحة "Welcome to WhatsApp".)
+  const waUrl = (body) => {
+    const q = body ? `?text=${encodeURIComponent(fill(body))}` : '';
+    return `https://wa.me/${wa}${q}`;
   };
 
   return (
@@ -457,22 +457,24 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
       ) : (
         <div className="space-y-2 max-h-[50vh] overflow-y-auto">
           {templates.map((tpl) => (
-            <button
+            <a
               key={tpl.id}
-              onClick={() => openChat(tpl.body)}
-              className={`w-full bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition ${ar ? 'text-right' : 'text-left'}`}
+              href={waUrl(tpl.body)}
+              onClick={onClose}
+              className={`block w-full bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition ${ar ? 'text-right' : 'text-left'}`}
             >
               {fill(tpl.body)}
-            </button>
+            </a>
           ))}
         </div>
       )}
-      <button
-        onClick={() => openChat('')}
+      <a
+        href={waUrl('')}
+        onClick={onClose}
         className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2"
       >
         <MessageCircle className="w-4 h-4" /> {ar ? 'فتح المحادثة بدون قالب' : 'Open chat without a template'}
-      </button>
+      </a>
     </ModalShell>
   );
 }
