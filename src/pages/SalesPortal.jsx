@@ -282,75 +282,55 @@ function SalonCard({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
     ? `https://www.google.com/maps/search/?api=1&query=${salon.lat},${salon.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([salon.name, salon.district, salon.city].filter(Boolean).join(' '))}`;
 
+  const location = [salon.city, salon.district].filter(Boolean).join(' · ');
+
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+    <div className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-3.5 transition-colors">
+      {/* الترويسة: الاسم + الحالة */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
-          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-            <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> {salon.rating || 0}</span>
-            <span>{salon.reviews_count || 0} {ar ? 'مراجعة' : 'reviews'}</span>
-            <span>{typeLabel(salon.type, ar)}</span>
+          <h3 className="font-bold text-white text-[15px] leading-tight truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1 truncate">
+            <span className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-400" />{salon.rating || 0}</span>
+            <span className="text-slate-600">·</span>
+            <span>{salon.reviews_count || 0} {ar ? 'مراجعة' : 'rev'}</span>
+            {location && <><span className="text-slate-600">·</span>
+              <span className="flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />{location}</span></>}
           </div>
         </div>
-        <span className={`text-[11px] text-white px-2 py-1 rounded-full ${statusColor(salon.status)}`}>
+        <span className={`text-[10px] text-white px-2 py-0.5 rounded-full flex-shrink-0 ${statusColor(salon.status)}`}>
           {statusLabel(salon.status, ar)}
         </span>
       </div>
 
-      <div className="text-sm text-slate-300 flex items-center gap-1">
-        <MapPin className="w-3.5 h-3.5 text-slate-500" />
-        {[salon.city, salon.district].filter(Boolean).join(' · ') || (ar ? 'موقع غير محدد' : 'Location not set')}
-      </div>
-
-      {salon.tags?.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {salon.tags.map((tag, i) => (
-            <span key={i} className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">{tag}</span>
-          ))}
-        </div>
-      )}
-
-      {/* شارة الملكية */}
-      {ownedByOther && (
-        <div className="flex items-center gap-1.5 text-[12px] text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded-lg px-2.5 py-1.5">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {ar
-            ? <>سبق التواصل من قبل: {salon.owner_name} · {shortDate(salon.last_contact_date, ar)}</>
-            : <>Already contacted by: {salon.owner_name} · {shortDate(salon.last_contact_date, ar)}</>}
-        </div>
-      )}
-      {ownedByMe && (
-        <div className="flex items-center justify-between gap-1.5 text-[12px] text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded-lg px-2.5 py-1.5">
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            {ar ? 'بمتابعتك أنت' : 'Followed up by you'}
-          </span>
-          {hasContact && (
-            <span className="flex items-center gap-1 text-emerald-400/90" title={shortDateTime(salon.last_contact_date, ar)}>
-              <Clock className="w-3.5 h-3.5" />
-              {ar ? 'آخر تواصل' : 'Last contact'}: {timeAgo(salon.last_contact_date, ar)}
+      {/* رقائق الحالة: الملكية + المتابعة (مدمجة) */}
+      {(ownedByOther || ownedByMe || fuState === 'due' || fuState === 'overdue') && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {ownedByOther && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-md px-1.5 py-0.5">
+              <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {salon.owner_name} · {shortDate(salon.last_contact_date, ar)}
+            </span>
+          )}
+          {ownedByMe && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-md px-1.5 py-0.5" title={shortDateTime(salon.last_contact_date, ar)}>
+              <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> {ar ? 'بمتابعتك' : 'Mine'}{hasContact ? ` · ${timeAgo(salon.last_contact_date, ar)}` : ''}
+            </span>
+          )}
+          {(fuState === 'due' || fuState === 'overdue') && (
+            <span className={`inline-flex items-center gap-1 text-[10px] rounded-md px-1.5 py-0.5 border ${
+              fuState === 'overdue' ? 'text-rose-300 bg-rose-500/10 border-rose-500/25' : 'text-amber-200 bg-amber-500/10 border-amber-500/25'
+            }`}>
+              <CalendarClock className="w-3 h-3 flex-shrink-0" />
+              {fuState === 'overdue'
+                ? (ar ? `متابعة متأخّرة · ${shortDate(salon.follow_up, ar)}` : `overdue · ${shortDate(salon.follow_up, ar)}`)
+                : (ar ? 'متابعة اليوم' : 'due today')}
             </span>
           )}
         </div>
       )}
 
-      {/* تنبيه موعد المتابعة */}
-      {(fuState === 'due' || fuState === 'overdue') && (
-        <div className={`flex items-center gap-1.5 text-[12px] rounded-lg px-2.5 py-1.5 border ${
-          fuState === 'overdue'
-            ? 'text-rose-300 bg-rose-950/40 border-rose-800/60'
-            : 'text-amber-200 bg-amber-950/40 border-amber-700/60'
-        }`}>
-          <CalendarClock className="w-4 h-4 flex-shrink-0" />
-          {fuState === 'overdue'
-            ? (ar ? `متابعة متأخّرة — كانت ${shortDate(salon.follow_up, ar)}` : `Follow-up overdue — was ${shortDate(salon.follow_up, ar)}`)
-            : (ar ? 'متابعة اليوم' : 'Follow-up due today')}
-        </div>
-      )}
-
-      {/* الأزرار */}
-      <div className="grid grid-cols-5 gap-2 pt-1">
+      {/* الأزرار — شريط مدمج */}
+      <div className="grid grid-cols-5 gap-1.5 mt-3">
         <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-600" />
         <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-600" disabled={!wa} />
         <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-600" external />
@@ -362,7 +342,7 @@ function SalonCard({ salon, me, ar, onUpdate, onWhatsApp, onLog }) {
 }
 
 function ActionBtn({ href, onClick, icon: Icon, label, color, external, disabled }) {
-  const cls = `flex flex-col items-center gap-1 py-2 rounded-lg bg-slate-800 text-slate-300 transition text-xs ${disabled ? 'opacity-40 cursor-not-allowed' : color + ' hover:text-white'}`;
+  const cls = `flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg bg-slate-800/70 text-slate-400 transition text-[10px] font-medium ${disabled ? 'opacity-40 cursor-not-allowed' : color + ' hover:text-white'}`;
   if (href && !disabled) {
     return (
       <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className={cls}>
