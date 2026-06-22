@@ -35,7 +35,9 @@ async function req(method, path, body, isForm = false) {
     body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
   });
 
-  if (res.status === 401) {
+  // 401 على الدخول = بيانات اعتماد خاطئة → نعرض رسالة الخادم الحقيقية.
+  // 401 على أي مسار آخر = جلسة منتهية → نمسحها ونطلب الدخول من جديد.
+  if (res.status === 401 && path !== '/login') {
     clearSession();
     throw new Error('انتهت الجلسة. الرجاء تسجيل الدخول من جديد.');
   }
