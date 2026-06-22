@@ -116,9 +116,8 @@ export default function SalesPortal({ language }) {
   };
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
-  const isSuper = user.role === 'super_admin';
 
-  // حذف صالون (سوبر أدمن فقط) — مع تأكيد، ثم إزالته من القائمة وتحديث الإحصائيات.
+  // حذف صالون (للمدير فأعلى) — مع تأكيد، ثم إزالته من القائمة وتحديث الإحصائيات.
   const handleDelete = async (salon) => {
     if (!window.confirm(ar ? `حذف «${salon.name || 'هذا الصالون'}» نهائياً؟ لا يمكن التراجع.` : `Delete "${salon.name}" permanently? This cannot be undone.`)) return;
     try {
@@ -236,7 +235,7 @@ export default function SalesPortal({ language }) {
                   onUpdate={() => setEditing(s)}
                   onWhatsApp={() => setWaSalon(s)}
                   onLog={() => setLogSalon(s)}
-                  onDelete={isSuper ? () => handleDelete(s) : undefined}
+                  onDelete={isAdmin ? () => handleDelete(s) : undefined}
                 />
               ))}
             </div>
