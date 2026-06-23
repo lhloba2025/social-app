@@ -8,7 +8,7 @@ import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
-  Paperclip, FileText, Image as ImageIcon,
+  Paperclip, FileText, Image as ImageIcon, Share2,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -258,13 +258,30 @@ function MembersTab({ user, ar, showToast }) {
     catch (e) { showToast(e.message, 'err'); }
   };
 
+  // مشاركة رابط البوابة مع المناديب الجدد (مشاركة أصلية، أو نسخ كبديل).
+  const shareLink = async () => {
+    const url = `${window.location.origin}/SalesPortal`;
+    const text = ar
+      ? `مرحباً 👋 هذا رابط بوابة فريق مبيعات هوفيرا:\n${url}\n\nاطلب اسم المستخدم وكلمة المرور من المدير. تقدر تثبّتها كتطبيق: شارك ⬆️ ← «إضافة إلى الشاشة الرئيسية».`
+      : `Hi 👋 Hovera Sales Team Portal:\n${url}\n\nAsk your manager for your username & password. You can install it as an app: Share ⬆️ → "Add to Home Screen".`;
+    try {
+      if (navigator.share) await navigator.share({ title: ar ? 'بوابة هوفيرا للمبيعات' : 'Hovera Sales Portal', text, url });
+      else { await navigator.clipboard.writeText(`${text}`); showToast(ar ? 'تم نسخ الرابط والتعليمات' : 'Link & instructions copied'); }
+    } catch { /* أُلغيت المشاركة */ }
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <h2 className="font-bold text-lg">{ar ? 'أعضاء الفريق' : 'Team Members'}</h2>
-        <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">
-          <Plus className="w-4 h-4" /> {ar ? 'إضافة عضو' : 'Add Member'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={shareLink} className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm transition">
+            <Share2 className="w-4 h-4" /> {ar ? 'مشاركة الرابط' : 'Share Link'}
+          </button>
+          <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">
+            <Plus className="w-4 h-4" /> {ar ? 'إضافة عضو' : 'Add Member'}
+          </button>
+        </div>
       </div>
 
       {loading ? (

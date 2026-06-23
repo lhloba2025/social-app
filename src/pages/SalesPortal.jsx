@@ -124,6 +124,16 @@ export default function SalesPortal({ language }) {
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
 
+  // تثبيت التواصل: عند فتح واتساب أو الاتصال يصير الصالون باسم المندوب فوراً.
+  const claimSalon = (salon, channel) => {
+    salesApi.contactSalon(salon.id, channel)
+      .then((updated) => {
+        setSalons((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        salesApi.salonStats().then(setStats).catch(() => {});
+      })
+      .catch(() => {});
+  };
+
   // حذف صالون (للمدير فأعلى) — مع تأكيد، ثم إزالته من القائمة وتحديث الإحصائيات.
   const handleDelete = async (salon) => {
     if (!window.confirm(ar ? `حذف «${salon.name || 'هذا الصالون'}» نهائياً؟ لا يمكن التراجع.` : `Delete "${salon.name}" permanently? This cannot be undone.`)) return;
@@ -254,6 +264,7 @@ export default function SalesPortal({ language }) {
                   onUpdate={() => setEditing(s)}
                   onWhatsApp={() => setWaSalon(s)}
                   onLog={() => setLogSalon(s)}
+                  onContact={(channel) => claimSalon(s, channel)}
                   onDelete={isAdmin ? () => handleDelete(s) : undefined}
                 />
               ))}
@@ -295,6 +306,7 @@ export default function SalesPortal({ language }) {
           me={user}
           ar={ar}
           templates={templates}
+          onContact={() => claimSalon(waSalon, 'whatsapp')}
           onClose={() => setWaSalon(null)}
         />
       )}
@@ -369,7 +381,7 @@ function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   );
 }
 
-function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onDelete }) {
+function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDelete }) {
   const ownedByMe = salon.owner_id && salon.owner_id === me.id;
   const owner = salon.owner_name;
   const wa = waNumber(salon.phone);
@@ -422,7 +434,7 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onDelete }) {
       {/* الإجراءات */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
         <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-500/15 hover:text-green-300" disabled={!wa} />
-        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-500/15 hover:text-blue-300" />
+        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} onClick={() => onContact?.('call')} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-500/15 hover:text-blue-300" />
         <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-500/15 hover:text-indigo-300" />
         <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-500/15 hover:text-rose-300" external className="hidden sm:flex" />
         <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-700 hover:text-white" className="hidden sm:flex" />
@@ -436,7 +448,7 @@ function ActionBtn({ href, onClick, icon: Icon, label, color, external, disabled
   const cls = `flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 transition ${disabled ? 'opacity-30 cursor-not-allowed' : color} ${className}`;
   if (href && !disabled) {
     return (
-      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className={cls} title={label} aria-label={label}>
+      <a href={href} onClick={onClick} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className={cls} title={label} aria-label={label}>
         <Icon className="w-4 h-4" />
       </a>
     );
@@ -510,7 +522,7 @@ function UpdateModal({ salon, ar, onClose, onSaved, onError }) {
   );
 }
 
-function WhatsAppModal({ salon, me, ar, templates, onClose }) {
+function WhatsAppModal({ salon, me, ar, templates, onContact, onClose }) {
   const wa = waNumber(salon.phone);
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const fill = (body) => (body || '').replaceAll('{me}', me.name || '');
@@ -548,7 +560,7 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
             <div key={tpl.id} className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
               <a
                 href={waUrl(tpl)}
-                onClick={onClose}
+                onClick={() => { onContact?.(); onClose(); }}
                 className={`block p-3 text-sm text-slate-200 hover:bg-green-900/40 transition ${ar ? 'text-right' : 'text-left'}`}
               >
                 {fill(tpl.body)}
@@ -561,7 +573,7 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
               </a>
               {tpl.file_url && (
                 <button
-                  onClick={() => shareFile(tpl)}
+                  onClick={() => { onContact?.(); shareFile(tpl); }}
                   className="w-full flex items-center justify-center gap-1.5 text-[12px] py-1.5 bg-slate-900/60 hover:bg-green-900/40 text-slate-300 border-t border-slate-700 transition"
                 >
                   <Paperclip className="w-3.5 h-3.5" /> {ar ? 'إرسال الملف نفسه (إرفاق)' : 'Send the file itself (attach)'}
@@ -573,7 +585,7 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
       )}
       <a
         href={waUrl(null)}
-        onClick={onClose}
+        onClick={() => { onContact?.(); onClose(); }}
         className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2"
       >
         <MessageCircle className="w-4 h-4" /> {ar ? 'فتح المحادثة بدون قالب' : 'Open chat without a template'}

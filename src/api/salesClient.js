@@ -75,6 +75,7 @@ export const salesApi = {
   salonFilters() { return req('GET', '/salons/filters'); },
   addSalon(data) { return req('POST', '/salons', data); },
   updateSalon(id, data) { return req('PUT', `/salons/${id}`, data); },
+  contactSalon(id, channel) { return req('POST', `/salons/${id}/contact`, { channel }); },
   deleteSalon(id) { return req('DELETE', `/salons/${id}`); },
   salonLog(id) { return req('GET', `/salons/${id}/log`); },
 

@@ -311,6 +311,26 @@ export function mountSalesPortal(app, ctx) {
     res.status(201).json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [id])));
   });
 
+  // تثبيت التواصل: بمجرد ما يتواصل المندوب (واتساب/اتصال) يصير الصالون باسمه
+  // (إن لم يكن له مالك)، ويُحدَّث آخر تواصل + يُسجَّل في السجل.
+  router.post('/salons/:id/contact', requireRole('agent'), (req, res) => {
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    const me = req.salesUser;
+    const channel = (req.body && req.body.channel) || '';
+    const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
+    if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
+    if ((salon.status || 'new') === 'new') updates.status = 'contacted';
+    const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+    run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
+    const note = channel === 'call' ? 'اتصال هاتفي' : channel === 'whatsapp' ? 'تواصل واتساب' : 'تواصل';
+    run(
+      `INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+      [randomUUID(), req.params.id, me.id, me.name, updates.status || salon.status || '', note]
+    );
+    res.json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id])));
+  });
+
   // تحديث حالة عميل + تسجيل في سجل التواصل + تثبيت الملكية لأول متواصل.
   router.put('/salons/:id', requireRole('agent'), (req, res) => {
     const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
