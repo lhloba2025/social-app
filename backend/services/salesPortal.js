@@ -13,6 +13,8 @@ import crypto from 'crypto';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
 import * as XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
 
 // ترتيب الأدوار — كل دور يرث صلاحيات ما دونه.
 const ROLE_RANK = { agent: 1, admin: 2, super_admin: 3 };
@@ -54,7 +56,14 @@ const DEFAULT_WA_TEMPLATES = [
 ];
 
 export function mountSalesPortal(app, ctx) {
-  const { queryAll, queryOne, run } = ctx;
+  const { queryAll, queryOne, run, uploadsDir } = ctx;
+  // مجلد ملفات القوالب (صور/PDF) — يُقدَّم عبر /uploads/sales/*.
+  const tplDir = uploadsDir ? path.join(uploadsDir, 'sales') : null;
+  if (tplDir) { try { fs.mkdirSync(tplDir, { recursive: true }); } catch { /* موجود */ } }
+  const removeTplFile = (fileUrl) => {
+    if (!fileUrl || !uploadsDir) return;
+    try { fs.unlinkSync(path.join(uploadsDir, fileUrl.replace(/^\/uploads\//, ''))); } catch { /* تجاهل */ }
+  };
 
   // ── المخطط ────────────────────────────────────────────────────────────────
   run(`
@@ -122,6 +131,10 @@ export function mountSalesPortal(app, ctx) {
       created_date TEXT DEFAULT (datetime('now'))
     );
   `);
+  // مرفقات القوالب (صورة/PDF) — إضافة الأعمدة للتركيبات القديمة.
+  for (const col of ['file_url TEXT', 'file_name TEXT', 'file_type TEXT']) {
+    try { run(`ALTER TABLE wa_templates ADD COLUMN ${col}`); } catch { /* العمود موجود */ }
+  }
 
   // ── زرع حساب السوبر أدمن من متغيّرات البيئة (Railway) ────────────────────────
   const seedUser = process.env.SALES_ADMIN_USER;
@@ -478,7 +491,38 @@ export function mountSalesPortal(app, ctx) {
   });
 
   router.delete('/templates/:id', requireRole('admin'), (req, res) => {
+    const tpl = queryOne(`SELECT file_url FROM wa_templates WHERE id = ?`, [req.params.id]);
+    removeTplFile(tpl?.file_url);
     run(`DELETE FROM wa_templates WHERE id = ?`, [req.params.id]);
+    res.json({ success: true });
+  });
+
+  // رفع/استبدال ملف القالب (صورة أو PDF) — للمدير فأعلى.
+  router.post('/templates/:id/file', requireRole('admin'), upload.single('file'), (req, res) => {
+    if (!tplDir) return res.status(500).json({ error: 'تخزين الملفات غير مهيّأ' });
+    const tpl = queryOne(`SELECT * FROM wa_templates WHERE id = ?`, [req.params.id]);
+    if (!tpl) return res.status(404).json({ error: 'القالب غير موجود' });
+    if (!req.file) return res.status(400).json({ error: 'لم يُرفع ملف' });
+    const mime = req.file.mimetype || '';
+    const isImage = mime.startsWith('image/');
+    const isPdf = mime === 'application/pdf';
+    if (!isImage && !isPdf) return res.status(400).json({ error: 'يُسمح بصورة أو ملف PDF فقط' });
+    removeTplFile(tpl.file_url);
+    const ext = isPdf ? 'pdf' : (mime.split('/')[1] || 'img').replace(/[^a-z0-9]/gi, '');
+    const fname = `tpl-${req.params.id}-${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(tplDir, fname), req.file.buffer);
+    const fileUrl = `/uploads/sales/${fname}`;
+    run(`UPDATE wa_templates SET file_url = ?, file_name = ?, file_type = ? WHERE id = ?`,
+      [fileUrl, req.file.originalname || fname, isPdf ? 'pdf' : 'image', req.params.id]);
+    res.json(queryOne(`SELECT * FROM wa_templates WHERE id = ?`, [req.params.id]));
+  });
+
+  // حذف ملف القالب.
+  router.delete('/templates/:id/file', requireRole('admin'), (req, res) => {
+    const tpl = queryOne(`SELECT file_url FROM wa_templates WHERE id = ?`, [req.params.id]);
+    if (!tpl) return res.status(404).json({ error: 'القالب غير موجود' });
+    removeTplFile(tpl.file_url);
+    run(`UPDATE wa_templates SET file_url = NULL, file_name = NULL, file_type = NULL WHERE id = ?`, [req.params.id]);
     res.json({ success: true });
   });
 

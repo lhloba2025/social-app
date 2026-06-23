@@ -8,6 +8,7 @@ import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
+  Paperclip, FileText, Image as ImageIcon,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -379,6 +380,15 @@ function TemplatesTab({ ar, showToast }) {
     try { await salesApi.deleteTemplate(id); showToast(ar ? 'تم حذف القالب' : 'Template deleted'); load(); }
     catch (e) { showToast(e.message, 'err'); }
   };
+  const attachFile = async (id, file) => {
+    if (!file) return;
+    try { await salesApi.uploadTemplateFile(id, file); showToast(ar ? 'تم إرفاق الملف' : 'File attached'); load(); }
+    catch (e) { showToast(e.message, 'err'); }
+  };
+  const removeFile = async (id) => {
+    try { await salesApi.deleteTemplateFile(id); showToast(ar ? 'تم حذف الملف' : 'File removed'); load(); }
+    catch (e) { showToast(e.message, 'err'); }
+  };
   const startEdit = (tpl) => { setEditingId(tpl.id); setEditBody(tpl.body); };
   const saveEdit = async (id) => {
     if (!editBody.trim()) return;
@@ -438,11 +448,28 @@ function TemplatesTab({ ar, showToast }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap flex-1">{tpl.body}</p>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => startEdit(tpl)} className="text-slate-500 hover:text-indigo-400" title={ar ? 'تعديل' : 'Edit'}><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'حذف' : 'Delete'}><Trash2 className="w-4 h-4" /></button>
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm text-slate-200 whitespace-pre-wrap flex-1">{tpl.body}</p>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => startEdit(tpl)} className="text-slate-500 hover:text-indigo-400" title={ar ? 'تعديل' : 'Edit'}><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'حذف' : 'Delete'}><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                  {/* مرفق القالب (صورة/PDF) */}
+                  <div className="flex items-center gap-2 mt-2">
+                    {tpl.file_url ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-300">
+                        {tpl.file_type === 'pdf' ? <FileText className="w-3.5 h-3.5 text-rose-400" /> : <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />}
+                        <a href={tpl.file_url} target="_blank" rel="noreferrer" className="hover:text-white underline max-w-[12rem] truncate">{tpl.file_name || (ar ? 'ملف' : 'file')}</a>
+                        <button onClick={() => removeFile(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'إزالة الملف' : 'Remove file'}><X className="w-3.5 h-3.5" /></button>
+                      </span>
+                    ) : (
+                      <label className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-2 py-1 cursor-pointer transition">
+                        <Paperclip className="w-3.5 h-3.5" /> {ar ? 'إرفاق صورة / PDF' : 'Attach image / PDF'}
+                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachFile(tpl.id, f); e.target.value = ''; }} />
+                      </label>
+                    )}
                   </div>
                 </div>
               )}

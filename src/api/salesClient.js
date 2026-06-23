@@ -92,6 +92,12 @@ export const salesApi = {
   updateTemplate(id, body) { return req('PUT', `/templates/${id}`, { body }); },
   deleteTemplate(id) { return req('DELETE', `/templates/${id}`); },
   seedDefaultTemplates() { return req('POST', '/templates/seed-defaults'); },
+  uploadTemplateFile(id, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return req('POST', `/templates/${id}/file`, form, true);
+  },
+  deleteTemplateFile(id) { return req('DELETE', `/templates/${id}/file`); },
 
   // البيانات والنُّسخ
   async backup() {

@@ -684,7 +684,7 @@ app.use('/api/posts', postsRouter);
 // Self-contained module: its own tables (sales_users, sales_sessions, salons,
 // contact_log, wa_templates) + role-based auth enforced on the server. Mounted
 // before the SPA catch-all so /api/sales/* resolves to the API, not index.html.
-mountSalesPortal(app, { queryAll, queryOne, run });
+mountSalesPortal(app, { queryAll, queryOne, run, uploadsDir });
 
 // ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {

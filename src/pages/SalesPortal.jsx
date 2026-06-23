@@ -11,6 +11,7 @@ import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
   Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus, Home, Languages,
+  Paperclip, FileText, Image as ImageIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -511,13 +512,30 @@ function UpdateModal({ salon, ar, onClose, onSaved, onError }) {
 
 function WhatsAppModal({ salon, me, ar, templates, onClose }) {
   const wa = waNumber(salon.phone);
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const fill = (body) => (body || '').replaceAll('{me}', me.name || '');
-  // رابط واتساب الرسمي (wa.me). نستخدمه كرابط <a> تُضغط مباشرة — وهذه أفضل
-  // طريقة ليفتح iOS التطبيق فوراً عبر الـ Universal Link بدون تأكيد "Open".
-  // (استخدام window.open/تبويب جديد هو ما كان يعرض صفحة "Welcome to WhatsApp".)
-  const waUrl = (body) => {
-    const q = body ? `?text=${encodeURIComponent(fill(body))}` : '';
-    return `https://wa.me/${wa}${q}`;
+  // نص الرسالة + رابط الملف المرفق (إن وُجد) — العميلة تضغط الرابط لتشاهده.
+  const buildText = (tpl) => fill(tpl.body) + (tpl.file_url ? `\n${origin}${tpl.file_url}` : '');
+  // رابط واتساب الرسمي (wa.me) كرابط <a> يُضغط مباشرة (يفتح التطبيق فوراً على iOS).
+  const waUrl = (tpl) => {
+    const text = tpl ? buildText(tpl) : '';
+    return `https://wa.me/${wa}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+  };
+
+  // مشاركة الملف نفسه عبر لوحة مشاركة الجوال (إرفاق فعلي داخل واتساب).
+  const shareFile = async (tpl) => {
+    try {
+      const res = await fetch(tpl.file_url);
+      const blob = await res.blob();
+      const file = new File([blob], tpl.file_name || 'file', { type: blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: fill(tpl.body) });
+      } else {
+        window.open(tpl.file_url, '_blank');
+      }
+    } catch {
+      window.open(tpl.file_url, '_blank');
+    }
   };
 
   return (
@@ -527,19 +545,34 @@ function WhatsAppModal({ salon, me, ar, templates, onClose }) {
       ) : (
         <div className="space-y-2 max-h-[50vh] overflow-y-auto">
           {templates.map((tpl) => (
-            <a
-              key={tpl.id}
-              href={waUrl(tpl.body)}
-              onClick={onClose}
-              className={`block w-full bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-700 rounded-lg p-3 text-sm text-slate-200 transition ${ar ? 'text-right' : 'text-left'}`}
-            >
-              {fill(tpl.body)}
-            </a>
+            <div key={tpl.id} className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+              <a
+                href={waUrl(tpl)}
+                onClick={onClose}
+                className={`block p-3 text-sm text-slate-200 hover:bg-green-900/40 transition ${ar ? 'text-right' : 'text-left'}`}
+              >
+                {fill(tpl.body)}
+                {tpl.file_url && (
+                  <span className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-400">
+                    {tpl.file_type === 'pdf' ? <FileText className="w-3.5 h-3.5 text-rose-400" /> : <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />}
+                    {ar ? 'مرفق: ' : 'attachment: '}{tpl.file_name}
+                  </span>
+                )}
+              </a>
+              {tpl.file_url && (
+                <button
+                  onClick={() => shareFile(tpl)}
+                  className="w-full flex items-center justify-center gap-1.5 text-[12px] py-1.5 bg-slate-900/60 hover:bg-green-900/40 text-slate-300 border-t border-slate-700 transition"
+                >
+                  <Paperclip className="w-3.5 h-3.5" /> {ar ? 'إرسال الملف نفسه (إرفاق)' : 'Send the file itself (attach)'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
       <a
-        href={waUrl('')}
+        href={waUrl(null)}
         onClick={onClose}
         className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg py-2.5 flex items-center justify-center gap-2"
       >
