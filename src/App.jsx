@@ -2,32 +2,38 @@ import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { pagesConfig } from './pages.config'
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import DesignStudio from './pages/DesignStudio';
-import DesignLibraryPage from './pages/DesignLibraryPage';
-import AccountsPage from './pages/AccountsPage';
-import Dashboard from './pages/Dashboard';
-import GreetingCardsPage from './pages/GreetingCardsPage';
-import PostComposer from './pages/PostComposer';
-import PostsManager from './pages/PostsManager';
-import ContentCalendar from './pages/ContentCalendar';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import Terms from './pages/Terms';
-import ImageGenPage from './pages/ImageGenPage';
-import TeamLinks from './pages/TeamLinks';
-import WhatsappOutreach from './pages/WhatsappOutreach';
-import Marketing from './pages/Marketing';
-import EngagementPage from './pages/EngagementPage';
-import AccountingPage from './pages/AccountingPage';
-import SalesPortal from './pages/SalesPortal';
-import SalesPortalAdmin from './pages/SalesPortalAdmin';
+// Route pages are code-split (lazy) so the initial bundle stays small —
+// e.g. sales reps opening /SalesPortal no longer download the whole app.
+const DesignStudio = lazy(() => import('./pages/DesignStudio'));
+const DesignLibraryPage = lazy(() => import('./pages/DesignLibraryPage'));
+const AccountsPage = lazy(() => import('./pages/AccountsPage'));
+const GreetingCardsPage = lazy(() => import('./pages/GreetingCardsPage'));
+const PostComposer = lazy(() => import('./pages/PostComposer'));
+const PostsManager = lazy(() => import('./pages/PostsManager'));
+const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const ImageGenPage = lazy(() => import('./pages/ImageGenPage'));
+const TeamLinks = lazy(() => import('./pages/TeamLinks'));
+const WhatsappOutreach = lazy(() => import('./pages/WhatsappOutreach'));
+const Marketing = lazy(() => import('./pages/Marketing'));
+const EngagementPage = lazy(() => import('./pages/EngagementPage'));
+const AccountingPage = lazy(() => import('./pages/AccountingPage'));
+const SalesPortal = lazy(() => import('./pages/SalesPortal'));
+const SalesPortalAdmin = lazy(() => import('./pages/SalesPortalAdmin'));
 
-const { Pages, Layout, mainPage } = pagesConfig;
-const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const { Pages, Layout } = pagesConfig;
+
+const PageSpinner = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
+    <div className="w-8 h-8 border-4 border-slate-700 border-t-indigo-500 rounded-full animate-spin" />
+  </div>
+);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -100,6 +106,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
+          <Suspense fallback={<PageSpinner />}>
           <Routes>
             {/* Public pages — no login (TikTok/Meta reviewers open these directly) */}
             <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -112,6 +119,7 @@ function App() {
 
             <Route path="*" element={<AuthenticatedApp />} />
           </Routes>
+          </Suspense>
         </Router>
         <Toaster />
       </QueryClientProvider>
