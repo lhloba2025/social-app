@@ -265,8 +265,9 @@ function MembersTab({ user, ar, showToast }) {
       ? `مرحباً 👋 هذا رابط بوابة فريق مبيعات هوفيرا:\n${url}\n\nاطلب اسم المستخدم وكلمة المرور من المدير. تقدر تثبّتها كتطبيق: شارك ⬆️ ← «إضافة إلى الشاشة الرئيسية».`
       : `Hi 👋 Hovera Sales Team Portal:\n${url}\n\nAsk your manager for your username & password. You can install it as an app: Share ⬆️ → "Add to Home Screen".`;
     try {
-      if (navigator.share) await navigator.share({ title: ar ? 'بوابة هوفيرا للمبيعات' : 'Hovera Sales Portal', text, url });
-      else { await navigator.clipboard.writeText(`${text}`); showToast(ar ? 'تم نسخ الرابط والتعليمات' : 'Link & instructions copied'); }
+      // نمرّر النص فقط (الرابط بداخله) — تمرير url منفصلاً يكرّره في بعض التطبيقات.
+      if (navigator.share) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); showToast(ar ? 'تم نسخ الرابط والتعليمات' : 'Link & instructions copied'); }
     } catch { /* أُلغيت المشاركة */ }
   };
 
