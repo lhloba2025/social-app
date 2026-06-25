@@ -6,10 +6,10 @@ export default function PrivacyPolicy() {
   return (
     <div dir="rtl" style={{ minHeight: "100vh", background: "#0f172a", color: "#e2e8f0", padding: "32px 16px" }}>
       <div style={{ maxWidth: 820, margin: "0 auto", lineHeight: 1.9, fontFamily: "Tajawal, system-ui, sans-serif" }}>
-        <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 800 }}>سياسة الخصوصية — هوفيرا (Hovera)</h1>
+        <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 800 }}>سياسة الخصوصية — Hovera social App</h1>
         <p style={{ color: "#94a3b8" }}>آخر تحديث: مايو 2026</p>
 
-        <p>تطبيق <b>هوفيرا (Hovera)</b> لإدارة وجدولة محتوى السوشيال ميديا يساعد أصحاب الصالونات والأعمال على تصميم المنشورات وجدولتها ونشرها على حساباتهم في منصات التواصل. توضّح هذه السياسة البيانات التي نصل إليها وكيف نستخدمها.</p>
+        <p>تطبيق <b>Hovera social App</b> لإدارة وجدولة محتوى السوشيال ميديا يساعد أصحاب الصالونات والأعمال على تصميم المنشورات وجدولتها ونشرها على حساباتهم في منصات التواصل. توضّح هذه السياسة البيانات التي نصل إليها وكيف نستخدمها.</p>
 
         <h2 style={{ color: "#fff", marginTop: 24 }}>١. البيانات التي نصل إليها</h2>
         <p>عند ربطك لحساباتك على <b>انستقرام / فيسبوك / تيك توك</b> عبر تسجيل الدخول الرسمي (OAuth)، نطلب صلاحيات محدّدة لـ:</p>
@@ -40,7 +40,7 @@ export default function PrivacyPolicy() {
         <hr style={{ borderColor: "#334155", margin: "28px 0" }} />
         <h2 style={{ color: "#fff" }}>Privacy Policy (English summary)</h2>
         <p style={{ direction: "ltr", textAlign: "left" }}>
-          Hovera is a social media management tool for salons and businesses. When you connect your Instagram,
+          Hovera social App is a social media management tool for salons and businesses. When you connect your Instagram,
           Facebook, or TikTok account via official OAuth, we request permission only to read your basic public
           profile, list your pages/business accounts, and publish the content you create on your behalf. We do not
           access private messages or passwords, we never sell your data, and access tokens are used solely to perform

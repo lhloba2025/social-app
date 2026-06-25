@@ -97,6 +97,17 @@ export default function Sidebar({ language, onLanguageChange }) {
         })}
       </nav>
 
+      {/* Legal links (open the canonical server-rendered pages) */}
+      {!collapsed && (
+        <div className="px-3.5 pt-2 pb-0.5 flex items-center gap-2 text-[11px] text-white/55">
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">{isRtl ? "الخصوصية" : "Privacy"}</a>
+          <span className="text-white/30">·</span>
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">{isRtl ? "الشروط" : "Terms"}</a>
+          <span className="text-white/30">·</span>
+          <a href="/about" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">{isRtl ? "عن التطبيق" : "About"}</a>
+        </div>
+      )}
+
       {/* Language Toggle */}
       <button
         onClick={toggleLanguage}
