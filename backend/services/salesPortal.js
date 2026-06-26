@@ -517,23 +517,26 @@ export function mountSalesPortal(app, ctx) {
     res.json({ success: true });
   });
 
-  // رفع/استبدال ملف القالب (صورة أو PDF) — للمدير فأعلى.
+  // رفع/استبدال ملف القالب (صورة أو PDF أو HTML) — للمدير فأعلى.
   router.post('/templates/:id/file', requireRole('admin'), upload.single('file'), (req, res) => {
     if (!tplDir) return res.status(500).json({ error: 'تخزين الملفات غير مهيّأ' });
     const tpl = queryOne(`SELECT * FROM wa_templates WHERE id = ?`, [req.params.id]);
     if (!tpl) return res.status(404).json({ error: 'القالب غير موجود' });
     if (!req.file) return res.status(400).json({ error: 'لم يُرفع ملف' });
     const mime = req.file.mimetype || '';
+    const name = (req.file.originalname || '').toLowerCase();
     const isImage = mime.startsWith('image/');
-    const isPdf = mime === 'application/pdf';
-    if (!isImage && !isPdf) return res.status(400).json({ error: 'يُسمح بصورة أو ملف PDF فقط' });
+    const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
+    const isHtml = mime === 'text/html' || name.endsWith('.html') || name.endsWith('.htm');
+    if (!isImage && !isPdf && !isHtml) return res.status(400).json({ error: 'يُسمح بصورة أو PDF أو HTML فقط' });
     removeTplFile(tpl.file_url);
-    const ext = isPdf ? 'pdf' : (mime.split('/')[1] || 'img').replace(/[^a-z0-9]/gi, '');
+    const fileType = isPdf ? 'pdf' : isHtml ? 'html' : 'image';
+    const ext = isPdf ? 'pdf' : isHtml ? 'html' : (mime.split('/')[1] || 'img').replace(/[^a-z0-9]/gi, '');
     const fname = `tpl-${req.params.id}-${Date.now()}.${ext}`;
     fs.writeFileSync(path.join(tplDir, fname), req.file.buffer);
     const fileUrl = `/uploads/sales/${fname}`;
     run(`UPDATE wa_templates SET file_url = ?, file_name = ?, file_type = ? WHERE id = ?`,
-      [fileUrl, req.file.originalname || fname, isPdf ? 'pdf' : 'image', req.params.id]);
+      [fileUrl, req.file.originalname || fname, fileType, req.params.id]);
     res.json(queryOne(`SELECT * FROM wa_templates WHERE id = ?`, [req.params.id]));
   });
 

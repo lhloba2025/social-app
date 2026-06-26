@@ -566,7 +566,7 @@ function WhatsAppModal({ salon, me, ar, templates, onContact, onClose }) {
                 {fill(tpl.body)}
                 {tpl.file_url && (
                   <span className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-400">
-                    {tpl.file_type === 'pdf' ? <FileText className="w-3.5 h-3.5 text-rose-400" /> : <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />}
+                    {tpl.file_type === 'image' ? <ImageIcon className="w-3.5 h-3.5 text-emerald-400" /> : tpl.file_type === 'html' ? <FileText className="w-3.5 h-3.5 text-sky-400" /> : <FileText className="w-3.5 h-3.5 text-rose-400" />}
                     {ar ? 'مرفق: ' : 'attachment: '}{tpl.file_name}
                   </span>
                 )}

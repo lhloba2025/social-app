@@ -85,7 +85,15 @@ console.log(`[boot] data dir: ${DATA_DIR}${process.env.DATA_DIR ? ' (persistent 
 // ---- Static file serving for uploads ----
 const uploadsDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, {
+  setHeaders: (res, filePath) => {
+    // ملفات HTML المرفوعة (قوالب الكاروسيل): تُعزل كـ origin مستقل عبر sandbox
+    // فتشتغل سكربتاتها (السحب/الكاروسيل) لكن لا تصل لكوكيز/تخزين الموقع.
+    if (/\.html?$/i.test(filePath)) {
+      res.setHeader('Content-Security-Policy', 'sandbox allow-scripts allow-popups allow-forms');
+    }
+  },
+}));
 
 // ---- sql.js setup ----
 let SQL;

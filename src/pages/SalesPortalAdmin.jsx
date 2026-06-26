@@ -478,14 +478,14 @@ function TemplatesTab({ ar, showToast }) {
                   <div className="flex items-center gap-2 mt-2">
                     {tpl.file_url ? (
                       <span className="inline-flex items-center gap-1.5 text-[11px] bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-300">
-                        {tpl.file_type === 'pdf' ? <FileText className="w-3.5 h-3.5 text-rose-400" /> : <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />}
+                        {tpl.file_type === 'image' ? <ImageIcon className="w-3.5 h-3.5 text-emerald-400" /> : tpl.file_type === 'html' ? <FileText className="w-3.5 h-3.5 text-sky-400" /> : <FileText className="w-3.5 h-3.5 text-rose-400" />}
                         <a href={tpl.file_url} target="_blank" rel="noreferrer" className="hover:text-white underline max-w-[12rem] truncate">{tpl.file_name || (ar ? 'ملف' : 'file')}</a>
                         <button onClick={() => removeFile(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'إزالة الملف' : 'Remove file'}><X className="w-3.5 h-3.5" /></button>
                       </span>
                     ) : (
                       <label className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-2 py-1 cursor-pointer transition">
-                        <Paperclip className="w-3.5 h-3.5" /> {ar ? 'إرفاق صورة / PDF' : 'Attach image / PDF'}
-                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachFile(tpl.id, f); e.target.value = ''; }} />
+                        <Paperclip className="w-3.5 h-3.5" /> {ar ? 'إرفاق صورة / PDF / HTML' : 'Attach image / PDF / HTML'}
+                        <input type="file" accept="image/*,application/pdf,text/html,.html,.htm" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachFile(tpl.id, f); e.target.value = ''; }} />
                       </label>
                     )}
                   </div>
