@@ -406,6 +406,12 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDel
   const wa = waNumber(salon.phone);
   const fuState = followUpState(salon.follow_up);
   const fuFlag = fuState === 'overdue' || fuState === 'due';
+  // تحذير ناعم: لو الصالون تحت متابعة مندوب آخر، نطلب تأكيداً قبل التواصل (لا يمنع).
+  const ownedByOther = !!salon.owner_id && !ownedByMe;
+  const confirmContact = () => !ownedByOther || window.confirm(
+    ar ? `هذا الصالون يتابعه «${owner || 'مندوب آخر'}». متأكد تبين تكمّل التواصل معه؟`
+       : `This salon is already being followed by "${owner || 'another agent'}". Continue contacting?`
+  );
   const mapUrl = salon.lat != null && salon.lng != null
     ? `https://www.google.com/maps/search/?api=1&query=${salon.lat},${salon.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([salon.name, salon.district, salon.city].filter(Boolean).join(' '))}`;
@@ -452,8 +458,8 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDel
 
       {/* الإجراءات */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
-        <ActionBtn onClick={onWhatsApp} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-500/15 hover:text-green-300" disabled={!wa} />
-        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} onClick={() => onContact?.('call')} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-500/15 hover:text-blue-300" />
+        <ActionBtn onClick={() => { if (confirmContact()) onWhatsApp(); }} icon={MessageCircle} label={ar ? 'واتساب' : 'WhatsApp'} color="hover:bg-green-500/15 hover:text-green-300" disabled={!wa} />
+        <ActionBtn href={salon.phone ? `tel:${salon.phone}` : undefined} onClick={(e) => { if (!confirmContact()) { e?.preventDefault?.(); return; } onContact?.('call'); }} icon={Phone} label={ar ? 'اتصال' : 'Call'} color="hover:bg-blue-500/15 hover:text-blue-300" />
         <ActionBtn onClick={onUpdate} icon={RefreshCw} label={ar ? 'تحديث' : 'Update'} color="hover:bg-indigo-500/15 hover:text-indigo-300" />
         <ActionBtn href={mapUrl} icon={MapPin} label={ar ? 'خريطة' : 'Map'} color="hover:bg-rose-500/15 hover:text-rose-300" external className="hidden sm:flex" />
         <ActionBtn onClick={onLog} icon={History} label={ar ? 'السجل' : 'Log'} color="hover:bg-slate-700 hover:text-white" className="hidden sm:flex" />
