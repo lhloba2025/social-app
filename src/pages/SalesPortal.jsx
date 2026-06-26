@@ -105,6 +105,25 @@ export default function SalesPortal({ language }) {
     }
   }, [user]);
 
+  // تحديث القوالب تلقائياً (لو الأدمن عدّلها والمندوب فاتح الصفحة): عند رجوع
+  // المندوب للتطبيق (focus/visibility). كذلك تُحدَّث عند فتح نافذة واتساب أدناه.
+  useEffect(() => {
+    if (!user) return;
+    const refreshTemplates = () => salesApi.templates().then(setTemplates).catch(() => {});
+    const onVisible = () => { if (!document.hidden) refreshTemplates(); };
+    window.addEventListener('focus', refreshTemplates);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', refreshTemplates);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [user]);
+
+  // كل ما يفتح المندوب نافذة واتساب لصالون، نجلب أحدث القوالب لحظتها.
+  useEffect(() => {
+    if (user && waSalon) salesApi.templates().then(setTemplates).catch(() => {});
+  }, [waSalon, user]);
+
   // إعادة جلب الصوالين عند تغيّر البحث/الفلاتر/الترتيب (مع تأخير بسيط للبحث).
   useEffect(() => {
     if (!user) return;
