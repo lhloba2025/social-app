@@ -618,20 +618,37 @@ export function mountSalesPortal(app, ctx) {
 
   // تصدير إكسل للصوالين.
   router.get('/export', requireRole('super_admin'), (req, res) => {
-    const rows = queryAll(`SELECT * FROM salons`).map((r) => ({
-      'الاسم': r.name,
-      'الجوال': r.phone,
-      'المدينة': r.city,
-      'الحي': r.district,
-      'العنوان': r.address,
-      'التقييم': r.rating,
-      'عدد المراجعات': r.reviews_count,
-      'النوع': r.type === 'booking_platform' ? 'منصة حجز' : 'فرصة',
-      'المنصة': r.platform,
-      'الإحداثيات': r.lat != null && r.lng != null ? `${r.lat},${r.lng}` : '',
-      'المالك': r.owner_name || '',
-      'الحالة': r.status || '',
-    }));
+    // خرائط للنص العربي حتى يطلع الإكسل مفهوماً بدل الأكواد الإنجليزية.
+    const STATUS_AR = {
+      new: 'جديد', contacted: 'تم التواصل', no_answer: 'لا يرد',
+      interested: 'مهتم', not_interested: 'غير مهتم',
+      scheduled_visit: 'موعد زيارة', subscribed: 'مشترك',
+    };
+    const PRIORITY_AR = { low: 'منخفضة', normal: 'عادية', high: 'عالية' };
+    const dateOnly = (v) => (v ? String(v).split(/[ T]/)[0] : '');
+    const rows = queryAll(`SELECT * FROM salons`).map((r) => {
+      // صالون «تم التواصل معه» إذا له تاريخ تواصل أو حالته تجاوزت «جديد».
+      const contacted = Boolean(r.last_contact_date) || (!!r.status && r.status !== 'new');
+      return {
+        'الاسم': r.name,
+        'الجوال': r.phone,
+        'المدينة': r.city,
+        'الحي': r.district,
+        'العنوان': r.address,
+        'التقييم': r.rating,
+        'عدد المراجعات': r.reviews_count,
+        'النوع': r.type === 'booking_platform' ? 'منصة حجز' : 'فرصة',
+        'المنصة': r.platform,
+        'الإحداثيات': r.lat != null && r.lng != null ? `${r.lat},${r.lng}` : '',
+        'تم التواصل؟': contacted ? 'نعم' : 'لا',
+        'الحالة': STATUS_AR[r.status] || (r.status || 'جديد'),
+        'المندوب المسؤول': r.owner_name || '',
+        'آخر تواصل': dateOnly(r.last_contact_date),
+        'موعد المتابعة': dateOnly(r.follow_up),
+        'الأولوية': PRIORITY_AR[r.priority] || '',
+        'ملاحظات': r.note || '',
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'الصوالين');
