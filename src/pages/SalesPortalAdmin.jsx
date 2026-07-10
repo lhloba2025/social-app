@@ -968,6 +968,13 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [preview, setPreview] = useState(null);   // { total, matched, rows }
   const [previewLoading, setPreviewLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [picked, setPicked] = useState({});       // to_number -> name (اختيار يدوي من القائمة)
+  const pickedNums = Object.keys(picked);
+  const togglePick = (r) => setPicked((p) => {
+    const n = { ...p };
+    if (n[r.to_number]) delete n[r.to_number]; else n[r.to_number] = r.name || r.to_number;
+    return n;
+  });
 
   useEffect(() => {
     salesApi.salonFilters().then((f) => setCities(f.cities || [])).catch(() => {});
@@ -995,15 +1002,19 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
     if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
     if (!tpl) return showToast(ar ? 'اختر قالباً' : 'Pick a template', 'err');
     if (tpl.has_image && !imageFile) return showToast(ar ? 'هذا القالب يتطلّب صورة ترويسة' : 'This template needs a header image', 'err');
-    if (mode === 'file' && !numbersFile) return showToast(ar ? 'ارفع ملف الأرقام' : 'Upload numbers file', 'err');
-    if (mode === 'manual' && !numbersText.trim()) return showToast(ar ? 'اكتب رقماً واحداً على الأقل' : 'Enter at least one number', 'err');
+    // لو اختار المستخدم صوالين محددة من القائمة → نرسل لهم فقط، بغضّ النظر عن الوضع.
+    if (!pickedNums.length) {
+      if (mode === 'file' && !numbersFile) return showToast(ar ? 'ارفع ملف الأرقام' : 'Upload numbers file', 'err');
+      if (mode === 'manual' && !numbersText.trim()) return showToast(ar ? 'اكتب رقماً واحداً على الأقل' : 'Enter at least one number', 'err');
+    }
     setBusy(true);
     try {
       const fd = new FormData();
       fd.append('name', name.trim());
       fd.append('template_name', tpl.name);
       fd.append('template_lang', tpl.language || 'ar');
-      if (mode === 'file') fd.append('numbers', numbersFile);
+      if (pickedNums.length) fd.append('numbers_text', pickedNums.join('\n'));
+      else if (mode === 'file') fd.append('numbers', numbersFile);
       else if (mode === 'manual') fd.append('numbers_text', numbersText.trim());
       else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); }
       if (imageFile) fd.append('image', imageFile);
@@ -1065,16 +1076,32 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
               <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-2.5' : 'left-2.5'}`} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={ar ? 'بحث بالاسم أو الرقم…' : 'Search name/number…'} className={`${inputCls} ${ar ? 'pr-8' : 'pl-8'}`} />
             </div>
+            <p className="text-[11px] text-slate-500">{ar ? 'اضغط على أي صالون لاختياره وإرسال الحملة له فقط (يمكن اختيار أكثر من واحد).' : 'Tap a salon to send only to it (multi-select).'}</p>
+            {pickedNums.length > 0 && (
+              <div className="flex items-center justify-between gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-2.5 py-1.5">
+                <span className="text-xs text-indigo-200">{ar ? `المحدّدون: ${pickedNums.length} — سترسل لهم فقط` : `Selected: ${pickedNums.length} — will send to these only`}</span>
+                <button onClick={() => setPicked({})} className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1"><X className="w-3 h-3" /> {ar ? 'مسح' : 'Clear'}</button>
+              </div>
+            )}
             {preview && preview.rows.length > 0 ? (
               <div className="max-h-44 overflow-y-auto divide-y divide-slate-700/50 rounded-lg">
-                {preview.rows.map((r) => (
-                  <div key={r.salon_id} className="flex items-center justify-between gap-2 px-1.5 py-1 text-xs">
-                    <span className="text-slate-200 truncate">{r.name || (ar ? 'بدون اسم' : 'Unnamed')}{r.city ? <span className="text-slate-500"> · {r.city}</span> : null}</span>
-                    <span className="text-slate-400 flex-shrink-0" style={{ direction: 'ltr' }}>{r.to_number}</span>
-                  </div>
-                ))}
+                {preview.rows.map((r) => {
+                  const on = !!picked[r.to_number];
+                  return (
+                    <button
+                      type="button" key={r.to_number} onClick={() => togglePick(r)}
+                      className={`w-full flex items-center justify-between gap-2 px-1.5 py-1.5 text-xs text-start transition ${on ? 'bg-indigo-600/25' : 'hover:bg-slate-700/40'}`}
+                    >
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border ${on ? 'bg-indigo-500 border-indigo-400' : 'border-slate-500'}`}>{on && <Check className="w-2.5 h-2.5 text-white" />}</span>
+                        <span className="text-slate-200 truncate">{r.name || (ar ? 'رقم بدون صالون' : 'No salon')}{r.city ? <span className="text-slate-500"> · {r.city}</span> : null}</span>
+                      </span>
+                      <span className="text-slate-400 flex-shrink-0" style={{ direction: 'ltr' }}>{r.to_number}</span>
+                    </button>
+                  );
+                })}
                 {preview.total > preview.rows.length && !search && (
-                  <div className="text-[11px] text-slate-500 px-1.5 py-1">{ar ? `و${preview.total - preview.rows.length} صالوناً آخر…` : `and ${preview.total - preview.rows.length} more…`}</div>
+                  <div className="text-[11px] text-slate-500 px-1.5 py-1">{ar ? `و${preview.total - preview.rows.length} صالوناً آخر… (ابحث للوصول إليهم)` : `and ${preview.total - preview.rows.length} more… (search to reach them)`}</div>
                 )}
               </div>
             ) : preview && !previewLoading ? (
@@ -1105,7 +1132,10 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
         )}
 
         <button onClick={submit} disabled={busy} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-2">
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />} {ar ? 'إنشاء الحملة (مسودّة)' : 'Create campaign (draft)'}
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          {pickedNums.length
+            ? (ar ? `إنشاء الحملة للمحدّدين (${pickedNums.length})` : `Create for selected (${pickedNums.length})`)
+            : (ar ? 'إنشاء الحملة (مسودّة)' : 'Create campaign (draft)')}
         </button>
         <p className="text-[11px] text-slate-500 text-center">{ar ? 'تُنشأ كمسودّة أولاً — راجع العدد ثم اضغط «بدء الإرسال».' : 'Created as draft — review count then Start.'}</p>
       </div>
