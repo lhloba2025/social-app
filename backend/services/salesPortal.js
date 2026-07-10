@@ -1427,26 +1427,40 @@ export function mountSalesPortal(app, ctx) {
     for (const r of queryAll(`SELECT salon_id, last_read_ts FROM wa_reads WHERE user_id = ?`, [me])) {
       reads.set(r.salon_id, r.last_read_ts || 0);
     }
+    // آخر رد صادر (من النظام) لكل صالون — لمعرفة هل ردّت المندوبة بعد آخر رسالة.
+    const lastOutBySalon = new Map();
+    for (const o of queryAll(`SELECT salon_id, created_date FROM wa_outbound`)) {
+      const ts = Math.floor(new Date(String(o.created_date).replace(' ', 'T') + 'Z').getTime() / 1000) || 0;
+      if (ts > (lastOutBySalon.get(o.salon_id) || 0)) lastOutBySalon.set(o.salon_id, ts);
+    }
     const enriched = mine.map((s) => {
       const key = (s.phone_key || phoneKeyOf(s.phone));
       const inb = key && key.length >= 9 ? inboundByTail.get(key.slice(-9)) : null;
       const lastRead = reads.get(s.id) || 0;
       const unread = inb ? inb.list.filter((ts) => ts > lastRead).length : 0;
+      const lastOut = lastOutBySalon.get(s.id) || 0;
+      const lastIn = inb?.ts || 0;
+      // حالة الانتظار: بانتظار ردّ المندوبة، أو بانتظار رد العميلة، أو لا شيء.
+      let wait_state = 'none';
+      if (lastIn) wait_state = (lastOut >= lastIn) ? 'awaiting_customer' : 'awaiting_rep';
+      else if (s.status === 'replied') wait_state = 'awaiting_rep';
       return {
         ...s,
         last_inbound: inb?.body || null,
-        last_inbound_ts: inb?.ts || null,
+        last_inbound_ts: lastIn || null,
         has_reply: !!inb || s.status === 'replied',
+        rep_replied: lastIn > 0 && lastOut >= lastIn,
+        wait_state,
         unread_count: unread,
       };
     });
-    // غير المقروء أولاً، ثم ردّت (حسب أحدث رسالة)، ثم البقية حسب آخر تواصل.
+    // الأولوية: «بانتظار ردّك»/غير مقروء أولاً، ثم «بانتظار العميلة»، ثم الباقي.
+    const rank = (x) => (x.unread_count > 0 || x.wait_state === 'awaiting_rep') ? 2 : (x.wait_state === 'awaiting_customer' ? 1 : 0);
     enriched.sort((a, b) => {
-      const au = a.unread_count > 0, bu = b.unread_count > 0;
-      if (au !== bu) return au ? -1 : 1;
-      if (a.has_reply !== b.has_reply) return a.has_reply ? -1 : 1;
-      if (a.has_reply && b.has_reply) return (b.last_inbound_ts || 0) - (a.last_inbound_ts || 0);
-      return String(b.last_contact_date || '').localeCompare(String(a.last_contact_date || ''));
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return rb - ra;
+      return (b.last_inbound_ts || 0) - (a.last_inbound_ts || 0)
+        || String(b.last_contact_date || '').localeCompare(String(a.last_contact_date || ''));
     });
     res.json(enriched);
   });

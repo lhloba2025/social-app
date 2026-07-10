@@ -455,14 +455,21 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
     <div className="space-y-2">
       {header}
       {tasks.map((t) => (
-        <div key={t.id} className={`rounded-2xl border p-3 ${t.unread_count > 0 ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.has_reply ? 'border-fuchsia-500/40 bg-fuchsia-500/[0.06]' : 'border-white/10 bg-white/[0.02]'}`}>
+        <div key={t.id} className={`rounded-2xl border p-3 ${(t.unread_count > 0 || t.wait_state === 'awaiting_rep') ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.wait_state === 'awaiting_customer' ? 'border-emerald-500/30 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-white">{t.name || (ar ? 'بدون اسم' : 'Unnamed')}</span>
-                {t.unread_count > 0 && <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{t.unread_count} {ar ? 'جديدة' : 'new'}</span>}
-                {t.has_reply && t.unread_count === 0 && <span className="text-[11px] rounded-full px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-200 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'ردّت' : 'Replied'}</span>}
-                <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${statusColor(t.status)}`}>{statusLabel(t.status, ar)}</span>
+                {/* شارة الحالة الواضحة: بانتظار ردّك / ردّيتِ وبانتظار العميلة */}
+                {t.unread_count > 0 ? (
+                  <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? `بانتظار ردّك · ${t.unread_count} جديدة` : `Your reply · ${t.unread_count} new`}</span>
+                ) : t.wait_state === 'awaiting_rep' ? (
+                  <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'بانتظار ردّك' : 'Awaiting your reply'}</span>
+                ) : t.wait_state === 'awaiting_customer' ? (
+                  <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-500/20 text-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{ar ? 'ردّيتِ · بانتظار العميلة' : 'Replied · awaiting client'}</span>
+                ) : (
+                  <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${statusColor(t.status)}`}>{statusLabel(t.status, ar)}</span>
+                )}
               </div>
               <div className="text-[12px] text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t.city || '—'}</span>
