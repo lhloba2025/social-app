@@ -1358,8 +1358,10 @@ function CampaignDetail({ ar, showToast, id, onClose }) {
 function TeamBoard({ ar, showToast }) {
   const [board, setBoard] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [awaitingRep, setAwaitingRep] = useState(null);   // المندوبة المفتوحة قائمة انتظارها
   const load = () => salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err'));
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); salesApi.members().then((m) => setAgents(m.filter((u) => u.role === 'agent'))).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reassign = async (m) => {
     if (!window.confirm(ar
@@ -1397,7 +1399,11 @@ function TeamBoard({ ar, showToast }) {
                 <td className="py-2 px-2 text-white">{m.name}</td>
                 <td className="py-2 px-2 text-center text-slate-200 font-bold">{m.tasks}</td>
                 <td className="py-2 px-2 text-center text-emerald-300">{m.rep_replied}</td>
-                <td className="py-2 px-2 text-center"><span className={m.awaiting > 0 ? 'bg-rose-600 text-white rounded-full px-2 py-0.5 font-bold' : 'text-slate-500'}>{m.awaiting}</span></td>
+                <td className="py-2 px-2 text-center">
+                  {m.awaiting > 0 ? (
+                    <button onClick={() => setAwaitingRep(m)} className="bg-rose-600 hover:bg-rose-500 text-white rounded-full px-2.5 py-0.5 font-bold" title={ar ? 'عرض ومتابعة هذه المحادثات' : 'View & handle'}>{m.awaiting}</button>
+                  ) : <span className="text-slate-500">0</span>}
+                </td>
                 <td className="py-2 px-2 text-center text-emerald-300">{m.interested}</td>
                 <td className="py-2 px-2 text-center text-green-400">{m.subscribed}</td>
                 <td className="py-2 px-2 text-center">
@@ -1415,7 +1421,76 @@ function TeamBoard({ ar, showToast }) {
           </tbody>
         </table>
       </div>
+
+      {awaitingRep && (
+        <AwaitingListModal
+          ar={ar} showToast={showToast} rep={awaitingRep} agents={agents}
+          onClose={() => { setAwaitingRep(null); load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// قائمة صوالين المندوبة «بانتظار ردّها» — ردّ أو تحويل واحداً واحداً.
+function AwaitingListModal({ ar, showToast, rep, agents, onClose }) {
+  const [list, setList] = useState(null);
+  const [chatSalon, setChatSalon] = useState(null);
+  const [busy, setBusy] = useState('');
+
+  const load = React.useCallback(() => {
+    salesApi.repTasks(rep.user_id, 'awaiting').then(setList).catch((e) => showToast(e.message, 'err'));
+  }, [rep.user_id, showToast]);
+  useEffect(() => { load(); }, [load]);
+
+  const reassignOne = async (s, ownerId) => {
+    if (!ownerId) return;
+    setBusy(s.id);
+    try {
+      await salesApi.assignSalon(s.id, ownerId);
+      setList((ls) => (ls || []).filter((x) => x.id !== s.id));
+      showToast(ar ? 'تم التحويل' : 'Reassigned');
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
+  };
+
+  const others = agents.filter((a) => a.id !== rep.user_id);
+
+  return (
+    <ModalShell title={`${ar ? 'بانتظار رد' : 'Awaiting reply'} · ${rep.name}`} ar={ar} onClose={onClose}>
+      {!list ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+      ) : list.length === 0 ? (
+        <div className="text-center text-slate-500 text-sm py-8">{ar ? 'لا شيء بانتظار الرد 🎉' : 'Nothing awaiting 🎉'}</div>
+      ) : (
+        <div className="space-y-2">
+          {list.map((s) => (
+            <div key={s.id} className="bg-slate-800/60 rounded-xl p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-white text-sm font-bold truncate">{s.name || (ar ? 'بدون اسم' : 'Unnamed')}</div>
+                  <div className="text-[11px] text-slate-400" style={{ direction: 'ltr' }}>{s.phone}</div>
+                </div>
+                <button onClick={() => setChatSalon({ id: s.id, name: s.name, phone: s.phone, assigned_to: rep.name })}
+                  className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2.5 py-1.5 flex-shrink-0">
+                  <MessageSquare className="w-3.5 h-3.5" /> {ar ? 'ردّ' : 'Reply'}
+                </button>
+              </div>
+              {s.last_inbound && <p className="text-[12px] text-slate-300 mt-1.5 bg-slate-900/50 rounded-lg px-2 py-1 whitespace-pre-line break-words">💬 {s.last_inbound}</p>}
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500">{ar ? 'تحويل إلى:' : 'Reassign to:'}</span>
+                <select value="" disabled={busy === s.id} onChange={(e) => { if (e.target.value) reassignOne(s, e.target.value); }}
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
+                  <option value="">{busy === s.id ? (ar ? 'جارٍ…' : '…') : (ar ? '— اختر مندوبة —' : '— pick rep —')}</option>
+                  {others.map((a) => <option key={a.id} value={a.id}>{a.display_name}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {chatSalon && <AdminChatModal ar={ar} showToast={showToast} salon={chatSalon} onClose={() => { setChatSalon(null); load(); }} />}
+    </ModalShell>
   );
 }
 

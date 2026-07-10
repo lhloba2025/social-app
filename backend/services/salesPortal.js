@@ -1545,6 +1545,20 @@ export function mountSalesPortal(app, ctx) {
     res.json(board);
   });
 
+  // صوالين مندوب المفتوحة «بانتظار ردّها» (customer replied, rep hasn't) — للأدمن،
+  // ليردّ أو يحوّل واحداً واحداً. filter=all يرجّع كل مهامه المفتوحة.
+  router.get('/wa/rep-tasks/:userId', requireRole('admin'), (req, res) => {
+    const uid = req.params.userId;
+    const filter = String(req.query.filter || 'awaiting');
+    const salons = queryAll(
+      `SELECT * FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      [uid]
+    ).map(parseSalon);
+    let enriched = enrichRepSalons(uid, salons);
+    if (filter === 'awaiting') enriched = enriched.filter((s) => s.wait_state === 'awaiting_rep');
+    res.json(enriched);
+  });
+
   // ── تحويل مهام مندوب لباقي الفريق (مثلاً لو كان غير متاح) ─────────────────────
   // ينقل مهام المندوب المفتوحة (is_task=1، غير مغلقة) للمناديب الآخرين بالتساوي.
   router.post('/wa/reassign-from', requireRole('admin'), (req, res) => {

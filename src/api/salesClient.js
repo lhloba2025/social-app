@@ -164,6 +164,7 @@ export const salesApi = {
   campaignTaskCount() { return req('GET', '/wa/campaign-task-count'); },
   resetDistributeCampaign() { return req('POST', '/wa/reset-distribute-campaign'); },
   reassignFrom(userId) { return req('POST', '/wa/reassign-from', { user_id: userId }); },
+  repTasks(userId, filter) { return req('GET', `/wa/rep-tasks/${userId}?filter=${encodeURIComponent(filter || 'awaiting')}`); },
 
   // محادثة داخل النظام (عبر رقم الأعمال)
   waThread(id) { return req('GET', `/salons/${id}/wa-thread`); },
