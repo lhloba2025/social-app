@@ -629,6 +629,10 @@ export function mountSalesPortal(app, ctx) {
     const rows = queryAll(`SELECT * FROM salons`).map((r) => {
       // صالون «تم التواصل معه» إذا له تاريخ تواصل أو حالته تجاوزت «جديد».
       const contacted = Boolean(r.last_contact_date) || (!!r.status && r.status !== 'new');
+      // الوسوم مخزّنة كـ JSON — نحوّلها لنص مفصول بفواصل.
+      let tags = '';
+      try { const t = r.tags ? JSON.parse(r.tags) : []; tags = Array.isArray(t) ? t.join('، ') : String(r.tags || ''); }
+      catch { tags = String(r.tags || ''); }
       return {
         'الاسم': r.name,
         'الجوال': r.phone,
@@ -640,13 +644,18 @@ export function mountSalesPortal(app, ctx) {
         'النوع': r.type === 'booking_platform' ? 'منصة حجز' : 'فرصة',
         'المنصة': r.platform,
         'الإحداثيات': r.lat != null && r.lng != null ? `${r.lat},${r.lng}` : '',
+        'الوسوم': tags,
         'تم التواصل؟': contacted ? 'نعم' : 'لا',
         'الحالة': STATUS_AR[r.status] || (r.status || 'جديد'),
+        'نتيجة الزيارة': r.visit_result || '',
+        'نوع الاشتراك': r.subscription_type || '',
         'المندوب المسؤول': r.owner_name || '',
         'آخر تواصل': dateOnly(r.last_contact_date),
         'موعد المتابعة': dateOnly(r.follow_up),
         'الأولوية': PRIORITY_AR[r.priority] || '',
         'ملاحظات': r.note || '',
+        'تاريخ الإضافة': dateOnly(r.created_date),
+        'آخر تحديث': dateOnly(r.updated_date),
       };
     });
     const ws = XLSX.utils.json_to_sheet(rows);
