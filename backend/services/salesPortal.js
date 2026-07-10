@@ -633,6 +633,10 @@ export function mountSalesPortal(app, ctx) {
       let tags = '';
       try { const t = r.tags ? JSON.parse(r.tags) : []; tags = Array.isArray(t) ? t.join('، ') : String(r.tags || ''); }
       catch { tags = String(r.tags || ''); }
+      // رابط خرائط قوقل: بالإحداثيات إن وُجدت، وإلا بحث بالاسم والحي والمدينة.
+      const mapsUrl = (r.lat != null && r.lng != null)
+        ? `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([r.name, r.district, r.city].filter(Boolean).join(' '))}`;
       return {
         'الاسم': r.name,
         'الجوال': r.phone,
@@ -644,6 +648,7 @@ export function mountSalesPortal(app, ctx) {
         'النوع': r.type === 'booking_platform' ? 'منصة حجز' : 'فرصة',
         'المنصة': r.platform,
         'الإحداثيات': r.lat != null && r.lng != null ? `${r.lat},${r.lng}` : '',
+        'رابط الموقع في قوقل': mapsUrl,
         'الوسوم': tags,
         'تم التواصل؟': contacted ? 'نعم' : 'لا',
         'الحالة': STATUS_AR[r.status] || (r.status || 'جديد'),
