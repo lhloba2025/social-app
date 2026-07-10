@@ -169,4 +169,10 @@ export const salesApi = {
   // محادثة داخل النظام (عبر رقم الأعمال)
   waThread(id) { return req('GET', `/salons/${id}/wa-thread`); },
   waSendMessage(id, text) { return req('POST', `/salons/${id}/wa-send`, { text }); },
+  waSendImage(id, file, caption) {
+    const form = new FormData();
+    form.append('image', file);
+    if (caption) form.append('caption', caption);
+    return req('POST', `/salons/${id}/wa-send-image`, form, true);
+  },
 };

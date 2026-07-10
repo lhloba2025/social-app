@@ -90,6 +90,25 @@ export async function sendTextMessage({ to, body }) {
   }
 }
 
+// إرسال صورة (بمعرّف وسائط مرفوع مسبقاً) — ضمن نافذة ٢٤ ساعة كرسالة حرّة.
+export async function sendImageMessage({ to, mediaId, caption }) {
+  if (!TOKEN()) throw new Error('WA_ACCESS_TOKEN غير مضبوط في الخادم');
+  const image = { id: mediaId };
+  if (caption) image.caption = caption;
+  const payload = { messaging_product: 'whatsapp', to, type: 'image', image };
+  try {
+    const { data } = await axios.post(graph(`${PHONE_ID()}/messages`), payload, {
+      headers: { ...authHeader(), 'Content-Type': 'application/json' }, timeout: 20000,
+    });
+    return { wamid: data?.messages?.[0]?.id || null, raw: data };
+  } catch (err) {
+    const meta = err?.response?.data?.error;
+    const e = new Error(meta?.message || err.message || 'فشل إرسال الصورة');
+    e.code = meta?.code != null ? String(meta.code) : null;
+    throw e;
+  }
+}
+
 // يبني مصفوفة components لقالب: ترويسة صورة (اختيارية) + متغيّرات جسم (اختيارية).
 export function buildComponents({ mediaId, bodyParams = [] }) {
   const components = [];

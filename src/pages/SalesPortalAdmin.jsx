@@ -942,6 +942,12 @@ function AdminChatModal({ ar, showToast, salon, onClose }) {
     try { await salesApi.waSendMessage(salon.id, msg); setText(''); await load(); }
     catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
   };
+  const sendImage = async (file) => {
+    if (!file) return;
+    setSending(true);
+    try { await salesApi.waSendImage(salon.id, file, text.trim()); setText(''); await load(); }
+    catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
+  };
 
   const fmt = (ts) => {
     if (!ts) return '';
@@ -982,6 +988,10 @@ function AdminChatModal({ ar, showToast, salon, onClose }) {
             </div>
           ) : (
             <div className="flex items-end gap-2">
+              <label className={`flex-shrink-0 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl px-3 py-2.5 cursor-pointer ${sending ? 'opacity-50 pointer-events-none' : ''}`} title={ar ? 'إرسال صورة' : 'Send image'}>
+                <ImageIcon className="w-5 h-5" />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = ''; }} />
+              </label>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={ar ? 'رُدّ بدل المندوبة…' : 'Reply as admin…'} className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-500 resize-none max-h-28" />
               <button onClick={send} disabled={sending || !text.trim()} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl px-4 py-2.5 flex-shrink-0">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : (ar ? 'إرسال' : 'Send')}

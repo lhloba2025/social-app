@@ -595,6 +595,16 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
       onSent && onSent();
     } catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
   };
+  const sendImage = async (file) => {
+    if (!file) return;
+    setSending(true);
+    try {
+      await salesApi.waSendImage(salon.id, file, text.trim());
+      setText('');
+      await load();
+      onSent && onSent();
+    } catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
+  };
 
   const fmt = (ts) => {
     if (!ts) return '';
@@ -647,6 +657,10 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
                 </div>
               )}
               <div className="flex items-end gap-2">
+                <label className={`flex-shrink-0 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl px-3 py-2.5 cursor-pointer ${sending ? 'opacity-50 pointer-events-none' : ''}`} title={ar ? 'إرسال صورة' : 'Send image'}>
+                  <ImageIcon className="w-5 h-5" />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = ''; }} />
+                </label>
                 <textarea
                   value={text} onChange={(e) => setText(e.target.value)} rows={1}
                   placeholder={ar ? 'اكتبي رداً…' : 'Type a reply…'}
@@ -656,7 +670,7 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : (ar ? 'إرسال' : 'Send')}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-500 text-center">{ar ? 'تُرسل من رقم هوفيرا للأعمال · اضغطي ردّاً سريعاً لتعبئته' : 'Sent from Hovera business number'}</p>
+              <p className="text-[10px] text-slate-500 text-center">{ar ? 'نص أو صورة · تُرسل من رقم هوفيرا للأعمال. اكتبي نصاً ثم أرفقي صورة ليكون تعليقاً عليها.' : 'Text or image · sent from Hovera business number'}</p>
             </>
           )}
         </div>

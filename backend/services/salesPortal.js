@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   waCloudConfigured, listApprovedTemplates, uploadMedia, sendTemplateMessage,
-  sendTextMessage, buildComponents, templateHasImageHeader,
+  sendTextMessage, sendImageMessage, buildComponents, templateHasImageHeader,
 } from './waCloud.js';
 
 // ترتيب الأدوار — كل دور يرث صلاحيات ما دونه.
@@ -1747,6 +1747,42 @@ export function mountSalesPortal(app, ctx) {
       res.json({ ok: true, wamid: wamid || null });
     } catch (err) {
       res.status(502).json({ error: (err.code ? `[${err.code}] ` : '') + (err.message || 'فشل الإرسال') });
+    }
+  });
+
+  // إرسال صورة من داخل النظام (يرفعها لميتا ثم يرسلها) — ضمن نافذة ٢٤ ساعة.
+  router.post('/salons/:id/wa-send-image', requireRole('agent'), upload.single('image'), async (req, res) => {
+    if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
+    if (!req.file) return res.status(400).json({ error: 'لم تُرفق صورة' });
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    if (salon.do_not_send) return res.status(400).json({ error: 'هذا العميل طلب إيقاف الرسائل (لا ترسل)' });
+
+    const lastIn = lastInboundTs(salon);
+    const open = lastIn > 0 && (Date.now() / 1000 - lastIn) < 24 * 3600;
+    if (!open) return res.status(400).json({ error: 'انتهت نافذة الـ٢٤ ساعة — لا يمكن إرسال صورة حرّة الآن.' });
+
+    const to = normalizeMsisdn(salon.phone);
+    if (!to) return res.status(400).json({ error: 'رقم الجوال غير صالح' });
+    const caption = String(req.body?.caption || '').trim();
+    const me = req.salesUser;
+    try {
+      const mediaId = await uploadMedia(req.file.buffer, req.file.originalname, req.file.mimetype);
+      const { wamid } = await sendImageMessage({ to, mediaId, caption });
+      const body = caption ? `📷 ${caption}` : '📷 صورة';
+      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
+      if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
+      runBatch((r) => {
+        r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [randomUUID(), salon.id, to, body, wamid || '', me.id, me.name]);
+        const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+        r(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), salon.id]);
+        r(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+          [randomUUID(), salon.id, me.id, me.name, salon.status || '', 'أرسل صورة عبر النظام']);
+      });
+      res.json({ ok: true, wamid: wamid || null });
+    } catch (err) {
+      res.status(502).json({ error: (err.code ? `[${err.code}] ` : '') + (err.message || 'فشل إرسال الصورة') });
     }
   });
 
