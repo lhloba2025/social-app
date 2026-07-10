@@ -392,11 +392,18 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
   const [openMsg, setOpenMsg] = useState(null);   // الصالون المعروض رسالته (مطويّة افتراضاً)
 
   const [refreshing, setRefreshing] = useState(false);
-  const load = useCallback(() => {
-    setRefreshing(true);
+  const load = useCallback((spin = true) => {
+    if (spin) setRefreshing(true);
     salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err')).finally(() => setRefreshing(false));
   }, [showToast]);
   useEffect(() => { load(); }, [load]);
+  // تحديث تلقائي كل ٤٥ ثانية لإظهار الردود الجديدة (تنبيه غير مقروء) دون تدخّل.
+  useEffect(() => {
+    const iv = setInterval(() => load(false), 45000);
+    const onFocus = () => load(false);
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(iv); window.removeEventListener('focus', onFocus); };
+  }, [load]);
 
   const outcome = async (t, payload, msg) => {
     try {
@@ -405,13 +412,28 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
       showToast(msg);
     } catch (e) { showToast(e.message, 'err'); }
   };
+  // اختيار النتيجة من القائمة المنسدلة.
+  const pickOutcome = (t, v) => {
+    if (v === 'follow') { setFollowId(t.id); setFollowDate(''); }
+    else if (v === 'interested') outcome(t, { status: 'interested', visit_result: 'مهتمة' }, ar ? 'سُجّلت: مهتمة' : 'Interested');
+    else if (v === 'not') outcome(t, { status: 'not_interested', visit_result: 'غير مهتمة' }, ar ? 'سُجّلت: غير مهتمة' : 'Not interested');
+    else if (v === 'sub') outcome(t, { status: 'subscribed', visit_result: 'اشتركت' }, ar ? 'مبروك! اشتركت 🎉' : 'Subscribed 🎉');
+  };
 
   if (tasks === null) return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
 
+  const totalUnread = tasks.reduce((n, t) => n + (t.unread_count || 0), 0);
   const header = (
     <div className="flex items-center justify-between">
-      <h3 className="font-bold text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {ar ? 'مهامي' : 'My Tasks'} <span className="text-slate-400 text-sm">({tasks.length})</span></h3>
-      <button onClick={load} disabled={refreshing} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-xl px-3 py-1.5 transition">
+      <h3 className="font-bold text-white flex items-center gap-2">
+        <CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {ar ? 'مهامي' : 'My Tasks'} <span className="text-slate-400 text-sm">({tasks.length})</span>
+        {totalUnread > 0 && (
+          <span className="text-[11px] font-bold bg-rose-600 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
+            <MessageCircle className="w-3 h-3" /> {ar ? `${totalUnread} غير مقروء` : `${totalUnread} unread`}
+          </span>
+        )}
+      </h3>
+      <button onClick={() => load()} disabled={refreshing} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-xl px-3 py-1.5 transition">
         <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {ar ? 'تحديث' : 'Refresh'}
       </button>
     </div>
@@ -428,12 +450,13 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
     <div className="space-y-2">
       {header}
       {tasks.map((t) => (
-        <div key={t.id} className={`rounded-2xl border p-3 ${t.has_reply ? 'border-fuchsia-500/40 bg-fuchsia-500/[0.06]' : 'border-white/10 bg-white/[0.02]'}`}>
+        <div key={t.id} className={`rounded-2xl border p-3 ${t.unread_count > 0 ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.has_reply ? 'border-fuchsia-500/40 bg-fuchsia-500/[0.06]' : 'border-white/10 bg-white/[0.02]'}`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-white">{t.name || (ar ? 'بدون اسم' : 'Unnamed')}</span>
-                {t.has_reply && <span className="text-[11px] rounded-full px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-200 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'ردّت' : 'Replied'}</span>}
+                {t.unread_count > 0 && <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{t.unread_count} {ar ? 'جديدة' : 'new'}</span>}
+                {t.has_reply && t.unread_count === 0 && <span className="text-[11px] rounded-full px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-200 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'ردّت' : 'Replied'}</span>}
                 <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${statusColor(t.status)}`}>{statusLabel(t.status, ar)}</span>
               </div>
               <div className="text-[12px] text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
@@ -455,14 +478,41 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
                 )
               )}
             </div>
-            <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0">
+            <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0 w-[160px]">
               <button
                 onClick={() => setChatSalon(t)}
-                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm"
+                className="relative flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm"
                 title={ar ? 'محادثة من داخل النظام (رقم الأعمال)' : 'Chat in-system'}
               >
                 <MessageCircle className="w-5 h-5" /> {ar ? 'محادثة' : 'Chat'}
+                {t.unread_count > 0 && (
+                  <span className="absolute bg-rose-600 border-2 border-slate-950 text-white text-[10px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1" style={{ [ar ? 'right' : 'left']: '-8px', top: '-8px' }}>{t.unread_count}</span>
+                )}
               </button>
+
+              {followId === t.id ? (
+                <div className="flex flex-col gap-1.5 bg-slate-800/60 rounded-xl p-2">
+                  <input type="date" value={followDate} onChange={(e) => setFollowDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+                  <div className="flex gap-1.5">
+                    <button onClick={() => { if (!followDate) return; outcome(t, { status: 'contacted', follow_up: followDate, visit_result: 'متابعة لاحقة' }, ar ? 'حُدّد موعد المتابعة' : 'Follow-up set'); setFollowId(null); setFollowDate(''); }} className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg py-1.5 text-xs">{ar ? 'تأكيد' : 'OK'}</button>
+                    <button onClick={() => { setFollowId(null); setFollowDate(''); }} className="text-slate-400 px-2 text-xs">✕</button>
+                  </div>
+                </div>
+              ) : (
+                <select
+                  value=""
+                  onChange={(e) => { const v = e.target.value; if (v) pickOutcome(t, v); e.target.value = ''; }}
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2.5 text-sm text-white outline-none focus:border-indigo-500"
+                  title={ar ? 'تسجيل نتيجة المتابعة' : 'Set outcome'}
+                >
+                  <option value="">📋 {ar ? 'تسجيل النتيجة' : 'Set outcome'}</option>
+                  <option value="interested">🟢 {ar ? 'مهتمة' : 'Interested'}</option>
+                  <option value="not">🔴 {ar ? 'غير مهتمة' : 'Not interested'}</option>
+                  <option value="follow">🟡 {ar ? 'متابعة لاحقة' : 'Follow up'}</option>
+                  <option value="sub">✅ {ar ? 'اشتركت' : 'Subscribed'}</option>
+                </select>
+              )}
+
               <a
                 href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
                 onClick={() => onWhatsApp && onWhatsApp(t)}
@@ -471,24 +521,6 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
               >{ar ? 'أو واتساب جوالي' : 'my WhatsApp'}</a>
             </div>
           </div>
-
-          {followId === t.id ? (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              <CalendarClock className="w-4 h-4 text-amber-400" />
-              <input type="date" value={followDate} onChange={(e) => setFollowDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
-              <button
-                onClick={() => { if (!followDate) return; outcome(t, { status: 'contacted', follow_up: followDate, visit_result: 'متابعة لاحقة' }, ar ? 'حُدّد موعد المتابعة' : 'Follow-up set'); setFollowId(null); setFollowDate(''); }}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">{ar ? 'تأكيد' : 'Confirm'}</button>
-              <button onClick={() => { setFollowId(null); setFollowDate(''); }} className="text-slate-400 px-2 text-sm">{ar ? 'إلغاء' : 'Cancel'}</button>
-            </div>
-          ) : (
-            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button onClick={() => outcome(t, { status: 'interested', visit_result: 'مهتمة' }, ar ? 'سُجّلت: مهتمة' : 'Interested')} className="bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'مهتمة' : 'Interested'}</button>
-              <button onClick={() => outcome(t, { status: 'not_interested', visit_result: 'غير مهتمة' }, ar ? 'سُجّلت: غير مهتمة' : 'Not interested')} className="bg-rose-600/90 hover:bg-rose-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'غير مهتمة' : 'Not interested'}</button>
-              <button onClick={() => { setFollowId(t.id); setFollowDate(''); }} className="bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'متابعة لاحقة' : 'Follow up'}</button>
-              <button onClick={() => outcome(t, { status: 'subscribed', visit_result: 'اشتركت' }, ar ? 'مبروك! اشتركت 🎉' : 'Subscribed 🎉')} className="bg-green-700 hover:bg-green-600 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'اشتركت' : 'Subscribed'}</button>
-            </div>
-          )}
         </div>
       ))}
 

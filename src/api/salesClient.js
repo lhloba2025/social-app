@@ -85,6 +85,7 @@ export const salesApi = {
   // الأعضاء
   members() { return req('GET', '/members'); },
   addMember(data) { return req('POST', '/members', data); },
+  updateMember(id, data) { return req('PUT', `/members/${id}`, data); },
   deleteMember(id) { return req('DELETE', `/members/${id}`); },
 
   // القوالب

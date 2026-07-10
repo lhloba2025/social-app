@@ -177,6 +177,15 @@ export function mountSalesPortal(app, ctx) {
       created_date TEXT DEFAULT (datetime('now'))
     );
   `);
+  // آخر وقت فتحت فيه المندوبة محادثة صالون — لحساب الرسائل غير المقروءة لكل عضو.
+  run(`
+    CREATE TABLE IF NOT EXISTS wa_reads (
+      user_id  TEXT,
+      salon_id TEXT,
+      last_read_ts INTEGER,
+      PRIMARY KEY (user_id, salon_id)
+    );
+  `);
   run(`
     CREATE TABLE IF NOT EXISTS wa_campaign_recipients (
       id TEXT PRIMARY KEY,
@@ -547,6 +556,39 @@ export function mountSalesPortal(app, ctx) {
       [id, username, hash, salt, display_name, wantedRole]
     );
     res.status(201).json({ id, username, display_name, role: wantedRole });
+  });
+
+  // تعديل عضو: الاسم الظاهر (واختيارياً كلمة المرور والدور). يحدّث اسم المالك على صوالينه.
+  router.put('/members/:id', requireRole('admin'), (req, res) => {
+    const target = queryOne(`SELECT * FROM sales_users WHERE id = ?`, [req.params.id]);
+    if (!target) return res.status(404).json({ error: 'العضو غير موجود' });
+    // أدمن عادي لا يعدّل سوبر أدمن.
+    if (target.role === 'super_admin' && req.salesUser.role !== 'super_admin') {
+      return res.status(403).json({ error: 'لا يمكنك تعديل حساب سوبر أدمن' });
+    }
+    const { display_name, password, role } = req.body || {};
+    const updates = {};
+    if (display_name != null && String(display_name).trim()) updates.display_name = String(display_name).trim();
+    if (role && ['agent', 'admin', 'super_admin'].includes(role)) {
+      if (role === 'super_admin' && req.salesUser.role !== 'super_admin') {
+        return res.status(403).json({ error: 'لا يمكنك ترقية عضو لسوبر أدمن' });
+      }
+      updates.role = role;
+    }
+    if (password && String(password).length >= 4) {
+      const { hash, salt } = hashPassword(password);
+      updates.password_hash = hash; updates.password_salt = salt;
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'لا يوجد تغيير' });
+
+    runBatch((r) => {
+      const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+      r(`UPDATE sales_users SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
+      // مزامنة الاسم الظاهر على صوالين هذا العضو.
+      if (updates.display_name) r(`UPDATE salons SET owner_name = ? WHERE owner_id = ?`, [updates.display_name, req.params.id]);
+    });
+    const u = queryOne(`SELECT id, username, display_name, role FROM sales_users WHERE id = ?`, [req.params.id]);
+    res.json(u);
   });
 
   router.delete('/members/:id', requireRole('admin'), (req, res) => {
@@ -1329,24 +1371,39 @@ export function mountSalesPortal(app, ctx) {
       [me]
     ).map(parseSalon);
 
-    // آخر رسالة واردة لكل صالون (مطابقة بآخر ٩ أرقام).
-    const inboundByTail = new Map();
+    // كل الرسائل الواردة لكل صالون (لآخر رسالة + عدّ غير المقروء).
+    const inboundByTail = new Map(); // tail -> { body, ts, list: [ts...] }
     for (const m of queryAll(`SELECT from_number, body, wa_timestamp FROM wa_inbound ORDER BY wa_timestamp ASC`)) {
       const t = phoneKeyOf(m.from_number);
-      if (t.length >= 9) inboundByTail.set(t.slice(-9), m); // آخر واحدة تبقى (ترتيب تصاعدي)
+      if (t.length < 9) continue;
+      const tail = t.slice(-9);
+      const ts = Number(m.wa_timestamp) || 0;
+      const cur = inboundByTail.get(tail) || { body: null, ts: 0, list: [] };
+      cur.body = m.body; cur.ts = ts; cur.list.push(ts);   // آخر واحدة تبقى (ترتيب تصاعدي)
+      inboundByTail.set(tail, cur);
+    }
+    // آخر قراءة لهذا العضو لكل صالون.
+    const reads = new Map();
+    for (const r of queryAll(`SELECT salon_id, last_read_ts FROM wa_reads WHERE user_id = ?`, [me])) {
+      reads.set(r.salon_id, r.last_read_ts || 0);
     }
     const enriched = mine.map((s) => {
       const key = (s.phone_key || phoneKeyOf(s.phone));
       const inb = key && key.length >= 9 ? inboundByTail.get(key.slice(-9)) : null;
+      const lastRead = reads.get(s.id) || 0;
+      const unread = inb ? inb.list.filter((ts) => ts > lastRead).length : 0;
       return {
         ...s,
         last_inbound: inb?.body || null,
-        last_inbound_ts: inb?.wa_timestamp || null,
+        last_inbound_ts: inb?.ts || null,
         has_reply: !!inb || s.status === 'replied',
+        unread_count: unread,
       };
     });
-    // ردّت أولاً (حسب أحدث رسالة)، ثم البقية حسب آخر تواصل.
+    // غير المقروء أولاً، ثم ردّت (حسب أحدث رسالة)، ثم البقية حسب آخر تواصل.
     enriched.sort((a, b) => {
+      const au = a.unread_count > 0, bu = b.unread_count > 0;
+      if (au !== bu) return au ? -1 : 1;
       if (a.has_reply !== b.has_reply) return a.has_reply ? -1 : 1;
       if (a.has_reply && b.has_reply) return (b.last_inbound_ts || 0) - (a.last_inbound_ts || 0);
       return String(b.last_contact_date || '').localeCompare(String(a.last_contact_date || ''));
@@ -1438,6 +1495,13 @@ export function mountSalesPortal(app, ctx) {
     const messages = [...inbound, ...outbound].sort((a, b) => a.ts - b.ts);
     const lastIn = inbound.reduce((mx, m) => Math.max(mx, m.ts), 0);
     const windowOpen = lastIn > 0 && (Date.now() / 1000 - lastIn) < 24 * 3600;
+    // فتح المحادثة = قراءة: آخر قراءة = الأكبر بين الآن وأحدث رسالة واردة (يتجاوز
+    // أي فرق ساعة بين ميتا والخادم فيُعلَّم كل الظاهر مقروءاً).
+    run(
+      `INSERT INTO wa_reads (user_id, salon_id, last_read_ts) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, salon_id) DO UPDATE SET last_read_ts = excluded.last_read_ts`,
+      [req.salesUser.id, req.params.id, Math.max(Math.floor(Date.now() / 1000), lastIn)]
+    );
     res.json({ messages, window_open: windowOpen, last_inbound_at: lastIn });
   });
 
