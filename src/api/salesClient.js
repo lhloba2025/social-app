@@ -115,4 +115,9 @@ export const salesApi = {
     form.append('file', file);
     return req('POST', '/upload-excel', form, true);
   },
+  markCampaign(file) {
+    const form = new FormData();
+    form.append('file', file);
+    return req('POST', '/mark-campaign', form, true);
+  },
 };

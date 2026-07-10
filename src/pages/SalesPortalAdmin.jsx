@@ -8,7 +8,7 @@ import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
-  Paperclip, FileText, Image as ImageIcon, Share2,
+  Paperclip, FileText, Image as ImageIcon, Share2, Megaphone,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -550,6 +550,16 @@ function DataTab({ ar, showToast }) {
     } catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
   };
 
+  const markCampaign = async (file) => {
+    setBusy('campaign');
+    try {
+      const r = await salesApi.markCampaign(file);
+      showToast(ar
+        ? `تم التحديث: ${r.matched} صالون وُسم «حملة ميتا» (منها ${r.newlyContacted} صارت «تم التواصل») · ${r.notFound} رقم غير موجود`
+        : `Updated: ${r.matched} salons tagged (${r.newlyContacted} now contacted) · ${r.notFound} numbers not found`);
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="font-bold text-lg">{ar ? 'البيانات والنُّسخ' : 'Data & Backups'}</h2>
@@ -569,6 +579,11 @@ function DataTab({ ar, showToast }) {
         <DataCardFile
           icon={FileSpreadsheet} title={ar ? 'رفع إكسل صوالين' : 'Upload Salons Excel'} desc={ar ? 'إضافة صوالين جديدة — يمنع تكرار الأرقام ولا يمسح القديم.' : 'Add new salons — prevents duplicate numbers, never deletes existing.'}
           actionLabel={ar ? 'اختيار ملف إكسل' : 'Choose Excel file'} accept=".xlsx,.xls" loading={busy === 'upload'} onFile={uploadExcel}
+        />
+        <DataCardFile
+          icon={Megaphone} title={ar ? 'تحديد تواصل حملة ميتا' : 'Mark Meta Campaign Contact'}
+          desc={ar ? 'ارفع ملف أرقام الحملة — الصوالين المطابقة تُوسَم بـ«حملة ميتا» وتتحوّل حالتها لـ«تم التواصل».' : 'Upload the campaign numbers file — matched salons get the “Meta campaign” tag and status becomes contacted.'}
+          actionLabel={ar ? 'اختيار ملف الأرقام' : 'Choose numbers file'} accept=".xlsx,.xls,.csv" loading={busy === 'campaign'} onFile={markCampaign}
         />
       </div>
     </div>

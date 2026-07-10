@@ -11,7 +11,7 @@ import {
   Search, Phone, MessageCircle, MapPin, RefreshCw, Star, LogOut,
   AlertTriangle, CheckCircle2, Loader2, X, Shield, History, Clock, CalendarClock,
   Store, PhoneOutgoing, UserCheck, Heart, BadgeCheck, ChevronDown, Trash2, Plus, Home, Languages,
-  Paperclip, FileText, Image as ImageIcon,
+  Paperclip, FileText, Image as ImageIcon, Megaphone,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -430,6 +430,14 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDel
               className={`w-3.5 h-3.5 flex-shrink-0 ${fuState === 'overdue' ? 'text-rose-400' : 'text-amber-400'}`}
               title={fuState === 'overdue' ? (ar ? `متابعة متأخّرة · ${shortDate(salon.follow_up, ar)}` : 'overdue') : (ar ? 'متابعة اليوم' : 'due today')}
             />
+          )}
+          {Array.isArray(salon.tags) && salon.tags.includes('حملة ميتا') && (
+            <span
+              className="inline-flex items-center gap-0.5 flex-shrink-0 text-[10px] rounded-full px-1.5 py-0.5 bg-sky-500/15 border border-sky-500/30 text-sky-300"
+              title={ar ? 'تواصل عبر حملة ميتا' : 'Contacted via Meta campaign'}
+            >
+              <Megaphone className="w-2.5 h-2.5" />{ar ? 'حملة ميتا' : 'Meta'}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5 truncate">

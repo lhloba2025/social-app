@@ -731,6 +731,65 @@ export function mountSalesPortal(app, ctx) {
     }
   });
 
+  // تحديد التواصل عبر حملة ميتا: يرفع المدير ملف أرقام الحملة، فنطابقها مع
+  // الصوالين ونضع عليها وسم «حملة ميتا»، ونحدّث حالتها لـ«تم التواصل» إن كانت
+  // ما زالت «جديد» (لا نُنزّل حالة متقدّمة كـ«مهتم» أو «مشترك»).
+  router.post('/mark-campaign', requireRole('admin'), upload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'لم يُرفع أي ملف' });
+    const me = req.salesUser;
+    const TAG = 'حملة ميتا';
+    try {
+      const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+      // نجمع كل رقم من كل خلية في كل الأوراق — يدعم ملف عمود واحد أو عدة أعمدة،
+      // بترويسة أو بدونها. نطابق بآخر ٩ أرقام لتجاهل صيغة المفتاح (+966 / 05 / 966).
+      const campaignTails = new Set();
+      for (const sheetName of wb.SheetNames) {
+        const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+        for (const row of grid) {
+          for (const cell of row) {
+            const digits = String(cell ?? '').replace(/\D/g, '');
+            if (digits.length >= 9) campaignTails.add(digits.slice(-9));
+          }
+        }
+      }
+      if (campaignTails.size === 0) {
+        return res.status(400).json({ error: 'لم يُعثر على أي أرقام في الملف.' });
+      }
+
+      const salons = queryAll(`SELECT * FROM salons`);
+      const matchedTails = new Set();
+      let matched = 0, newlyContacted = 0;
+      for (const s of salons) {
+        const key = s.phone_key || phoneKeyOf(s.phone);
+        if (!key || key.length < 9) continue;
+        const tail = key.slice(-9);
+        if (!campaignTails.has(tail)) continue;
+        matchedTails.add(tail);
+
+        const tags = tryParseArr(s.tags);
+        if (!tags.includes(TAG)) tags.push(TAG);
+        const updates = { tags: JSON.stringify(tags), last_contact_date: nowIso(), updated_date: nowIso() };
+        if ((s.status || 'new') === 'new') { updates.status = 'contacted'; newlyContacted++; }
+        const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+        run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), s.id]);
+        run(
+          `INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+          [randomUUID(), s.id, me.id, 'حملة ميتا', updates.status || s.status || '', 'تواصل عبر حملة ميتا 📣']
+        );
+        matched++;
+      }
+      res.json({
+        numbers: campaignTails.size,
+        matched,
+        newlyContacted,
+        notFound: campaignTails.size - matchedTails.size,
+      });
+    } catch (err) {
+      console.error('[Sales mark-campaign]', err.message);
+      res.status(500).json({ error: 'تعذّرت قراءة الملف. تأكد أنه ملف إكسل/CSV صالح.' });
+    }
+  });
+
   app.use('/api/sales', router);
   console.log('[Sales] ✅ بوابة فريق المبيعات «هوفيرا» جاهزة على /api/sales');
 }
