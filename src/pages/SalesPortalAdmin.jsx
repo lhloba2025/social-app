@@ -1327,7 +1327,11 @@ function CampaignDetail({ ar, showToast, id, onClose }) {
 function TeamBoard({ ar, showToast }) {
   const [board, setBoard] = useState(null);
   const [busy, setBusy] = useState(false);
-  const load = () => salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err'));
+  const [campCount, setCampCount] = useState(null);
+  const load = () => {
+    salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err'));
+    salesApi.campaignTaskCount().then((r) => setCampCount(r.count)).catch(() => {});
+  };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const distribute = async () => {
@@ -1358,8 +1362,10 @@ function TeamBoard({ ar, showToast }) {
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={resetDistribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-3.5 h-3.5" />} {ar ? 'تصفير وتوزيع حملة اليوم' : 'Reset + distribute campaign'}
+          <button onClick={resetDistribute} disabled={busy || campCount === 0} className="flex items-center gap-1.5 text-xs bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-3.5 h-3.5" />}
+            {ar ? 'تصفير وتوزيع حملة اليوم' : 'Reset + distribute campaign'}
+            {campCount != null && <span className="bg-white/20 rounded-full px-1.5">{campCount}</span>}
           </button>
           <button onClick={distribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} {ar ? 'توزيع بالتساوي' : 'Distribute equally'}

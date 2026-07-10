@@ -159,6 +159,7 @@ export const salesApi = {
   myTasks() { return req('GET', '/salons/my-tasks'); },
   teamBoard() { return req('GET', '/wa/team-board'); },
   distributeTasks() { return req('POST', '/wa/distribute'); },
+  campaignTaskCount() { return req('GET', '/wa/campaign-task-count'); },
   resetDistributeCampaign() { return req('POST', '/wa/reset-distribute-campaign'); },
 
   // محادثة داخل النظام (عبر رقم الأعمال)

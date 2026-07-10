@@ -1505,6 +1505,18 @@ export function mountSalesPortal(app, ctx) {
     res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
   });
 
+  // عدد صوالين «حملة ميتا» القابلة للتوزيع (غير مغلقة، ولها جوال) — لعرضه على الزر.
+  router.get('/wa/campaign-task-count', requireRole('admin'), (req, res) => {
+    const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);
+    let count = 0;
+    for (const s of queryAll(`SELECT tags, status, phone FROM salons`)) {
+      if (CLOSED.has(s.status || 'new') || !String(s.phone || '').trim()) continue;
+      try { const t = s.tags ? JSON.parse(s.tags) : []; if (Array.isArray(t) && t.includes('حملة ميتا')) count++; }
+      catch { /* تجاهل */ }
+    }
+    res.json({ count });
+  });
+
   // ── تصفير المهام + توزيع صوالين «حملة ميتا» بالتساوي ──────────────────────────
   // «تصفير» = is_task=0 للجميع (لا يمسّ الملكية → العملاء يبقون عملاء بلا مهام).
   // ثم صوالين موسومة «حملة ميتا» (غير المغلقة) تُوسَم كمهام وتُوزَّع بالتساوي.
