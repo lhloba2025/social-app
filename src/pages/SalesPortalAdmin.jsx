@@ -1340,14 +1340,31 @@ function TeamBoard({ ar, showToast }) {
     } catch (e) { showToast(e.message, 'err'); } finally { setBusy(false); }
   };
 
+  const resetDistribute = async () => {
+    if (!window.confirm(ar
+      ? 'تصفير كل المهام الحالية (دون المساس بملكية العملاء)، ثم توزيع صوالين «حملة ميتا» على الفريق بالتساوي؟\nالعملاء السابقون يبقون عملاء بلا مهام.'
+      : 'Reset all tasks (ownership untouched) and distribute «Meta campaign» salons equally?')) return;
+    setBusy(true);
+    try {
+      const r = await salesApi.resetDistributeCampaign();
+      showToast(ar ? `تم التصفير وتوزيع ${r.assigned} مهمة (حملة ميتا) بالتساوي` : `Reset + distributed ${r.assigned} campaign tasks`);
+      load();
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
   if (!board) return null;
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
-        <button onClick={distribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} {ar ? 'توزيع المهام بالتساوي' : 'Distribute equally'}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={resetDistribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-3.5 h-3.5" />} {ar ? 'تصفير وتوزيع حملة اليوم' : 'Reset + distribute campaign'}
+          </button>
+          <button onClick={distribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} {ar ? 'توزيع بالتساوي' : 'Distribute equally'}
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

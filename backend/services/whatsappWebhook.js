@@ -181,6 +181,8 @@ function syncSalonOnInbound(run, queryOne, queryAll, m) {
     if (!['subscribed', 'not_interested', 'do_not_send', 'interested', 'scheduled_visit'].includes(cur)) {
       updates.status = 'replied';
     }
+    // ردّ وارد ⇒ يصبح مهمة نشِطة (ما لم يكن مغلقاً).
+    if (!['subscribed', 'not_interested', 'do_not_send'].includes(cur)) updates.is_task = 1;
     // إسناد دوري متوازن إن كان الصالون بلا مالك.
     if (!salon.owner_id) {
       const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);

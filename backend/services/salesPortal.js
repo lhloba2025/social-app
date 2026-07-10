@@ -146,6 +146,15 @@ export function mountSalesPortal(app, ctx) {
   // ── المرحلة ٢: حملات الواتساب + منع الإرسال (opt-out) ────────────────────────
   // علم «لا ترسل» على الصالون — يُستثنى تلقائياً من كل الحملات المستقبلية.
   try { run(`ALTER TABLE salons ADD COLUMN do_not_send INTEGER DEFAULT 0`); } catch { /* موجود */ }
+  // علم «مهمة»: يفصل المهمة (متابعة نشِطة) عن العميل (صالون مملوك). «مهامي» =
+  // owner_id=me AND is_task=1. يُضبط عند دخول حملة أو ورود رد، ويُلغى عند الإغلاق
+  // أو التصفير. لا يمسّ الملكية إطلاقاً.
+  let isTaskAdded = false;
+  try { run(`ALTER TABLE salons ADD COLUMN is_task INTEGER DEFAULT 0`); isTaskAdded = true; } catch { /* موجود */ }
+  // ترحيل لمرة واحدة: الردود الحالية غير المُغلقة تُعتبر مهاماً قائمة.
+  if (isTaskAdded) {
+    try { run(`UPDATE salons SET is_task = 1 WHERE status = 'replied'`); } catch { /* تجاهل */ }
+  }
 
   run(`
     CREATE TABLE IF NOT EXISTS wa_campaigns (
@@ -425,6 +434,8 @@ export function mountSalesPortal(app, ctx) {
       updates.owner_id = me.id;
       updates.owner_name = me.name;
     }
+    // إغلاق المهمة عند القرار النهائي (مشترك/غير مهتم) — يبقى عميلاً بلا مهمة.
+    if (updates.status === 'subscribed' || updates.status === 'not_interested') updates.is_task = 0;
 
     const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
     run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
@@ -1367,7 +1378,7 @@ export function mountSalesPortal(app, ctx) {
   router.get('/salons/my-tasks', requireRole('agent'), (req, res) => {
     const me = req.salesUser.id;
     const mine = queryAll(
-      `SELECT * FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      `SELECT * FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
       [me]
     ).map(parseSalon);
 
@@ -1429,8 +1440,9 @@ export function mountSalesPortal(app, ctx) {
 
     const agents = queryAll(`SELECT id, display_name, role FROM sales_users WHERE role IN ('agent','admin') ORDER BY display_name`);
     const board = agents.map((a) => {
-      const rows = queryAll(`SELECT id, phone, phone_key, status, last_contact_date FROM salons WHERE owner_id = ?`, [a.id]);
-      const open = rows.filter((r) => !CLOSED.has(r.status || 'new'));
+      const rows = queryAll(`SELECT id, phone, phone_key, status, last_contact_date, is_task FROM salons WHERE owner_id = ?`, [a.id]);
+      // المهام = المعلَّمة is_task (وغير مغلقة).
+      const open = rows.filter((r) => r.is_task === 1 && !CLOSED.has(r.status || 'new'));
       let repliedByCustomer = 0, repRepliedBack = 0, awaiting = 0;
       for (const r of open) {
         const key = r.phone_key || phoneKeyOf(r.phone);
@@ -1485,7 +1497,38 @@ export function mountSalesPortal(app, ctx) {
         // اختر الأقل تحميلاً الآن.
         let best = null, bestC = Infinity;
         for (const a of agents) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
-        r(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+        r(`UPDATE salons SET owner_id = ?, owner_name = ?, is_task = 1, updated_date = ? WHERE id = ?`,
+          [best.id, best.display_name, nowIso(), s.id]);
+        load.set(best.id, load.get(best.id) + 1);
+      }
+    });
+    res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
+  });
+
+  // ── تصفير المهام + توزيع صوالين «حملة ميتا» بالتساوي ──────────────────────────
+  // «تصفير» = is_task=0 للجميع (لا يمسّ الملكية → العملاء يبقون عملاء بلا مهام).
+  // ثم صوالين موسومة «حملة ميتا» (غير المغلقة) تُوسَم كمهام وتُوزَّع بالتساوي.
+  router.post('/wa/reset-distribute-campaign', requireRole('admin'), (req, res) => {
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
+
+    const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);
+    const hasCampaignTag = (s) => {
+      try { const t = s.tags ? JSON.parse(s.tags) : []; return Array.isArray(t) && t.includes('حملة ميتا'); }
+      catch { return false; }
+    };
+    const all = queryAll(`SELECT id, tags, status, phone FROM salons`);
+    const pool = all.filter((s) => hasCampaignTag(s) && !CLOSED.has(s.status || 'new') && String(s.phone || '').trim());
+
+    const load = new Map(agents.map((a) => [a.id, 0]));
+    runBatch((r) => {
+      // 1) تصفير كل المهام (بلا مسّ الملكية).
+      r(`UPDATE salons SET is_task = 0 WHERE is_task = 1`);
+      // 2) توزيع صوالين الحملة بالتساوي + وسمها كمهام.
+      for (const s of pool) {
+        let best = null, bestC = Infinity;
+        for (const a of agents) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
+        r(`UPDATE salons SET owner_id = ?, owner_name = ?, is_task = 1, updated_date = ? WHERE id = ?`,
           [best.id, best.display_name, nowIso(), s.id]);
         load.set(best.id, load.get(best.id) + 1);
       }
