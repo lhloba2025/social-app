@@ -1411,16 +1411,44 @@ export function mountSalesPortal(app, ctx) {
     res.json(enriched);
   });
 
-  // ── لوحة الفريق: عدّادات لكل مندوب (للمساءلة) ─────────────────────────────────
+  // ── لوحة الفريق: لكل مندوب — المهام، كم ردّت عليها، وكم بانتظار ردّها ──────────
   router.get('/wa/team-board', requireRole('admin'), (req, res) => {
+    const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);
+    // آخر رسالة واردة لكل رقم، وآخر رد صادر من النظام لكل صالون.
+    const lastInByTail = new Map();
+    for (const m of queryAll(`SELECT from_number, wa_timestamp FROM wa_inbound`)) {
+      const t = phoneKeyOf(m.from_number); if (t.length < 9) continue;
+      const tail = t.slice(-9); const ts = Number(m.wa_timestamp) || 0;
+      if (ts > (lastInByTail.get(tail) || 0)) lastInByTail.set(tail, ts);
+    }
+    const lastOutBySalon = new Map();
+    for (const o of queryAll(`SELECT salon_id, created_date FROM wa_outbound`)) {
+      const ts = Math.floor(new Date(String(o.created_date).replace(' ', 'T') + 'Z').getTime() / 1000) || 0;
+      if (ts > (lastOutBySalon.get(o.salon_id) || 0)) lastOutBySalon.set(o.salon_id, ts);
+    }
+
     const agents = queryAll(`SELECT id, display_name, role FROM sales_users WHERE role IN ('agent','admin') ORDER BY display_name`);
     const board = agents.map((a) => {
-      const rows = queryAll(`SELECT status, last_contact_date FROM salons WHERE owner_id = ?`, [a.id]);
+      const rows = queryAll(`SELECT id, phone, phone_key, status, last_contact_date FROM salons WHERE owner_id = ?`, [a.id]);
+      const open = rows.filter((r) => !CLOSED.has(r.status || 'new'));
+      let repliedByCustomer = 0, repRepliedBack = 0, awaiting = 0;
+      for (const r of open) {
+        const key = r.phone_key || phoneKeyOf(r.phone);
+        const tail = key && key.length >= 9 ? key.slice(-9) : null;
+        const lastIn = tail ? (lastInByTail.get(tail) || 0) : 0;
+        if (!lastIn) continue;                      // العميلة لم تردّ بعد
+        repliedByCustomer++;
+        const lastOut = lastOutBySalon.get(r.id) || 0;
+        // ردّت المندوبة إن أرسلت رداً بعد آخر رسالة، أو نقلت الحالة عن «ردت».
+        if (lastOut >= lastIn || (r.status && r.status !== 'replied')) repRepliedBack++;
+        else awaiting++;
+      }
       return {
         user_id: a.id, name: a.display_name, role: a.role,
-        assigned: rows.length,
-        contacted: rows.filter((r) => r.last_contact_date).length,
-        replied: rows.filter((r) => r.status === 'replied').length,
+        tasks: open.length,                 // المهام المفتوحة
+        replied_by_customer: repliedByCustomer,
+        rep_replied: repRepliedBack,        // ردّت عليها
+        awaiting,                           // بانتظار ردّها (لسّا ما ردّت)
         interested: rows.filter((r) => r.status === 'interested').length,
         subscribed: rows.filter((r) => r.status === 'subscribed').length,
       };

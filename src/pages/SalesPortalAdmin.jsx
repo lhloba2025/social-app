@@ -1353,9 +1353,9 @@ function TeamBoard({ ar, showToast }) {
         <table className="w-full text-sm">
           <thead><tr className="text-slate-400 text-xs border-b border-slate-800">
             <th className="text-start py-2 px-2">{ar ? 'المندوب' : 'Rep'}</th>
-            <th className="py-2 px-2">{ar ? 'مُسند' : 'Assigned'}</th>
-            <th className="py-2 px-2">{ar ? 'تواصل' : 'Contacted'}</th>
-            <th className="py-2 px-2">{ar ? 'ردّت' : 'Replied'}</th>
+            <th className="py-2 px-2">{ar ? 'المهام' : 'Tasks'}</th>
+            <th className="py-2 px-2">{ar ? 'ردّت عليها' : 'Replied'}</th>
+            <th className="py-2 px-2">{ar ? 'بانتظار ردّها' : 'Awaiting'}</th>
             <th className="py-2 px-2">{ar ? 'مهتم' : 'Interested'}</th>
             <th className="py-2 px-2">{ar ? 'مشترك' : 'Subscribed'}</th>
           </tr></thead>
@@ -1363,9 +1363,9 @@ function TeamBoard({ ar, showToast }) {
             {board.map((m) => (
               <tr key={m.user_id} className="border-b border-slate-800/50">
                 <td className="py-2 px-2 text-white">{m.name}</td>
-                <td className="py-2 px-2 text-center text-slate-300">{m.assigned}</td>
-                <td className="py-2 px-2 text-center text-slate-300">{m.contacted}</td>
-                <td className="py-2 px-2 text-center text-fuchsia-300">{m.replied}</td>
+                <td className="py-2 px-2 text-center text-slate-200 font-bold">{m.tasks}</td>
+                <td className="py-2 px-2 text-center text-emerald-300">{m.rep_replied}</td>
+                <td className="py-2 px-2 text-center"><span className={m.awaiting > 0 ? 'bg-rose-600 text-white rounded-full px-2 py-0.5 font-bold' : 'text-slate-500'}>{m.awaiting}</span></td>
                 <td className="py-2 px-2 text-center text-emerald-300">{m.interested}</td>
                 <td className="py-2 px-2 text-center text-green-400">{m.subscribed}</td>
               </tr>

@@ -412,6 +412,11 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
       showToast(msg);
     } catch (e) { showToast(e.message, 'err'); }
   };
+  // فتح المحادثة: نُصفّر التاق غير المقروء فوراً (تفاؤلياً) بلا انتظار تحديث.
+  const openChat = (t) => {
+    setChatSalon(t);
+    if (t.unread_count) setTasks((ts) => (ts || []).map((x) => (x.id === t.id ? { ...x, unread_count: 0 } : x)));
+  };
   // اختيار النتيجة من القائمة المنسدلة.
   const pickOutcome = (t, v) => {
     if (v === 'follow') { setFollowId(t.id); setFollowDate(''); }
@@ -480,7 +485,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
             </div>
             <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0 w-[160px]">
               <button
-                onClick={() => setChatSalon(t)}
+                onClick={() => openChat(t)}
                 className="relative flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm"
                 title={ar ? 'محادثة من داخل النظام (رقم الأعمال)' : 'Chat in-system'}
               >
@@ -527,8 +532,8 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
       {chatSalon && (
         <ChatModal
           salon={chatSalon} me={me} ar={ar} showToast={showToast} templates={templates}
-          onClose={() => setChatSalon(null)}
-          onSent={() => load()}
+          onClose={() => { setChatSalon(null); load(false); }}
+          onSent={() => load(false)}
         />
       )}
     </div>
