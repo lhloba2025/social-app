@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   waCloudConfigured, listApprovedTemplates, uploadMedia, sendTemplateMessage,
-  buildComponents, templateHasImageHeader,
+  sendTextMessage, buildComponents, templateHasImageHeader,
 } from './waCloud.js';
 
 // ترتيب الأدوار — كل دور يرث صلاحيات ما دونه.
@@ -162,6 +162,19 @@ export function mountSalesPortal(app, ctx) {
       note TEXT,
       created_date TEXT DEFAULT (datetime('now')),
       updated_date TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  // رسائل صادرة حرّة من داخل النظام (رد المندوبة عبر رقم الأعمال) — لعرض المحادثة.
+  run(`
+    CREATE TABLE IF NOT EXISTS wa_outbound (
+      id TEXT PRIMARY KEY,
+      salon_id TEXT,
+      to_number TEXT,
+      body TEXT,
+      wamid TEXT,
+      sent_by TEXT,
+      sent_by_name TEXT,
+      created_date TEXT DEFAULT (datetime('now'))
     );
   `);
   run(`
@@ -1393,6 +1406,74 @@ export function mountSalesPortal(app, ctx) {
       }
     });
     res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
+  });
+
+  // ── محادثة داخل النظام (رد المندوبة عبر رقم الأعمال) ──────────────────────────
+  // آخر طابع زمني (unix) لرسالة واردة من رقم الصالون — لحساب نافذة ٢٤ ساعة.
+  function lastInboundTs(salon) {
+    const key = salon.phone_key || phoneKeyOf(salon.phone);
+    if (!key || key.length < 9) return 0;
+    const tail = key.slice(-9);
+    let best = 0;
+    for (const m of queryAll(`SELECT from_number, wa_timestamp FROM wa_inbound`)) {
+      const t = phoneKeyOf(m.from_number);
+      if (t.length >= 9 && t.slice(-9) === tail) best = Math.max(best, Number(m.wa_timestamp) || 0);
+    }
+    return best;
+  }
+
+  // خيط المحادثة: رسائل واردة (webhook) + صادرة (من النظام) مرتّبة زمنياً + حالة النافذة.
+  router.get('/salons/:id/wa-thread', requireRole('agent'), (req, res) => {
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    const key = salon.phone_key || phoneKeyOf(salon.phone);
+    const tail = key && key.length >= 9 ? key.slice(-9) : null;
+    const inbound = tail
+      ? queryAll(`SELECT from_number, body, wa_timestamp, msg_type FROM wa_inbound`)
+          .filter((m) => { const t = phoneKeyOf(m.from_number); return t.length >= 9 && t.slice(-9) === tail; })
+          .map((m) => ({ dir: 'in', body: m.body, type: m.msg_type, ts: Number(m.wa_timestamp) || 0 }))
+      : [];
+    const outbound = queryAll(`SELECT body, created_date, sent_by_name FROM wa_outbound WHERE salon_id = ?`, [req.params.id])
+      .map((o) => ({ dir: 'out', body: o.body, by: o.sent_by_name, ts: Math.floor(new Date(String(o.created_date).replace(' ', 'T') + 'Z').getTime() / 1000) || 0 }));
+    const messages = [...inbound, ...outbound].sort((a, b) => a.ts - b.ts);
+    const lastIn = inbound.reduce((mx, m) => Math.max(mx, m.ts), 0);
+    const windowOpen = lastIn > 0 && (Date.now() / 1000 - lastIn) < 24 * 3600;
+    res.json({ messages, window_open: windowOpen, last_inbound_at: lastIn });
+  });
+
+  // إرسال رد نصّي حرّ من داخل النظام (ضمن نافذة ٢٤ ساعة فقط).
+  router.post('/salons/:id/wa-send', requireRole('agent'), async (req, res) => {
+    if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    const text = String(req.body?.text || '').trim();
+    if (!text) return res.status(400).json({ error: 'الرسالة فارغة' });
+    if (salon.do_not_send) return res.status(400).json({ error: 'هذا العميل طلب إيقاف الرسائل (لا ترسل)' });
+
+    const lastIn = lastInboundTs(salon);
+    const open = lastIn > 0 && (Date.now() / 1000 - lastIn) < 24 * 3600;
+    if (!open) return res.status(400).json({ error: 'انتهت نافذة الـ٢٤ ساعة (لم تردّ العميلة خلالها). استخدم حملة/قالباً معتمداً بدل الرسالة الحرّة.' });
+
+    const to = normalizeMsisdn(salon.phone);
+    if (!to) return res.status(400).json({ error: 'رقم الجوال غير صالح' });
+
+    const me = req.salesUser;
+    try {
+      const { wamid } = await sendTextMessage({ to, body: text });
+      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
+      if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
+      runBatch((r) => {
+        r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [randomUUID(), salon.id, to, text, wamid || '', me.id, me.name]);
+        const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+        r(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), salon.id]);
+        r(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+          [randomUUID(), salon.id, me.id, me.name, salon.status || '', `رد عبر النظام: ${text.slice(0, 120)}`]);
+      });
+      res.json({ ok: true, wamid: wamid || null });
+    } catch (err) {
+      res.status(502).json({ error: (err.code ? `[${err.code}] ` : '') + (err.message || 'فشل الإرسال') });
+    }
   });
 
   // استئناف الحملات التي بقيت «قيد الإرسال» بعد إعادة تشغيل الخادم.

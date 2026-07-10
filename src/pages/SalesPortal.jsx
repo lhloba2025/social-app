@@ -235,7 +235,7 @@ export default function SalesPortal({ language }) {
         )}
 
         {(!isAdmin || view === 'tasks') ? (
-          <MyTasksView ar={ar} showToast={showToast} onWhatsApp={(s) => setWaSalon(s)} />
+          <MyTasksView ar={ar} showToast={showToast} me={user} onWhatsApp={(s) => setWaSalon(s)} />
         ) : (<>
 
         {/* البحث + الفلاتر */}
@@ -384,8 +384,9 @@ export default function SalesPortal({ language }) {
 }
 
 // ── مهامي: قائمة متابعة المندوب (ردّت أولاً) + نتيجة بنقرة واحدة ───────────────────
-function MyTasksView({ ar, showToast, onWhatsApp }) {
+function MyTasksView({ ar, showToast, onWhatsApp, me }) {
   const [tasks, setTasks] = useState(null);
+  const [chatSalon, setChatSalon] = useState(null);   // الصالون المفتوح للمحادثة داخل النظام
   const [followId, setFollowId] = useState(null);
   const [followDate, setFollowDate] = useState('');
   const [openMsg, setOpenMsg] = useState(null);   // الصالون المعروض رسالته (مطويّة افتراضاً)
@@ -454,14 +455,21 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
                 )
               )}
             </div>
-            <a
-              href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
-              onClick={() => onWhatsApp && onWhatsApp(t)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm flex-shrink-0"
-              title={ar ? 'محادثة من جوالك الشخصي' : 'Chat from your phone'}
-            >
-              <MessageCircle className="w-5 h-5" /> {ar ? 'محادثة واتساب' : 'WhatsApp'}
-            </a>
+            <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => setChatSalon(t)}
+                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm"
+                title={ar ? 'محادثة من داخل النظام (رقم الأعمال)' : 'Chat in-system'}
+              >
+                <MessageCircle className="w-5 h-5" /> {ar ? 'محادثة' : 'Chat'}
+              </button>
+              <a
+                href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
+                onClick={() => onWhatsApp && onWhatsApp(t)}
+                className="text-[11px] text-center text-slate-400 hover:text-emerald-300"
+                title={ar ? 'أو من جوالك الشخصي' : 'or from your phone'}
+              >{ar ? 'أو واتساب جوالي' : 'my WhatsApp'}</a>
+            </div>
           </div>
 
           {followId === t.id ? (
@@ -483,6 +491,110 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
           )}
         </div>
       ))}
+
+      {chatSalon && (
+        <ChatModal
+          salon={chatSalon} me={me} ar={ar} showToast={showToast}
+          onClose={() => setChatSalon(null)}
+          onSent={() => load()}
+        />
+      )}
+    </div>
+  );
+}
+
+// نافذة المحادثة داخل النظام — تعرض الخيط وترسل رداً حرّاً عبر رقم الأعمال (٢٤ ساعة).
+function ChatModal({ salon, me, ar, showToast, onClose, onSent }) {
+  const [data, setData] = useState(null);      // { messages, window_open, last_inbound_at }
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [quick, setQuick] = useState([]);
+
+  const load = useCallback(() => {
+    salesApi.waThread(salon.id).then(setData).catch((e) => showToast(e.message, 'err'));
+  }, [salon.id, showToast]);
+  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, [load]);
+  useEffect(() => {
+    salesApi.templates().then((tpls) => setQuick((tpls || []).slice(0, 4).map((t) => (t.body || '').replace(/\{me\}/g, me?.name || '')))).catch(() => {});
+  }, [me]);
+
+  const send = async (body) => {
+    const msg = String(body ?? text).trim();
+    if (!msg) return;
+    setSending(true);
+    try {
+      await salesApi.waSendMessage(salon.id, msg);
+      setText('');
+      await load();
+      onSent && onSent();
+    } catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
+  };
+
+  const fmt = (ts) => {
+    if (!ts) return '';
+    try { return new Intl.DateTimeFormat(ar ? 'ar-SA-u-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }).format(new Date(ts * 1000)); }
+    catch { return ''; }
+  };
+
+  const open = data?.window_open;
+  return (
+    <div dir={ar ? 'rtl' : 'ltr'} className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-md h-[85vh] sm:h-[70vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* الترويسة */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
+          <div className="min-w-0">
+            <div className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</div>
+            <div className="text-[11px] text-slate-400" style={{ direction: 'ltr' }}>{salon.phone}</div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* الرسائل */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-950/40">
+          {!data ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+          ) : data.messages.length === 0 ? (
+            <div className="text-center text-slate-500 text-sm py-8">{ar ? 'لا رسائل بعد.' : 'No messages yet.'}</div>
+          ) : data.messages.map((m, i) => (
+            <div key={i} className={`flex ${m.dir === 'out' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line break-words ${m.dir === 'out' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
+                {m.body || (m.type ? `[${m.type}]` : '')}
+                <div className={`text-[10px] mt-1 ${m.dir === 'out' ? 'text-emerald-100/70' : 'text-slate-400'}`}>{fmt(m.ts)}{m.dir === 'out' && m.by ? ` · ${m.by}` : ''}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ردود سريعة + الإدخال */}
+        <div className="border-t border-slate-700 p-2.5 flex-shrink-0 space-y-2">
+          {open === false ? (
+            <div className="text-[12px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+              {ar ? '⏳ انتهت نافذة الـ٢٤ ساعة (لم تردّ العميلة خلالها). لإرسال جديد استخدم حملة بقالب معتمد.' : '24h window closed — use an approved template campaign.'}
+            </div>
+          ) : (
+            <>
+              {quick.length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {quick.map((q, i) => (
+                    <button key={i} onClick={() => setText(q)} className="flex-shrink-0 text-[11px] bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-full px-2.5 py-1 max-w-[180px] truncate" title={q}>{q}</button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={text} onChange={(e) => setText(e.target.value)} rows={1}
+                  placeholder={ar ? 'اكتبي رداً…' : 'Type a reply…'}
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-500 resize-none max-h-28"
+                />
+                <button onClick={() => send()} disabled={sending || !text.trim()} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl px-4 py-2.5 flex-shrink-0">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : (ar ? 'إرسال' : 'Send')}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 text-center">{ar ? 'تُرسل من رقم هوفيرا للأعمال · اضغطي ردّاً سريعاً لتعبئته' : 'Sent from Hovera business number'}</p>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

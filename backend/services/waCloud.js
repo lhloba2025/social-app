@@ -73,6 +73,23 @@ export async function sendTemplateMessage({ to, name, language = 'ar', component
   }
 }
 
+// إرسال رسالة نصّية حرّة — تُقبل فقط داخل نافذة ٢٤ ساعة من آخر رسالة للعميلة.
+export async function sendTextMessage({ to, body }) {
+  if (!TOKEN()) throw new Error('WA_ACCESS_TOKEN غير مضبوط في الخادم');
+  const payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body, preview_url: true } };
+  try {
+    const { data } = await axios.post(graph(`${PHONE_ID()}/messages`), payload, {
+      headers: { ...authHeader(), 'Content-Type': 'application/json' }, timeout: 20000,
+    });
+    return { wamid: data?.messages?.[0]?.id || null, raw: data };
+  } catch (err) {
+    const meta = err?.response?.data?.error;
+    const e = new Error(meta?.message || err.message || 'فشل الإرسال');
+    e.code = meta?.code != null ? String(meta.code) : null;
+    throw e;
+  }
+}
+
 // يبني مصفوفة components لقالب: ترويسة صورة (اختيارية) + متغيّرات جسم (اختيارية).
 export function buildComponents({ mediaId, bodyParams = [] }) {
   const components = [];

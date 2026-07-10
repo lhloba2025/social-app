@@ -158,4 +158,8 @@ export const salesApi = {
   myTasks() { return req('GET', '/salons/my-tasks'); },
   teamBoard() { return req('GET', '/wa/team-board'); },
   distributeTasks() { return req('POST', '/wa/distribute'); },
+
+  // محادثة داخل النظام (عبر رقم الأعمال)
+  waThread(id) { return req('GET', `/salons/${id}/wa-thread`); },
+  waSendMessage(id, text) { return req('POST', `/salons/${id}/wa-send`, { text }); },
 };
