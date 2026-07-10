@@ -1048,13 +1048,46 @@ export function mountSalesPortal(app, ctx) {
     return out;
   }
 
+  // يحلّ مستلمي الحملة من أرقام خام (ملف أو إدخال يدوي) — يطابق الصالون بآخر ٩
+  // أرقام، يستثني «لا ترسل»، ويمنع التكرار. الأرقام غير المطابقة تُرسَل بلا صالون.
+  function resolveTokenRecipients(tokens) {
+    const salonByTail = new Map();
+    const optedOut = new Set();
+    for (const s of queryAll(`SELECT id, name, city, phone, phone_key, do_not_send FROM salons`)) {
+      const key = s.phone_key || phoneKeyOf(s.phone);
+      if (!key || key.length < 9) continue;
+      const tail = key.slice(-9);
+      if (s.do_not_send) { optedOut.add(tail); continue; }
+      salonByTail.set(tail, s);
+    }
+    const seen = new Set();
+    const out = [];
+    for (const tok of tokens) {
+      const digits = String(tok ?? '').replace(/\D/g, '');
+      if (digits.length < 9) continue;
+      const tail = digits.slice(-9);
+      if (optedOut.has(tail)) continue;
+      const msisdn = normalizeMsisdn(digits);
+      if (!msisdn || seen.has(msisdn)) continue;
+      seen.add(msisdn);
+      const salon = salonByTail.get(tail);
+      out.push({ salon_id: salon?.id || null, name: salon?.name || null, city: salon?.city || null, to_number: msisdn });
+    }
+    return out;
+  }
+
   // ── معاينة مستلمي الحملة (العدد + قائمة قابلة للبحث) قبل الإنشاء ───────────────
   router.get('/wa/recipients-preview', requireRole('admin'), (req, res) => {
-    const city = String(req.query.city || '').trim();
-    const status = String(req.query.status || '').trim();
-    const limit = Math.max(0, parseInt(req.query.limit, 10) || 0);
     const search = String(req.query.search || '').trim().toLowerCase();
-    const recips = resolveFilterRecipients({ city, status, limit });
+    const numbers = String(req.query.numbers || '').trim();
+    // أرقام يدوية إن وُجدت، وإلا بالفلاتر.
+    const recips = numbers
+      ? resolveTokenRecipients(numbers.split(/[\s,;]+/))
+      : resolveFilterRecipients({
+          city: String(req.query.city || '').trim(),
+          status: String(req.query.status || '').trim(),
+          limit: Math.max(0, parseInt(req.query.limit, 10) || 0),
+        });
     let rows = recips;
     if (search) rows = rows.filter((r) => `${r.name || ''} ${r.to_number} ${r.city || ''}`.toLowerCase().includes(search));
     res.json({ total: recips.length, matched: rows.length, rows: rows.slice(0, 300) });
@@ -1085,51 +1118,29 @@ export function mountSalesPortal(app, ctx) {
       const template_lang = String(b.template_lang || 'ar').trim();
       if (!name || !template_name) return res.status(400).json({ error: 'اسم الحملة والقالب مطلوبان' });
 
-      // بناء قائمة المستلمين.
-      const seen = new Set();
-      const recipients = []; // { salon_id, to_number }
+      // بناء قائمة المستلمين — نفس مُحلّلات المعاينة (ملف/أرقام يدوية/فلاتر).
       const numbersFile = req.files?.numbers?.[0];
-      const allSalons = queryAll(`SELECT id, name, phone, phone_key, city, status, do_not_send FROM salons`);
-
+      const numbersText = String(b.numbers_text || '').trim();
+      let resolved;
       if (numbersFile) {
-        // من ملف أرقام: نطابق الصوالين بآخر ٩ أرقام، والأرقام غير المطابقة تُرسَل بلا صالون.
-        const salonByTail = new Map();
-        for (const s of allSalons) {
-          if (s.do_not_send) continue;
-          const key = s.phone_key || phoneKeyOf(s.phone);
-          if (key && key.length >= 9) salonByTail.set(key.slice(-9), s);
-        }
         const wb = XLSX.read(numbersFile.buffer, { type: 'buffer' });
-        const optedOut = new Set(
-          allSalons.filter((s) => s.do_not_send).map((s) => (s.phone_key || phoneKeyOf(s.phone)).slice(-9))
-        );
+        const tokens = [];
         for (const sheetName of wb.SheetNames) {
           for (const row of XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })) {
-            for (const cell of row) {
-              const digits = String(cell ?? '').replace(/\D/g, '');
-              if (digits.length < 9) continue;
-              const tail = digits.slice(-9);
-              if (optedOut.has(tail)) continue;          // احترام منع الإرسال
-              const msisdn = normalizeMsisdn(digits);
-              if (!msisdn || seen.has(msisdn)) continue;
-              seen.add(msisdn);
-              const salon = salonByTail.get(tail);
-              recipients.push({ salon_id: salon?.id || null, to_number: msisdn });
-            }
+            for (const cell of row) tokens.push(cell);
           }
         }
+        resolved = resolveTokenRecipients(tokens);
+      } else if (numbersText) {
+        resolved = resolveTokenRecipients(numbersText.split(/[\s,;]+/));
       } else {
-        // بالفلاتر: نفس منطق المعاينة تماماً (مدينة + حالة + حدّ N، الجدد افتراضاً).
-        const city = String(b.city || '').trim();
-        const status = String(b.status || '').trim();
-        const limit = Math.max(0, parseInt(b.limit, 10) || 0);
-        for (const r of resolveFilterRecipients({ city, status, limit })) {
-          if (seen.has(r.to_number)) continue;
-          seen.add(r.to_number);
-          recipients.push({ salon_id: r.salon_id, to_number: r.to_number });
-          if (limit && recipients.length >= limit) break;
-        }
+        resolved = resolveFilterRecipients({
+          city: String(b.city || '').trim(),
+          status: String(b.status || '').trim(),
+          limit: Math.max(0, parseInt(b.limit, 10) || 0),
+        });
       }
+      const recipients = resolved.map((r) => ({ salon_id: r.salon_id, to_number: r.to_number }));
 
       if (!recipients.length) return res.status(400).json({ error: 'لا يوجد مستلمون مطابقون بعد استثناء «لا ترسل» والمكرّرات' });
 
@@ -1219,6 +1230,18 @@ export function mountSalesPortal(app, ctx) {
   router.post('/wa/campaigns/:id/cancel', requireRole('admin'), (req, res) => {
     run(`UPDATE wa_campaigns SET status = 'cancelled', updated_date = ? WHERE id = ?`, [nowIso(), req.params.id]);
     res.json({ id: req.params.id, status: 'cancelled' });
+  });
+
+  // حذف الحملة نهائياً (مع مستلميها). إن كانت قيد الإرسال يتوقّف المُشغّل تلقائياً
+  // لأنه يقرأ حالة الحملة كل دورة (تصبح غير موجودة → يخرج). لا يمسّ حالات الصوالين.
+  router.delete('/wa/campaigns/:id', requireRole('admin'), (req, res) => {
+    const camp = queryOne(`SELECT id FROM wa_campaigns WHERE id = ?`, [req.params.id]);
+    if (!camp) return res.status(404).json({ error: 'الحملة غير موجودة' });
+    runBatch((r) => {
+      r(`DELETE FROM wa_campaign_recipients WHERE campaign_id = ?`, [req.params.id]);
+      r(`DELETE FROM wa_campaigns WHERE id = ?`, [req.params.id]);
+    });
+    res.json({ success: true });
   });
 
   // تصدير تفصيل الحملة إكسل.

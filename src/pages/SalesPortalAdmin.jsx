@@ -875,6 +875,11 @@ function CampaignsTab({ ar, showToast }) {
       URL.revokeObjectURL(url);
     } catch (e) { showToast(e.message, 'err'); }
   };
+  const removeCamp = async (c) => {
+    if (!window.confirm(ar ? `حذف حملة «${c.name}» نهائياً؟ لا يمكن التراجع. (لا يؤثّر على حالات الصوالين)` : `Delete campaign "${c.name}" permanently?`)) return;
+    try { await salesApi.waDeleteCampaign(c.id); showToast(ar ? 'تم حذف الحملة' : 'Campaign deleted'); load(); }
+    catch (e) { showToast(e.message, 'err'); }
+  };
 
   return (
     <div className="space-y-4">
@@ -923,6 +928,7 @@ function CampaignsTab({ ar, showToast }) {
                     )}
                     <button onClick={() => setDetailId(c.id)} className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg px-2.5 py-1.5"><BarChart3 className="w-3.5 h-3.5" /> {ar ? 'التفاصيل' : 'Details'}</button>
                     <button onClick={() => exportCamp(c.id)} className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg px-2.5 py-1.5"><FileDown className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => removeCamp(c)} className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-rose-600 border border-slate-600 text-white rounded-lg px-2.5 py-1.5" title={ar ? 'حذف الحملة' : 'Delete campaign'}><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 {/* شريط التقدّم */}
@@ -947,12 +953,13 @@ function CampaignsTab({ ar, showToast }) {
 
 function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [name, setName] = useState('');
-  const [mode, setMode] = useState('filters'); // filters | file
+  const [mode, setMode] = useState('filters'); // filters | manual | file
   const [cities, setCities] = useState([]);
   const [city, setCity] = useState('');
   const [status, setStatus] = useState('');   // '' = الجدد فقط (الافتراضي)
   const [limit, setLimit] = useState('');
   const [numbersFile, setNumbersFile] = useState(null);
+  const [numbersText, setNumbersText] = useState('');   // أرقام يدوية (رقم أو أكثر)
   const [templates, setTemplates] = useState(null);
   const [tpl, setTpl] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -969,24 +976,27 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       .catch((e) => { setTemplates([]); showToast(e.message, 'err'); });
   }, [showToast]);
 
-  // تحديث المعاينة عند تغيّر الفلاتر/البحث (بتأخير بسيط) — وضع الفلاتر فقط.
+  // معاينة حيّة للعدد + القائمة (وضع الفلاتر أو الأرقام اليدوية).
   useEffect(() => {
-    if (mode !== 'filters') { setPreview(null); return; }
+    if (mode === 'file') { setPreview(null); return; }
+    if (mode === 'manual' && !numbersText.trim()) { setPreview({ total: 0, matched: 0, rows: [] }); return; }
     setPreviewLoading(true);
     const t = setTimeout(() => {
-      salesApi.waRecipientsPreview({ city, status, limit, search })
+      const params = mode === 'manual' ? { numbers: numbersText, search } : { city, status, limit, search };
+      salesApi.waRecipientsPreview(params)
         .then(setPreview)
         .catch(() => setPreview(null))
         .finally(() => setPreviewLoading(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [mode, city, status, limit, search]);
+  }, [mode, city, status, limit, search, numbersText]);
 
   const submit = async () => {
     if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
     if (!tpl) return showToast(ar ? 'اختر قالباً' : 'Pick a template', 'err');
     if (tpl.has_image && !imageFile) return showToast(ar ? 'هذا القالب يتطلّب صورة ترويسة' : 'This template needs a header image', 'err');
     if (mode === 'file' && !numbersFile) return showToast(ar ? 'ارفع ملف الأرقام' : 'Upload numbers file', 'err');
+    if (mode === 'manual' && !numbersText.trim()) return showToast(ar ? 'اكتب رقماً واحداً على الأقل' : 'Enter at least one number', 'err');
     setBusy(true);
     try {
       const fd = new FormData();
@@ -994,6 +1004,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       fd.append('template_name', tpl.name);
       fd.append('template_lang', tpl.language || 'ar');
       if (mode === 'file') fd.append('numbers', numbersFile);
+      else if (mode === 'manual') fd.append('numbers_text', numbersText.trim());
       else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); }
       if (imageFile) fd.append('image', imageFile);
       const r = await salesApi.waCreateCampaign(fd);
@@ -1014,6 +1025,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
         {/* اختيار المستلمين */}
         <div className="flex gap-2 text-sm">
           <button onClick={() => setMode('filters')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'filters' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'بالفلاتر' : 'By filters'}</button>
+          <button onClick={() => setMode('manual')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'manual' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'أرقام يدوية' : 'Type numbers'}</button>
           <button onClick={() => setMode('file')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'file' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'ملف أرقام' : 'Numbers file'}</button>
         </div>
         {mode === 'filters' ? (
@@ -1025,6 +1037,12 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
             </select>
             <input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} className={inputCls} placeholder={ar ? 'حدّ N' : 'Limit N'} inputMode="numeric" />
           </div>
+        ) : mode === 'manual' ? (
+          <textarea
+            value={numbersText} onChange={(e) => setNumbersText(e.target.value)} rows={3}
+            className={inputCls}
+            placeholder={ar ? 'اكتب رقماً واحداً أو أكثر — كل رقم في سطر\nمثال: 0550629242' : 'One or more numbers, one per line\ne.g. 0550629242'}
+          />
         ) : (
           <label className="bg-slate-800 hover:bg-indigo-600 cursor-pointer text-white rounded-lg py-2 text-sm flex items-center justify-center gap-2">
             <Upload className="w-4 h-4" /> {numbersFile ? numbersFile.name : (ar ? 'اختيار ملف الأرقام (Excel/CSV)' : 'Choose numbers file')}
@@ -1033,8 +1051,8 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
         )}
         <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة.' : 'Opt-outs excluded, duplicates removed.'}</p>
 
-        {/* معاينة المستلمين — العدد + بحث + قائمة (وضع الفلاتر) */}
-        {mode === 'filters' && (
+        {/* معاينة المستلمين — العدد + بحث + قائمة (فلاتر أو أرقام يدوية) */}
+        {mode !== 'file' && (
           <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-2.5 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-300 flex items-center gap-1.5"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'المستلمون المطابقون' : 'Matching recipients'}</span>

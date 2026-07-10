@@ -150,6 +150,7 @@ export const salesApi = {
   waStartCampaign(id) { return req('POST', `/wa/campaigns/${id}/start`); },
   waPauseCampaign(id) { return req('POST', `/wa/campaigns/${id}/pause`); },
   waCancelCampaign(id) { return req('POST', `/wa/campaigns/${id}/cancel`); },
+  waDeleteCampaign(id) { return req('DELETE', `/wa/campaigns/${id}`); },
   async waExportCampaign(id) { return req('GET', `/wa/campaigns/${id}/export`); },
 
   // ── متابعة الفريق (المرحلة ٢) ──
