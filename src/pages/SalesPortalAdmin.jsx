@@ -1190,11 +1190,29 @@ function CampaignDetail({ ar, showToast, id, onClose }) {
 
 function TeamBoard({ ar, showToast }) {
   const [board, setBoard] = useState(null);
-  useEffect(() => { salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err')); }, [showToast]);
+  const [busy, setBusy] = useState(false);
+  const load = () => salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err'));
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const distribute = async () => {
+    if (!window.confirm(ar ? 'توزيع كل الصوالين النشطة غير المُسندة على المندوبات بالتساوي؟' : 'Distribute all unassigned active salons equally?')) return;
+    setBusy(true);
+    try {
+      const r = await salesApi.distributeTasks();
+      showToast(ar ? `تم توزيع ${r.assigned} مهمة بالتساوي` : `Distributed ${r.assigned} tasks`);
+      load();
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
   if (!board) return null;
   return (
     <div className="mt-6">
-      <h3 className="font-bold text-sm text-slate-300 mb-2 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
+        <button onClick={distribute} disabled={busy} className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg px-3 py-1.5">
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} {ar ? 'توزيع المهام بالتساوي' : 'Distribute equally'}
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="text-slate-400 text-xs border-b border-slate-800">

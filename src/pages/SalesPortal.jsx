@@ -386,6 +386,7 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
   const [tasks, setTasks] = useState(null);
   const [followId, setFollowId] = useState(null);
   const [followDate, setFollowDate] = useState('');
+  const [openMsg, setOpenMsg] = useState(null);   // الصالون المعروض رسالته (مطويّة افتراضاً)
 
   const load = useCallback(() => {
     salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err'));
@@ -419,7 +420,18 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
                 <span style={{ direction: 'ltr' }}>{t.phone}</span>
               </div>
               {t.last_inbound && (
-                <p className="text-sm text-slate-200 mt-1.5 bg-slate-900/50 rounded-lg px-2.5 py-1.5 whitespace-pre-line break-words">💬 {t.last_inbound}</p>
+                openMsg === t.id ? (
+                  <p
+                    onClick={() => setOpenMsg(null)}
+                    className="text-sm text-slate-200 mt-1.5 bg-slate-900/50 rounded-lg px-2.5 py-1.5 whitespace-pre-line break-words cursor-pointer"
+                    title={ar ? 'إخفاء' : 'Hide'}
+                  >💬 {t.last_inbound}</p>
+                ) : (
+                  <button
+                    onClick={() => setOpenMsg(t.id)}
+                    className="text-[12px] text-fuchsia-300 hover:text-fuchsia-200 mt-1.5 flex items-center gap-1"
+                  ><MessageCircle className="w-3 h-3" /> {ar ? 'عرض الرسالة' : 'Show message'}</button>
+                )
               )}
             </div>
             <a

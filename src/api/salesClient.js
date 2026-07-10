@@ -157,4 +157,5 @@ export const salesApi = {
   assignSalon(id, ownerId) { return req('POST', `/salons/${id}/assign`, { owner_id: ownerId }); },
   myTasks() { return req('GET', '/salons/my-tasks'); },
   teamBoard() { return req('GET', '/wa/team-board'); },
+  distributeTasks() { return req('POST', '/wa/distribute'); },
 };

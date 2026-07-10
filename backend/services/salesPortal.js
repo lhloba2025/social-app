@@ -1336,6 +1336,43 @@ export function mountSalesPortal(app, ctx) {
     res.json(board);
   });
 
+  // توزيع المهام بالتساوي: يوزّع الصوالين النشطة غير المُسندة على المندوبات بحيث
+  // تتساوى الأحمال (يأخذ في الحسبان ما لديهنّ حالياً — الأقل تحميلاً يأخذ أولاً).
+  router.post('/wa/distribute', requireRole('admin'), (req, res) => {
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
+
+    // الحمل الحالي لكل مندوبة (الصوالين النشطة).
+    const load = new Map();
+    for (const a of agents) {
+      load.set(a.id, queryOne(
+        `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+        [a.id]
+      )?.c ?? 0);
+    }
+    // البركة: صوالين نشطة (تفاعلت/أُرسل لها) بلا مالك.
+    const pool = queryAll(
+      `SELECT id FROM salons
+       WHERE (owner_id IS NULL OR owner_id = '')
+         AND status IN ('sent','replied','contacted','no_answer','interested','scheduled_visit')
+         AND phone IS NOT NULL AND phone != ''
+         AND (do_not_send IS NULL OR do_not_send = 0)`
+    );
+    if (!pool.length) return res.json({ assigned: 0, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
+
+    runBatch((r) => {
+      for (const s of pool) {
+        // اختر الأقل تحميلاً الآن.
+        let best = null, bestC = Infinity;
+        for (const a of agents) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
+        r(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+          [best.id, best.display_name, nowIso(), s.id]);
+        load.set(best.id, load.get(best.id) + 1);
+      }
+    });
+    res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
+  });
+
   // استئناف الحملات التي بقيت «قيد الإرسال» بعد إعادة تشغيل الخادم.
   for (const c of queryAll(`SELECT id FROM wa_campaigns WHERE status = 'sending'`)) {
     runCampaign(c.id);
