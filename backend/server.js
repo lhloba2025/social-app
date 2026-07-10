@@ -372,6 +372,15 @@ function run(sql, params = []) {
   save();
 }
 
+// Bulk writer: runs many statements and persists to disk ONCE at the end.
+// sql.js serialises the WHOLE database on every save(), so calling run() in a
+// loop over thousands of rows is O(n × dbSize) disk writes. Wrap bulk inserts
+// in runBatch to pay the write cost a single time.
+function runBatch(fn) {
+  try { fn((sql, params = []) => db.run(sql, params)); }
+  finally { save(); }
+}
+
 function applySort(rows, sort) {
   if (!sort) return rows;
   const desc = sort.startsWith('-');
@@ -694,7 +703,7 @@ app.use('/api/posts', postsRouter);
 // Self-contained module: its own tables (sales_users, sales_sessions, salons,
 // contact_log, wa_templates) + role-based auth enforced on the server. Mounted
 // before the SPA catch-all so /api/sales/* resolves to the API, not index.html.
-mountSalesPortal(app, { queryAll, queryOne, run, uploadsDir });
+mountSalesPortal(app, { queryAll, queryOne, run, runBatch, uploadsDir });
 
 // ---- WhatsApp Cloud API webhook (public, no auth) ----
 // Receives inbound customer replies + outbound message status updates from Meta

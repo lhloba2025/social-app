@@ -61,6 +61,9 @@ const DEFAULT_WA_TEMPLATES = [
 
 export function mountSalesPortal(app, ctx) {
   const { queryAll, queryOne, run, uploadsDir } = ctx;
+  // كاتب دفعي: يحفظ للقرص مرّة واحدة بعد كل العبارات (للإدراج بالآلاف). إن لم
+  // يُمرَّر (توافق رجعي) نرجع لـ run العادي.
+  const runBatch = ctx.runBatch || ((fn) => fn(run));
   // مجلد ملفات القوالب (صور/PDF) — يُقدَّم عبر /uploads/sales/*.
   const tplDir = uploadsDir ? path.join(uploadsDir, 'sales') : null;
   if (tplDir) { try { fs.mkdirSync(tplDir, { recursive: true }); } catch { /* موجود */ } }
@@ -726,42 +729,45 @@ export function mountSalesPortal(app, ctx) {
       );
 
       let added = 0, skipped = 0;
-      for (const row of rows) {
-        const name    = pick(row, ['الاسم', 'الإسم', 'الاسم التجاري', 'name']);
-        const phone   = pick(row, ['الجوال', 'الهاتف', 'رقم الجوال', 'phone', 'mobile']);
-        const key = phoneKeyOf(phone);
+      // إدراج دفعي بحفظ واحد للقرص (قد تكون آلاف الصفوف).
+      runBatch((r) => {
+        for (const row of rows) {
+          const name    = pick(row, ['الاسم', 'الإسم', 'الاسم التجاري', 'name']);
+          const phone   = pick(row, ['الجوال', 'الهاتف', 'رقم الجوال', 'phone', 'mobile']);
+          const key = phoneKeyOf(phone);
 
-        // منع التكرار: رقم موجود مسبقاً أو تكرّر داخل نفس الملف.
-        if (key && existingKeys.has(key)) { skipped++; continue; }
+          // منع التكرار: رقم موجود مسبقاً أو تكرّر داخل نفس الملف.
+          if (key && existingKeys.has(key)) { skipped++; continue; }
 
-        const coords = pick(row, ['الإحداثيات', 'الاحداثيات', 'coordinates', 'location']);
-        let lat = null, lng = null;
-        if (coords) {
-          const m = String(coords).match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
-          if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+          const coords = pick(row, ['الإحداثيات', 'الاحداثيات', 'coordinates', 'location']);
+          let lat = null, lng = null;
+          if (coords) {
+            const m = String(coords).match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+          }
+          const typeRaw = pick(row, ['النوع', 'نوع العميل', 'type']);
+          const type = /منصة|حجز|booking/i.test(typeRaw) ? 'booking_platform' : 'opportunity';
+
+          insertSalon(r, {
+            id: randomUUID(),
+            name,
+            phone,
+            phone_key: key,
+            city:     pick(row, ['المدينة', 'city']),
+            district: pick(row, ['الحي', 'الحى', 'district', 'neighborhood']),
+            address:  pick(row, ['العنوان', 'address']),
+            rating:   parseFloat(pick(row, ['التقييم', 'rating'])) || 0,
+            reviews_count: parseInt(pick(row, ['عدد المراجعات', 'المراجعات', 'reviews', 'reviews_count'])) || 0,
+            type,
+            platform: pick(row, ['المنصة', 'platform']),
+            lat, lng,
+            status: 'new',
+          });
+
+          if (key) existingKeys.add(key);
+          added++;
         }
-        const typeRaw = pick(row, ['النوع', 'نوع العميل', 'type']);
-        const type = /منصة|حجز|booking/i.test(typeRaw) ? 'booking_platform' : 'opportunity';
-
-        insertSalon(run, {
-          id: randomUUID(),
-          name,
-          phone,
-          phone_key: key,
-          city:     pick(row, ['المدينة', 'city']),
-          district: pick(row, ['الحي', 'الحى', 'district', 'neighborhood']),
-          address:  pick(row, ['العنوان', 'address']),
-          rating:   parseFloat(pick(row, ['التقييم', 'rating'])) || 0,
-          reviews_count: parseInt(pick(row, ['عدد المراجعات', 'المراجعات', 'reviews', 'reviews_count'])) || 0,
-          type,
-          platform: pick(row, ['المنصة', 'platform']),
-          lat, lng,
-          status: 'new',
-        });
-
-        if (key) existingKeys.add(key);
-        added++;
-      }
+      });
 
       res.json({ added, skipped, total: rows.length });
     } catch (err) {
@@ -798,25 +804,28 @@ export function mountSalesPortal(app, ctx) {
       const salons = queryAll(`SELECT * FROM salons`);
       const matchedTails = new Set();
       let matched = 0, newlyContacted = 0;
-      for (const s of salons) {
-        const key = s.phone_key || phoneKeyOf(s.phone);
-        if (!key || key.length < 9) continue;
-        const tail = key.slice(-9);
-        if (!campaignTails.has(tail)) continue;
-        matchedTails.add(tail);
+      // تحديث دفعي بحفظ واحد للقرص.
+      runBatch((r) => {
+        for (const s of salons) {
+          const key = s.phone_key || phoneKeyOf(s.phone);
+          if (!key || key.length < 9) continue;
+          const tail = key.slice(-9);
+          if (!campaignTails.has(tail)) continue;
+          matchedTails.add(tail);
 
-        const tags = tryParseArr(s.tags);
-        if (!tags.includes(TAG)) tags.push(TAG);
-        const updates = { tags: JSON.stringify(tags), last_contact_date: nowIso(), updated_date: nowIso() };
-        if ((s.status || 'new') === 'new') { updates.status = 'contacted'; newlyContacted++; }
-        const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
-        run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), s.id]);
-        run(
-          `INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
-          [randomUUID(), s.id, me.id, 'حملة ميتا', updates.status || s.status || '', 'تواصل عبر حملة ميتا 📣']
-        );
-        matched++;
-      }
+          const tags = tryParseArr(s.tags);
+          if (!tags.includes(TAG)) tags.push(TAG);
+          const updates = { tags: JSON.stringify(tags), last_contact_date: nowIso(), updated_date: nowIso() };
+          if ((s.status || 'new') === 'new') { updates.status = 'contacted'; newlyContacted++; }
+          const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+          r(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), s.id]);
+          r(
+            `INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+            [randomUUID(), s.id, me.id, 'حملة ميتا', updates.status || s.status || '', 'تواصل عبر حملة ميتا 📣']
+          );
+          matched++;
+        }
+      });
       res.json({
         numbers: campaignTails.size,
         matched,
@@ -1133,15 +1142,18 @@ export function mountSalesPortal(app, ctx) {
       }
 
       const id = randomUUID();
-      run(
-        `INSERT INTO wa_campaigns (id, name, template_name, template_lang, media_id, status, filters, total, created_by, created_by_name)
-         VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
-        [id, name, template_name, template_lang, media_id, JSON.stringify(b || {}), recipients.length, req.salesUser.id, req.salesUser.name]
-      );
-      for (const r of recipients) {
-        run(`INSERT INTO wa_campaign_recipients (id, campaign_id, salon_id, to_number, send_status) VALUES (?, ?, ?, ?, 'pending')`,
-          [randomUUID(), id, r.salon_id, r.to_number]);
-      }
+      // إدراج دفعي: الحملة + كل المستلمين (قد يكونون آلافاً) بحفظ واحد للقرص.
+      runBatch((r) => {
+        r(
+          `INSERT INTO wa_campaigns (id, name, template_name, template_lang, media_id, status, filters, total, created_by, created_by_name)
+           VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
+          [id, name, template_name, template_lang, media_id, JSON.stringify(b || {}), recipients.length, req.salesUser.id, req.salesUser.name]
+        );
+        for (const rec of recipients) {
+          r(`INSERT INTO wa_campaign_recipients (id, campaign_id, salon_id, to_number, send_status) VALUES (?, ?, ?, ?, 'pending')`,
+            [randomUUID(), id, rec.salon_id, rec.to_number]);
+        }
+      });
       res.status(201).json({ id, name, total: recipients.length, media_id, status: 'draft', warn24h: sent24hCount() });
     });
 
