@@ -138,6 +138,12 @@ export const salesApi = {
 
   // ── حملات الواتساب (المرحلة ٢) ──
   waTemplatesLive() { return req('GET', '/wa/templates-live'); },
+  waRecipientsPreview(params = {}) {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    ).toString();
+    return req('GET', `/wa/recipients-preview${qs ? `?${qs}` : ''}`);
+  },
   waCampaigns() { return req('GET', '/wa/campaigns'); },
   waCampaign(id) { return req('GET', `/wa/campaigns/${id}`); },
   waCreateCampaign(formData) { return req('POST', '/wa/campaigns', formData, true); },

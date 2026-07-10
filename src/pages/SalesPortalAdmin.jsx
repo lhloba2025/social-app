@@ -957,6 +957,10 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [tpl, setTpl] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  // معاينة حيّة للمستلمين (بالفلاتر): العدد + قائمة قابلة للبحث.
+  const [preview, setPreview] = useState(null);   // { total, matched, rows }
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     salesApi.salonFilters().then((f) => setCities(f.cities || [])).catch(() => {});
@@ -964,6 +968,19 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       .then((t) => setTemplates(t))
       .catch((e) => { setTemplates([]); showToast(e.message, 'err'); });
   }, [showToast]);
+
+  // تحديث المعاينة عند تغيّر الفلاتر/البحث (بتأخير بسيط) — وضع الفلاتر فقط.
+  useEffect(() => {
+    if (mode !== 'filters') { setPreview(null); return; }
+    setPreviewLoading(true);
+    const t = setTimeout(() => {
+      salesApi.waRecipientsPreview({ city, status, limit, search })
+        .then(setPreview)
+        .catch(() => setPreview(null))
+        .finally(() => setPreviewLoading(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [mode, city, status, limit, search]);
 
   const submit = async () => {
     if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
@@ -1015,6 +1032,38 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
           </label>
         )}
         <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة.' : 'Opt-outs excluded, duplicates removed.'}</p>
+
+        {/* معاينة المستلمين — العدد + بحث + قائمة (وضع الفلاتر) */}
+        {mode === 'filters' && (
+          <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-300 flex items-center gap-1.5"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'المستلمون المطابقون' : 'Matching recipients'}</span>
+              <span className="text-lg font-bold text-white flex items-center gap-1">
+                {previewLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+                {preview ? preview.total : '—'}
+              </span>
+            </div>
+            <div className="relative">
+              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-2.5' : 'left-2.5'}`} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={ar ? 'بحث بالاسم أو الرقم…' : 'Search name/number…'} className={`${inputCls} ${ar ? 'pr-8' : 'pl-8'}`} />
+            </div>
+            {preview && preview.rows.length > 0 ? (
+              <div className="max-h-44 overflow-y-auto divide-y divide-slate-700/50 rounded-lg">
+                {preview.rows.map((r) => (
+                  <div key={r.salon_id} className="flex items-center justify-between gap-2 px-1.5 py-1 text-xs">
+                    <span className="text-slate-200 truncate">{r.name || (ar ? 'بدون اسم' : 'Unnamed')}{r.city ? <span className="text-slate-500"> · {r.city}</span> : null}</span>
+                    <span className="text-slate-400 flex-shrink-0" style={{ direction: 'ltr' }}>{r.to_number}</span>
+                  </div>
+                ))}
+                {preview.total > preview.rows.length && !search && (
+                  <div className="text-[11px] text-slate-500 px-1.5 py-1">{ar ? `و${preview.total - preview.rows.length} صالوناً آخر…` : `and ${preview.total - preview.rows.length} more…`}</div>
+                )}
+              </div>
+            ) : preview && !previewLoading ? (
+              <div className="text-xs text-slate-500 py-2 text-center">{search ? (ar ? 'لا نتائج للبحث' : 'No search matches') : (ar ? 'لا مستلمين مطابقين — عدّل الفلاتر' : 'No matching recipients')}</div>
+            ) : null}
+          </div>
+        )}
 
         {/* القالب */}
         <div>

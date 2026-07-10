@@ -1020,6 +1020,37 @@ export function mountSalesPortal(app, ctx) {
     return best;
   }
 
+  // يحلّ مستلمي الحملة بالفلاتر (نفس منطق الإنشاء) — يُستخدم للمعاينة والإنشاء.
+  function resolveFilterRecipients({ city, status, limit }) {
+    let list = queryAll(`SELECT id, name, phone, phone_key, city, status, do_not_send FROM salons`)
+      .filter((s) => !s.do_not_send && String(s.phone || '').trim());
+    if (city) list = list.filter((s) => s.city === city);
+    if (status) list = list.filter((s) => (s.status || 'new') === status);
+    else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
+    const seen = new Set();
+    const out = [];
+    for (const s of list) {
+      const msisdn = normalizeMsisdn(s.phone);
+      if (!msisdn || seen.has(msisdn)) continue;
+      seen.add(msisdn);
+      out.push({ salon_id: s.id, name: s.name, city: s.city, to_number: msisdn });
+      if (limit && out.length >= limit) break;
+    }
+    return out;
+  }
+
+  // ── معاينة مستلمي الحملة (العدد + قائمة قابلة للبحث) قبل الإنشاء ───────────────
+  router.get('/wa/recipients-preview', requireRole('admin'), (req, res) => {
+    const city = String(req.query.city || '').trim();
+    const status = String(req.query.status || '').trim();
+    const limit = Math.max(0, parseInt(req.query.limit, 10) || 0);
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const recips = resolveFilterRecipients({ city, status, limit });
+    let rows = recips;
+    if (search) rows = rows.filter((r) => `${r.name || ''} ${r.to_number} ${r.city || ''}`.toLowerCase().includes(search));
+    res.json({ total: recips.length, matched: rows.length, rows: rows.slice(0, 300) });
+  });
+
   // ── القوالب الحيّة (المعتمدة فقط) من ميتا ─────────────────────────────────────
   router.get('/wa/templates-live', requireRole('admin'), async (req, res) => {
     if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
@@ -1079,19 +1110,14 @@ export function mountSalesPortal(app, ctx) {
           }
         }
       } else {
-        // بالفلاتر: مدينة + حالة (الافتراضي: استثناء «تم التواصل» ⇒ الجدد فقط) + حدّ N.
+        // بالفلاتر: نفس منطق المعاينة تماماً (مدينة + حالة + حدّ N، الجدد افتراضاً).
         const city = String(b.city || '').trim();
         const status = String(b.status || '').trim();
         const limit = Math.max(0, parseInt(b.limit, 10) || 0);
-        let list = allSalons.filter((s) => !s.do_not_send && String(s.phone || '').trim());
-        if (city) list = list.filter((s) => s.city === city);
-        if (status) list = list.filter((s) => (s.status || 'new') === status);
-        else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
-        for (const s of list) {
-          const msisdn = normalizeMsisdn(s.phone);
-          if (!msisdn || seen.has(msisdn)) continue;
-          seen.add(msisdn);
-          recipients.push({ salon_id: s.id, to_number: msisdn });
+        for (const r of resolveFilterRecipients({ city, status, limit })) {
+          if (seen.has(r.to_number)) continue;
+          seen.add(r.to_number);
+          recipients.push({ salon_id: r.salon_id, to_number: r.to_number });
           if (limit && recipients.length >= limit) break;
         }
       }
