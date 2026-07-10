@@ -891,7 +891,20 @@ export function mountSalesPortal(app, ctx) {
 
       const salons = queryAll(`SELECT * FROM salons`);
       const matchedTails = new Set();
-      let matched = 0, newlyContacted = 0;
+      let matched = 0, newlyContacted = 0, distributed = 0;
+
+      // توزيع تلقائي: الدفعة الجديدة تُوسَم كمهام وتُوزَّع بالتساوي على المناديب،
+      // موازِنةً مع الأحمال الحالية — دون المساس بالدفعات السابقة (المهام القائمة).
+      const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);
+      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+      const load = new Map();
+      for (const a of agents) {
+        load.set(a.id, queryOne(
+          `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+          [a.id]
+        )?.c ?? 0);
+      }
+
       // تحديث دفعي بحفظ واحد للقرص.
       runBatch((r) => {
         for (const s of salons) {
@@ -905,6 +918,20 @@ export function mountSalesPortal(app, ctx) {
           if (!tags.includes(TAG)) tags.push(TAG);
           const updates = { tags: JSON.stringify(tags), last_contact_date: nowIso(), updated_date: nowIso() };
           if ((s.status || 'new') === 'new') { updates.status = 'contacted'; newlyContacted++; }
+
+          // توزيع تلقائي: فقط الصوالين غير المُغلقة التي ليست مهمة بعد (دفعة جديدة).
+          if (agents.length && s.is_task !== 1 && !s.do_not_send && !CLOSED.has(s.status || 'new')) {
+            let best = null, bestC = Infinity;
+            for (const a of agents) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
+            if (best) {
+              updates.is_task = 1;
+              updates.owner_id = best.id;
+              updates.owner_name = best.display_name;
+              load.set(best.id, load.get(best.id) + 1);
+              distributed++;
+            }
+          }
+
           const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
           r(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), s.id]);
           r(
@@ -918,6 +945,8 @@ export function mountSalesPortal(app, ctx) {
         numbers: campaignTails.size,
         matched,
         newlyContacted,
+        distributed,
+        perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })),
         notFound: campaignTails.size - matchedTails.size,
       });
     } catch (err) {

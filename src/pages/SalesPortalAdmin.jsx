@@ -632,8 +632,8 @@ function DataTab({ ar, showToast }) {
     try {
       const r = await salesApi.markCampaign(file);
       showToast(ar
-        ? `تم التحديث: ${r.matched} صالون وُسم «حملة ميتا» (منها ${r.newlyContacted} صارت «تم التواصل») · ${r.notFound} رقم غير موجود`
-        : `Updated: ${r.matched} salons tagged (${r.newlyContacted} now contacted) · ${r.notFound} numbers not found`);
+        ? `تم: ${r.matched} صالون وُسم «حملة ميتا» · وُزّع منها ${r.distributed ?? 0} كمهام على الفريق بالتساوي · ${r.notFound} رقم غير موجود`
+        : `Done: ${r.matched} tagged · ${r.distributed ?? 0} auto-distributed as tasks · ${r.notFound} not found`);
     } catch (e) { showToast(e.message, 'err'); } finally { setBusy(''); }
   };
 
