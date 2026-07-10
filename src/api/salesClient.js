@@ -163,6 +163,7 @@ export const salesApi = {
   distributeTasks() { return req('POST', '/wa/distribute'); },
   campaignTaskCount() { return req('GET', '/wa/campaign-task-count'); },
   resetDistributeCampaign() { return req('POST', '/wa/reset-distribute-campaign'); },
+  reassignFrom(userId) { return req('POST', '/wa/reassign-from', { user_id: userId }); },
 
   // محادثة داخل النظام (عبر رقم الأعمال)
   waThread(id) { return req('GET', `/salons/${id}/wa-thread`); },

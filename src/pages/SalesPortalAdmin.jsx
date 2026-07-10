@@ -702,7 +702,7 @@ function InboxTab({ ar, showToast }) {
   const [replies, setReplies] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ search: '', from: '', to: '', handled: '' });
+  const [filters, setFilters] = useState({ search: '', from: '', to: '', handled: '', owner_id: '', status: '' });
 
   // نحتفظ بأحدث فلاتر داخل ref حتى يستخدمها التحديث التلقائي دون إعادة جدولة.
   const filtersRef = React.useRef(filters);
@@ -821,6 +821,15 @@ function InboxTab({ ar, showToast }) {
           <option value="false">{ar ? 'غير معالَج' : 'Unhandled'}</option>
           <option value="true">{ar ? 'معالَج' : 'Handled'}</option>
         </select>
+        <select value={filters.owner_id} onChange={(e) => set('owner_id', e.target.value)} className={`${inputCls} w-full`} title={ar ? 'المندوب' : 'Rep'}>
+          <option value="">{ar ? 'كل المناديب' : 'All reps'}</option>
+          <option value="none">{ar ? 'غير مُسند' : 'Unassigned'}</option>
+          {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+        </select>
+        <select value={filters.status} onChange={(e) => set('status', e.target.value)} className={`${inputCls} w-full`} title={ar ? 'الحالة' : 'Status'}>
+          <option value="">{ar ? 'كل الحالات' : 'All statuses'}</option>
+          {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
+        </select>
       </div>
 
       {/* القائمة */}
@@ -874,7 +883,7 @@ function InboxTab({ ar, showToast }) {
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                   {r.salon_id && (
                     <button
-                      onClick={() => setThreadSalon({ id: r.salon_id, name: r.salon_name, phone: r.from_number })}
+                      onClick={() => setThreadSalon({ id: r.salon_id, name: r.salon_name, phone: r.from_number, assigned_to: r.assigned_to })}
                       className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-2.5 py-1.5 transition"
                       title={ar ? 'عرض كامل المحادثة (لمتابعة المندوبة)' : 'View full conversation'}
                     >
@@ -918,26 +927,35 @@ function InboxTab({ ar, showToast }) {
 // عرض كامل محادثة صالون للأدمن (قراءة فقط) — لمتابعة رد المندوبات (يظهر اسم المُرسِلة).
 function AdminChatModal({ ar, showToast, salon, onClose }) {
   const [data, setData] = useState(null);
-  useEffect(() => {
-    let on = true;
-    const load = () => salesApi.waThread(salon.id).then((d) => { if (on) setData(d); }).catch((e) => showToast(e.message, 'err'));
-    load();
-    const iv = setInterval(load, 15000);
-    return () => { on = false; clearInterval(iv); };
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const load = React.useCallback(() => {
+    salesApi.waThread(salon.id).then(setData).catch((e) => showToast(e.message, 'err'));
   }, [salon.id, showToast]);
+  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, [load]);
+
+  const send = async () => {
+    const msg = text.trim();
+    if (!msg) return;
+    setSending(true);
+    try { await salesApi.waSendMessage(salon.id, msg); setText(''); await load(); }
+    catch (e) { showToast(e.message, 'err'); } finally { setSending(false); }
+  };
 
   const fmt = (ts) => {
     if (!ts) return '';
     try { return new Intl.DateTimeFormat(ar ? 'ar-SA-u-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }).format(new Date(ts * 1000)); }
     catch { return ''; }
   };
+  const open = data?.window_open;
 
   return (
     <div dir={ar ? 'rtl' : 'ltr'} className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-700 w-full max-w-md h-[85vh] sm:h-[70vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
           <div className="min-w-0">
-            <div className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</div>
+            <div className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}{salon.assigned_to ? <span className="text-[11px] text-indigo-300 font-normal"> · {salon.assigned_to}</span> : null}</div>
             <div className="text-[11px] text-slate-400" style={{ direction: 'ltr' }}>{salon.phone}</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
@@ -951,13 +969,26 @@ function AdminChatModal({ ar, showToast, salon, onClose }) {
             <div key={i} className={`flex ${m.dir === 'out' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line break-words ${m.dir === 'out' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
                 {m.body || (m.type ? `[${m.type}]` : '')}
-                <div className={`text-[10px] mt-1 ${m.dir === 'out' ? 'text-emerald-100/70' : 'text-slate-400'}`}>{m.dir === 'out' ? `${ar ? 'المندوبة' : 'Rep'}${m.by ? ` · ${m.by}` : ''} · ` : ''}{fmt(m.ts)}</div>
+                <div className={`text-[10px] mt-1 ${m.dir === 'out' ? 'text-emerald-100/70' : 'text-slate-400'}`}>{m.dir === 'out' ? `${m.by || (ar ? 'النظام' : 'System')} · ` : ''}{fmt(m.ts)}</div>
               </div>
             </div>
           ))}
         </div>
-        <div className="px-4 py-2.5 border-t border-slate-700 text-[11px] text-slate-500 text-center flex-shrink-0">
-          {ar ? 'عرض للمتابعة فقط · الردود تتم من صفحة المندوبة' : 'Read-only follow-up view'}
+        {/* الأدمن يقدر يرد بدل المندوبة (ضمن نافذة ٢٤ ساعة) */}
+        <div className="border-t border-slate-700 p-2.5 flex-shrink-0">
+          {open === false ? (
+            <div className="text-[12px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+              {ar ? '⏳ انتهت نافذة الـ٢٤ ساعة — لا يمكن إرسال رسالة حرّة الآن.' : '24h window closed.'}
+            </div>
+          ) : (
+            <div className="flex items-end gap-2">
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={ar ? 'رُدّ بدل المندوبة…' : 'Reply as admin…'} className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-500 resize-none max-h-28" />
+              <button onClick={send} disabled={sending || !text.trim()} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl px-4 py-2.5 flex-shrink-0">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : (ar ? 'إرسال' : 'Send')}
+              </button>
+            </div>
+          )}
+          <p className="text-[10px] text-slate-500 text-center mt-1.5">{ar ? 'يُرسل من رقم هوفيرا للأعمال' : 'Sent from Hovera business number'}</p>
         </div>
       </div>
     </div>
@@ -1326,8 +1357,21 @@ function CampaignDetail({ ar, showToast, id, onClose }) {
 
 function TeamBoard({ ar, showToast }) {
   const [board, setBoard] = useState(null);
+  const [busyId, setBusyId] = useState(null);
   const load = () => salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err'));
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const reassign = async (m) => {
+    if (!window.confirm(ar
+      ? `تحويل مهام «${m.name}» (${m.tasks}) لباقي الفريق بالتساوي؟\n(الملكية تنتقل للمناديب الآخرين — مثلاً عند غياب المندوبة)`
+      : `Move ${m.name}'s ${m.tasks} tasks to the rest of the team?`)) return;
+    setBusyId(m.user_id);
+    try {
+      const r = await salesApi.reassignFrom(m.user_id);
+      showToast(ar ? `تم تحويل ${r.moved} مهمة من ${m.name} لباقي الفريق` : `Moved ${r.moved} tasks from ${m.name}`);
+      load();
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusyId(null); }
+  };
 
   if (!board) return null;
   return (
@@ -1345,6 +1389,7 @@ function TeamBoard({ ar, showToast }) {
             <th className="py-2 px-2">{ar ? 'بانتظار ردّها' : 'Awaiting'}</th>
             <th className="py-2 px-2">{ar ? 'مهتم' : 'Interested'}</th>
             <th className="py-2 px-2">{ar ? 'مشترك' : 'Subscribed'}</th>
+            <th className="py-2 px-2"></th>
           </tr></thead>
           <tbody>
             {board.map((m) => (
@@ -1355,6 +1400,16 @@ function TeamBoard({ ar, showToast }) {
                 <td className="py-2 px-2 text-center"><span className={m.awaiting > 0 ? 'bg-rose-600 text-white rounded-full px-2 py-0.5 font-bold' : 'text-slate-500'}>{m.awaiting}</span></td>
                 <td className="py-2 px-2 text-center text-emerald-300">{m.interested}</td>
                 <td className="py-2 px-2 text-center text-green-400">{m.subscribed}</td>
+                <td className="py-2 px-2 text-center">
+                  {m.tasks > 0 && (
+                    <button onClick={() => reassign(m)} disabled={busyId === m.user_id}
+                      className="inline-flex items-center gap-1 text-[11px] bg-slate-800 hover:bg-amber-600 border border-slate-600 text-slate-200 rounded-lg px-2 py-1 transition disabled:opacity-60"
+                      title={ar ? 'تحويل مهامها لباقي الفريق' : 'Reassign to team'}>
+                      {busyId === m.user_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />}
+                      {ar ? 'تحويل' : 'Reassign'}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

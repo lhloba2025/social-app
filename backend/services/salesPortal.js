@@ -964,7 +964,7 @@ export function mountSalesPortal(app, ctx) {
 
   // قائمة الردود الواردة (الأحدث أولاً) مع مطابقة الصالون بآخر ٩ أرقام.
   router.get('/wa/replies', requireRole('admin'), (req, res) => {
-    const { search = '', from = '', to = '', handled = '' } = req.query;
+    const { search = '', from = '', to = '', handled = '', owner_id = '', status = '' } = req.query;
     let rows = queryAll(`SELECT * FROM wa_inbound ORDER BY wa_timestamp DESC, received_at DESC`);
 
     // خريطة الصوالين: آخر ٩ أرقام → { id, name, city, owner_name, status }.
@@ -994,6 +994,14 @@ export function mountSalesPortal(app, ctx) {
 
       const digits = phoneKeyOf(r.from_number);
       const salon = digits.length >= 9 ? salonByTail.get(digits.slice(-9)) : null;
+
+      // فلترة بالمندوب المُسند.
+      if (owner_id) {
+        if (owner_id === 'none') { if (!salon || salon.owner_id) continue; }
+        else if (!salon || salon.owner_id !== owner_id) continue;
+      }
+      // فلترة بحالة الصالون (مهتم/مشترك/ردت…).
+      if (status && (!salon || (salon.status || 'new') !== status)) continue;
 
       // بحث بالرقم/الاسم/النص/اسم الصالون.
       if (q) {
@@ -1535,6 +1543,42 @@ export function mountSalesPortal(app, ctx) {
       };
     });
     res.json(board);
+  });
+
+  // ── تحويل مهام مندوب لباقي الفريق (مثلاً لو كان غير متاح) ─────────────────────
+  // ينقل مهام المندوب المفتوحة (is_task=1، غير مغلقة) للمناديب الآخرين بالتساوي.
+  router.post('/wa/reassign-from', requireRole('admin'), (req, res) => {
+    const sourceId = (req.body && req.body.user_id) || '';
+    if (!sourceId) return res.status(400).json({ error: 'حدّد المندوب المصدر' });
+    const source = queryOne(`SELECT display_name FROM sales_users WHERE id = ?`, [sourceId]);
+    if (!source) return res.status(404).json({ error: 'المندوب غير موجود' });
+
+    const targets = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND id != ?`, [sourceId]);
+    if (!targets.length) return res.status(400).json({ error: 'لا يوجد مناديب آخرون للتحويل إليهم' });
+
+    const pool = queryAll(
+      `SELECT id FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      [sourceId]
+    );
+    if (!pool.length) return res.json({ moved: 0, from: source.display_name, perAgent: targets.map((a) => ({ name: a.display_name, total: 0 })) });
+
+    const load = new Map();
+    for (const a of targets) {
+      load.set(a.id, queryOne(
+        `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+        [a.id]
+      )?.c ?? 0);
+    }
+    runBatch((r) => {
+      for (const s of pool) {
+        let best = null, bestC = Infinity;
+        for (const a of targets) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
+        r(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+          [best.id, best.display_name, nowIso(), s.id]);
+        load.set(best.id, load.get(best.id) + 1);
+      }
+    });
+    res.json({ moved: pool.length, from: source.display_name, perAgent: targets.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
   });
 
   // توزيع المهام بالتساوي: يوزّع الصوالين النشطة غير المُسندة على المندوبات بحيث
