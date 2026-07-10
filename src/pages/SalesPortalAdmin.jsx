@@ -843,6 +843,10 @@ function InboxTab({ ar, showToast }) {
 }
 
 // ── حملات الواتساب (المرحلة ٢) ──────────────────────────────────────────────────
+// ذاكرة مؤقّتة لقوائم القوالب الحيّة (تُجلب من ميتا) — لتظهر فوراً عند إعادة فتح
+// النافذة بدل انتظار الشبكة في كل مرة. تُحدَّث بالخلفية عند كل فتح.
+let LIVE_TEMPLATES_CACHE = null;
+
 const CAMP_STATUS = {
   draft:     { ar: 'مسودّة',        en: 'Draft',     color: 'bg-slate-600' },
   sending:   { ar: 'قيد الإرسال',   en: 'Sending',   color: 'bg-cyan-600' },
@@ -970,7 +974,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [limit, setLimit] = useState('');
   const [numbersFile, setNumbersFile] = useState(null);
   const [numbersText, setNumbersText] = useState('');   // أرقام يدوية (رقم أو أكثر)
-  const [templates, setTemplates] = useState(null);
+  const [templates, setTemplates] = useState(LIVE_TEMPLATES_CACHE);   // يظهر فوراً من الذاكرة إن وُجد
   const [tpl, setTpl] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -989,8 +993,8 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   useEffect(() => {
     salesApi.salonFilters().then((f) => setCities(f.cities || [])).catch(() => {});
     salesApi.waTemplatesLive()
-      .then((t) => setTemplates(t))
-      .catch((e) => { setTemplates([]); showToast(e.message, 'err'); });
+      .then((t) => { LIVE_TEMPLATES_CACHE = t; setTemplates(t); })
+      .catch((e) => { setTemplates((prev) => prev || []); showToast(e.message, 'err'); });
   }, [showToast]);
 
   // معاينة حيّة للعدد + القائمة (وضع الفلاتر أو الأرقام اليدوية).
