@@ -1328,7 +1328,7 @@ app.post('/api/whatsapp/templates', async (req, res) => {
 });
 
 // ---- Health check ----
-app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
+app.get('/health', (_, res) => res.json({ ok: true, time: new Date().toISOString(), commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) }));
 
 // ---- TikTok URL-prefix verification ----
 // TikTok checks for this exact file at the domain root to confirm ownership.
