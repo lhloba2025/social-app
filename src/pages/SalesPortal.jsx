@@ -235,7 +235,7 @@ export default function SalesPortal({ language }) {
         )}
 
         {(!isAdmin || view === 'tasks') ? (
-          <MyTasksView ar={ar} showToast={showToast} me={user} onWhatsApp={(s) => setWaSalon(s)} />
+          <MyTasksView ar={ar} showToast={showToast} me={user} templates={templates} onWhatsApp={(s) => setWaSalon(s)} />
         ) : (<>
 
         {/* البحث + الفلاتر */}
@@ -384,7 +384,7 @@ export default function SalesPortal({ language }) {
 }
 
 // ── مهامي: قائمة متابعة المندوب (ردّت أولاً) + نتيجة بنقرة واحدة ───────────────────
-function MyTasksView({ ar, showToast, onWhatsApp, me }) {
+function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
   const [tasks, setTasks] = useState(null);
   const [chatSalon, setChatSalon] = useState(null);   // الصالون المفتوح للمحادثة داخل النظام
   const [followId, setFollowId] = useState(null);
@@ -494,7 +494,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me }) {
 
       {chatSalon && (
         <ChatModal
-          salon={chatSalon} me={me} ar={ar} showToast={showToast}
+          salon={chatSalon} me={me} ar={ar} showToast={showToast} templates={templates}
           onClose={() => setChatSalon(null)}
           onSent={() => load()}
         />
@@ -504,19 +504,17 @@ function MyTasksView({ ar, showToast, onWhatsApp, me }) {
 }
 
 // نافذة المحادثة داخل النظام — تعرض الخيط وترسل رداً حرّاً عبر رقم الأعمال (٢٤ ساعة).
-function ChatModal({ salon, me, ar, showToast, onClose, onSent }) {
+function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
   const [data, setData] = useState(null);      // { messages, window_open, last_inbound_at }
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [quick, setQuick] = useState([]);
+  // الردود السريعة تُحسب فوراً من القوالب المحمّلة مسبقاً (بلا انتظار شبكة).
+  const quick = (templates || []).slice(0, 4).map((t) => (t.body || '').replace(/\{me\}/g, me?.name || ''));
 
   const load = useCallback(() => {
     salesApi.waThread(salon.id).then(setData).catch((e) => showToast(e.message, 'err'));
   }, [salon.id, showToast]);
   useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, [load]);
-  useEffect(() => {
-    salesApi.templates().then((tpls) => setQuick((tpls || []).slice(0, 4).map((t) => (t.body || '').replace(/\{me\}/g, me?.name || '')))).catch(() => {});
-  }, [me]);
 
   const send = async (body) => {
     const msg = String(body ?? text).trim();
