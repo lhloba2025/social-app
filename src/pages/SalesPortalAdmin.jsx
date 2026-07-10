@@ -9,6 +9,7 @@ import {
   Download, Upload, FileSpreadsheet, FileDown, Loader2, ShieldAlert, X,
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
   Paperclip, FileText, Image as ImageIcon, Share2, Megaphone,
+  Inbox, RefreshCw, ExternalLink, CheckCircle2, Search, Send, CheckCheck, XCircle,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -58,6 +59,7 @@ export default function SalesPortalAdmin({ language }) {
     { id: 'oversight', label: ar ? 'متابعة الفريق' : 'Team Oversight', icon: Gauge },
     { id: 'members', label: ar ? 'أعضاء الفريق' : 'Team Members', icon: Users },
     { id: 'templates', label: ar ? 'قوالب الواتساب' : 'WhatsApp Templates', icon: MessageSquare },
+    { id: 'inbox', label: ar ? 'وارد الردود' : 'Replies Inbox', icon: Inbox },
     ...(isSuper ? [{ id: 'data', label: ar ? 'البيانات والنُّسخ' : 'Data & Backups', icon: Database }] : []),
   ];
 
@@ -104,6 +106,7 @@ export default function SalesPortalAdmin({ language }) {
         {tab === 'oversight' && <OversightTab ar={ar} showToast={showToast} />}
         {tab === 'members' && <MembersTab user={user} ar={ar} showToast={showToast} />}
         {tab === 'templates' && <TemplatesTab ar={ar} showToast={showToast} />}
+        {tab === 'inbox' && <InboxTab ar={ar} showToast={showToast} />}
         {tab === 'data' && isSuper && <DataTab ar={ar} showToast={showToast} />}
       </div>
 
@@ -616,6 +619,180 @@ function DataCardFile({ icon: Icon, title, desc, actionLabel, accept, loading, o
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }}
         />
       </label>
+    </div>
+  );
+}
+
+// ── وارد ردود واتساب ────────────────────────────────────────────────────────────
+function InboxTab({ ar, showToast }) {
+  const [replies, setReplies] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ search: '', from: '', to: '', handled: '' });
+
+  // نحتفظ بأحدث فلاتر داخل ref حتى يستخدمها التحديث التلقائي دون إعادة جدولة.
+  const filtersRef = React.useRef(filters);
+  filtersRef.current = filters;
+
+  const load = React.useCallback((showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+    const f = filtersRef.current;
+    Promise.all([
+      salesApi.waReplies(f),
+      salesApi.waStats({ from: f.from, to: f.to }),
+    ])
+      .then(([rep, st]) => { setReplies(rep); setStats(st); })
+      .catch((e) => showToast(e.message, 'err'))
+      .finally(() => setLoading(false));
+  }, [showToast]);
+
+  // تحميل أولي + عند تغيّر الفلاتر.
+  useEffect(() => { load(true); }, [filters, load]);
+  // تحديث تلقائي كل ٣٠ ثانية (بلا مؤشّر تحميل).
+  useEffect(() => {
+    const id = setInterval(() => load(false), 30000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const toggleHandled = async (row) => {
+    const next = !row.handled;
+    setReplies((rs) => rs.map((r) => (r.id === row.id ? { ...r, handled: next } : r)));
+    try { await salesApi.waSetHandled(row.id, next); }
+    catch (e) {
+      showToast(e.message, 'err');
+      setReplies((rs) => rs.map((r) => (r.id === row.id ? { ...r, handled: !next } : r)));
+    }
+  };
+
+  const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
+  const fmtTime = (tsSec, receivedAt) => {
+    const d = tsSec ? new Date(Number(tsSec) * 1000) : (receivedAt ? new Date(receivedAt) : null);
+    if (!d || isNaN(d)) return '—';
+    try {
+      return new Intl.DateTimeFormat(ar ? 'ar-SA-u-nu-latn' : 'en-GB', {
+        timeZone: 'Asia/Riyadh', dateStyle: 'medium', timeStyle: 'short',
+      }).format(d);
+    } catch { return d.toISOString(); }
+  };
+
+  const STAT_CARDS = [
+    { key: 'sent', label: ar ? 'أُرسلت' : 'Sent', icon: Send, color: 'text-slate-300' },
+    { key: 'delivered', label: ar ? 'وصلت' : 'Delivered', icon: Check, color: 'text-sky-300' },
+    { key: 'read', label: ar ? 'قُرئت' : 'Read', icon: CheckCheck, color: 'text-emerald-300' },
+    { key: 'failed', label: ar ? 'فشلت' : 'Failed', icon: XCircle, color: 'text-rose-300' },
+  ];
+
+  const inputCls = 'bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-indigo-500 outline-none';
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="font-bold text-lg flex items-center gap-2"><Inbox className="w-5 h-5 text-indigo-400" /> {ar ? 'وارد ردود واتساب' : 'WhatsApp Replies Inbox'}</h2>
+        <button onClick={() => load(true)} className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition">
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {ar ? 'تحديث' : 'Refresh'}
+        </button>
+      </div>
+
+      {/* بطاقات الإحصائيات */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {STAT_CARDS.map((c) => (
+          <div key={c.key} className="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-white">{stats ? (stats[c.key] ?? 0) : '—'}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{c.label}</div>
+            </div>
+            <c.icon className={`w-6 h-6 ${c.color}`} />
+          </div>
+        ))}
+      </div>
+
+      {/* أبرز أكواد الأخطاء */}
+      {stats?.errors?.length > 0 && (
+        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+          <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> {ar ? 'أبرز أكواد أخطاء الإرسال' : 'Top send-error codes'}</div>
+          <div className="flex flex-wrap gap-2">
+            {stats.errors.map((e) => (
+              <span key={e.error_code} className="text-xs rounded-full px-2.5 py-1 bg-rose-500/10 border border-rose-500/30 text-rose-300" title={ar ? 'كود خطأ واتساب' : 'WhatsApp error code'}>
+                {e.error_code} · {e.count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* الفلاتر */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="relative sm:col-span-2 lg:col-span-1">
+          <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-3' : 'left-3'}`} />
+          <input value={filters.search} onChange={(e) => set('search', e.target.value)} placeholder={ar ? 'بحث بالرقم أو الاسم أو النص…' : 'Search number/name/text…'} className={`${inputCls} w-full ${ar ? 'pr-9' : 'pl-9'}`} />
+        </div>
+        <input type="date" value={filters.from} onChange={(e) => set('from', e.target.value)} className={`${inputCls} w-full`} title={ar ? 'من تاريخ' : 'From'} />
+        <input type="date" value={filters.to} onChange={(e) => set('to', e.target.value)} className={`${inputCls} w-full`} title={ar ? 'إلى تاريخ' : 'To'} />
+        <select value={filters.handled} onChange={(e) => set('handled', e.target.value)} className={`${inputCls} w-full`}>
+          <option value="">{ar ? 'الكل' : 'All'}</option>
+          <option value="false">{ar ? 'غير معالَج' : 'Unhandled'}</option>
+          <option value="true">{ar ? 'معالَج' : 'Handled'}</option>
+        </select>
+      </div>
+
+      {/* القائمة */}
+      {loading && replies.length === 0 ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+      ) : replies.length === 0 ? (
+        <div className="text-center py-12 text-slate-500">
+          <Inbox className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          {ar ? 'لا توجد ردود بعد. ستظهر هنا فور وصولها من ميتا.' : 'No replies yet. They will appear here as they arrive from Meta.'}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {replies.map((r) => (
+            <div key={r.id} className={`bg-slate-900 border rounded-xl p-3 ${r.handled ? 'border-slate-800 opacity-70' : 'border-slate-700'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-white text-sm">{r.profile_name || (ar ? 'بدون اسم' : 'Unknown')}</span>
+                    <span className="text-xs text-slate-400 dir-ltr" style={{ direction: 'ltr' }}>{r.from_number}</span>
+                    {r.salon_name && (
+                      <span className="text-[11px] rounded-full px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
+                        {r.salon_name}{r.salon_city ? ` · ${r.salon_city}` : ''}
+                      </span>
+                    )}
+                    {r.msg_type && r.msg_type !== 'text' && (
+                      <span className="text-[11px] rounded-full px-2 py-0.5 bg-slate-700/50 border border-slate-600 text-slate-300">{r.msg_type}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-200 mt-1.5 whitespace-pre-line break-words">{r.body || '—'}</p>
+                  <div className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtTime(r.wa_timestamp, r.received_at)}</div>
+                </div>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <a
+                    href={`https://wa.me/${String(r.from_number || '').replace(/\D/g, '')}`}
+                    target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2.5 py-1.5 transition"
+                    title={ar ? 'فتح المحادثة في واتساب' : 'Open chat in WhatsApp'}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> {ar ? 'واتساب' : 'WhatsApp'}
+                  </a>
+                  <button
+                    onClick={() => toggleHandled(r)}
+                    className={`flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-1.5 transition border ${
+                      r.handled
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+                    }`}
+                    title={ar ? 'وضع كمعالَج' : 'Mark handled'}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {r.handled ? (ar ? 'معالَج' : 'Handled') : (ar ? 'معالجة' : 'Handle')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {replies.length >= 500 && (
+            <p className="text-center text-xs text-slate-500 pt-2">{ar ? 'عرض أول ٥٠٠ رد — استخدم البحث والفلاتر لتضييق النتائج.' : 'Showing first 500 — use search/filters to narrow.'}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

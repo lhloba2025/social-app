@@ -790,6 +790,78 @@ export function mountSalesPortal(app, ctx) {
     }
   });
 
+  // ── وارد ردود واتساب (يقرأ جداول الويبهوك العامة) ─────────────────────────────
+  const riyadhDay = (tsSec) => {
+    const ms = (Number(tsSec) || 0) * 1000 + 3 * 3600 * 1000;
+    return tsSec ? new Date(ms).toISOString().slice(0, 10) : '';
+  };
+
+  // قائمة الردود الواردة (الأحدث أولاً) مع مطابقة الصالون بآخر ٩ أرقام.
+  router.get('/wa/replies', requireRole('admin'), (req, res) => {
+    const { search = '', from = '', to = '', handled = '' } = req.query;
+    let rows = queryAll(`SELECT * FROM wa_inbound ORDER BY wa_timestamp DESC, received_at DESC`);
+
+    // خريطة الصوالين: آخر ٩ أرقام → { name, city }.
+    const salonByTail = new Map();
+    for (const s of queryAll(`SELECT name, city, phone, phone_key FROM salons`)) {
+      const key = s.phone_key || phoneKeyOf(s.phone);
+      if (key && key.length >= 9) salonByTail.set(key.slice(-9), { name: s.name, city: s.city });
+    }
+
+    const q = String(search).trim().toLowerCase();
+    const out = [];
+    for (const r of rows) {
+      // فلترة الحالة (تمّت معالجته؟).
+      if (handled === 'true' && !r.handled) continue;
+      if (handled === 'false' && r.handled) continue;
+      // فلترة التاريخ (بيوم الرياض).
+      const day = riyadhDay(r.wa_timestamp) || (r.received_at || '').slice(0, 10);
+      if (from && day && day < from) continue;
+      if (to && day && day > to) continue;
+
+      const digits = phoneKeyOf(r.from_number);
+      const salon = digits.length >= 9 ? salonByTail.get(digits.slice(-9)) : null;
+
+      // بحث بالرقم/الاسم/النص/اسم الصالون.
+      if (q) {
+        const hay = `${r.from_number} ${r.profile_name || ''} ${r.body || ''} ${salon?.name || ''}`.toLowerCase();
+        if (!hay.includes(q)) continue;
+      }
+      out.push({ ...r, handled: !!r.handled, salon_name: salon?.name || null, salon_city: salon?.city || null });
+      if (out.length >= 500) break;
+    }
+    res.json(out);
+  });
+
+  // تبديل حالة «تمّت معالجته».
+  router.post('/wa/replies/:id/handled', requireRole('admin'), (req, res) => {
+    const row = queryOne(`SELECT id FROM wa_inbound WHERE id = ?`, [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'الرد غير موجود' });
+    const handled = req.body && req.body.handled ? 1 : 0;
+    run(`UPDATE wa_inbound SET handled = ? WHERE id = ?`, [handled, req.params.id]);
+    res.json({ id: req.params.id, handled: !!handled });
+  });
+
+  // إحصائيات حالات الإرسال ضمن مدى زمني (بيوم الرياض) من جدول الأحداث الفريدة.
+  router.get('/wa/stats', requireRole('admin'), (req, res) => {
+    const from = req.query.from || '0000-00-00';
+    const to = req.query.to || '9999-99-99';
+    const counts = { sent: 0, delivered: 0, read: 0, failed: 0 };
+    for (const r of queryAll(
+      `SELECT status, COUNT(*) AS c FROM wa_status_event WHERE day >= ? AND day <= ? GROUP BY status`,
+      [from, to]
+    )) {
+      if (r.status in counts) counts[r.status] = r.c;
+    }
+    const errors = queryAll(
+      `SELECT error_code, COUNT(*) AS count FROM wa_status_event
+       WHERE status = 'failed' AND error_code IS NOT NULL AND error_code != '' AND day >= ? AND day <= ?
+       GROUP BY error_code ORDER BY count DESC LIMIT 10`,
+      [from, to]
+    );
+    res.json({ ...counts, errors });
+  });
+
   app.use('/api/sales', router);
   console.log('[Sales] ✅ بوابة فريق المبيعات «هوفيرا» جاهزة على /api/sales');
 }

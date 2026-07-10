@@ -120,4 +120,19 @@ export const salesApi = {
     form.append('file', file);
     return req('POST', '/mark-campaign', form, true);
   },
+
+  // وارد ردود واتساب
+  waReplies(params = {}) {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    ).toString();
+    return req('GET', `/wa/replies${qs ? `?${qs}` : ''}`);
+  },
+  waSetHandled(id, handled) { return req('POST', `/wa/replies/${id}/handled`, { handled }); },
+  waStats(params = {}) {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    ).toString();
+    return req('GET', `/wa/stats${qs ? `?${qs}` : ''}`);
+  },
 };

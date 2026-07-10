@@ -22,6 +22,7 @@ import { isConfigured as waConfigured, sendTemplate as waSendTemplate, sendText 
 import { buildAuthUrl as linkedinAuthUrl, exchangeCodeForToken as linkedinExchangeCode, getMemberUrn as linkedinGetUrn, getAdminOrg as linkedinGetAdminOrg, isConfigured as linkedinConfigured } from './services/linkedin.js';
 import { buildAuthUrl as snapAuthUrl, exchangeCodeForToken as snapExchangeCode, getUserInfo as snapGetUser } from './services/snapchat.js';
 import { mountSalesPortal } from './services/salesPortal.js';
+import { mountWhatsappWebhook } from './services/whatsappWebhook.js';
 
 dotenv.config();
 
@@ -41,7 +42,8 @@ const FRONTEND  = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const app = express();
 app.use(cors({ origin: FRONTEND, credentials: true }));
-app.use(express.json({ limit: '50mb' }));
+// نلتقط الجسم الخام (rawBody) لتمكين التحقق من توقيع ويبهوك واتساب لاحقاً.
+app.use(express.json({ limit: '50mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 // ── Multi-tenant identity ─────────────────────────────────────────────────────
 // When embedded inside Hovera, every request carries a short-lived JWT signed by
@@ -693,6 +695,11 @@ app.use('/api/posts', postsRouter);
 // contact_log, wa_templates) + role-based auth enforced on the server. Mounted
 // before the SPA catch-all so /api/sales/* resolves to the API, not index.html.
 mountSalesPortal(app, { queryAll, queryOne, run, uploadsDir });
+
+// ---- WhatsApp Cloud API webhook (public, no auth) ----
+// Receives inbound customer replies + outbound message status updates from Meta
+// for ANY phone_number_id. Admin inbox reads these via /api/sales/wa/*.
+mountWhatsappWebhook(app, { run, queryOne });
 
 // ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {
