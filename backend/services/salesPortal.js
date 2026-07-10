@@ -434,8 +434,9 @@ export function mountSalesPortal(app, ctx) {
       updates.owner_id = me.id;
       updates.owner_name = me.name;
     }
-    // إغلاق المهمة عند القرار النهائي (مشترك/غير مهتم) — يبقى عميلاً بلا مهمة.
-    if (updates.status === 'subscribed' || updates.status === 'not_interested') updates.is_task = 0;
+    // تسجيل نتيجة (مهتم/مشترك/غير مهتم) يُخرج الصالون من «مهامي» — يبقى عميلاً
+    // في قائمته حسب فئته (مهتمين/مشتركين) للمتابعة المستمرة.
+    if (['subscribed', 'not_interested', 'interested'].includes(updates.status)) updates.is_task = 0;
 
     const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
     run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
@@ -1404,14 +1405,8 @@ export function mountSalesPortal(app, ctx) {
   });
 
   // ── مهامي: صوالين المندوب مرتّبة (ردّت أولاً، ثم أُرسل ولم يردّ) ─────────────────
-  router.get('/salons/my-tasks', requireRole('agent'), (req, res) => {
-    const me = req.salesUser.id;
-    const mine = queryAll(
-      `SELECT * FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
-      [me]
-    ).map(parseSalon);
-
-    // كل الرسائل الواردة لكل صالون (لآخر رسالة + عدّ غير المقروء).
+  // يُثري قائمة صوالين المندوبة بحالة المحادثة (وارد/صادر/غير مقروء/انتظار) ويرتّبها.
+  function enrichRepSalons(me, salons) {
     const inboundByTail = new Map(); // tail -> { body, ts, list: [ts...] }
     for (const m of queryAll(`SELECT from_number, body, wa_timestamp FROM wa_inbound ORDER BY wa_timestamp ASC`)) {
       const t = phoneKeyOf(m.from_number);
@@ -1419,28 +1414,25 @@ export function mountSalesPortal(app, ctx) {
       const tail = t.slice(-9);
       const ts = Number(m.wa_timestamp) || 0;
       const cur = inboundByTail.get(tail) || { body: null, ts: 0, list: [] };
-      cur.body = m.body; cur.ts = ts; cur.list.push(ts);   // آخر واحدة تبقى (ترتيب تصاعدي)
+      cur.body = m.body; cur.ts = ts; cur.list.push(ts);
       inboundByTail.set(tail, cur);
     }
-    // آخر قراءة لهذا العضو لكل صالون.
     const reads = new Map();
     for (const r of queryAll(`SELECT salon_id, last_read_ts FROM wa_reads WHERE user_id = ?`, [me])) {
       reads.set(r.salon_id, r.last_read_ts || 0);
     }
-    // آخر رد صادر (من النظام) لكل صالون — لمعرفة هل ردّت المندوبة بعد آخر رسالة.
     const lastOutBySalon = new Map();
     for (const o of queryAll(`SELECT salon_id, created_date FROM wa_outbound`)) {
       const ts = Math.floor(new Date(String(o.created_date).replace(' ', 'T') + 'Z').getTime() / 1000) || 0;
       if (ts > (lastOutBySalon.get(o.salon_id) || 0)) lastOutBySalon.set(o.salon_id, ts);
     }
-    const enriched = mine.map((s) => {
+    const enriched = salons.map((s) => {
       const key = (s.phone_key || phoneKeyOf(s.phone));
       const inb = key && key.length >= 9 ? inboundByTail.get(key.slice(-9)) : null;
       const lastRead = reads.get(s.id) || 0;
       const unread = inb ? inb.list.filter((ts) => ts > lastRead).length : 0;
       const lastOut = lastOutBySalon.get(s.id) || 0;
       const lastIn = inb?.ts || 0;
-      // حالة الانتظار: بانتظار ردّ المندوبة، أو بانتظار رد العميلة، أو لا شيء.
       let wait_state = 'none';
       if (lastIn) wait_state = (lastOut >= lastIn) ? 'awaiting_customer' : 'awaiting_rep';
       else if (s.status === 'replied') wait_state = 'awaiting_rep';
@@ -1454,7 +1446,6 @@ export function mountSalesPortal(app, ctx) {
         unread_count: unread,
       };
     });
-    // الأولوية: «بانتظار ردّك»/غير مقروء أولاً، ثم «بانتظار العميلة»، ثم الباقي.
     const rank = (x) => (x.unread_count > 0 || x.wait_state === 'awaiting_rep') ? 2 : (x.wait_state === 'awaiting_customer' ? 1 : 0);
     enriched.sort((a, b) => {
       const ra = rank(a), rb = rank(b);
@@ -1462,7 +1453,42 @@ export function mountSalesPortal(app, ctx) {
       return (b.last_inbound_ts || 0) - (a.last_inbound_ts || 0)
         || String(b.last_contact_date || '').localeCompare(String(a.last_contact_date || ''));
     });
-    res.json(enriched);
+    return enriched;
+  }
+
+  router.get('/salons/my-tasks', requireRole('agent'), (req, res) => {
+    const me = req.salesUser.id;
+    const mine = queryAll(
+      `SELECT * FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      [me]
+    ).map(parseSalon);
+    res.json(enrichRepSalons(me, mine));
+  });
+
+  // عملائي حسب الفئة (مهتمين/مشتركين/متابعة/غير مهتم/الكل) — للمتابعة المستمرة.
+  router.get('/salons/my-clients', requireRole('agent'), (req, res) => {
+    const me = req.salesUser.id;
+    const filter = String(req.query.filter || 'interested');
+    let where = 'owner_id = ?';
+    if (filter === 'interested') where += ` AND status = 'interested'`;
+    else if (filter === 'subscribed') where += ` AND status = 'subscribed'`;
+    else if (filter === 'followup') where += ` AND follow_up IS NOT NULL AND follow_up != ''`;
+    else if (filter === 'not_interested') where += ` AND status = 'not_interested'`;
+    const mine = queryAll(`SELECT * FROM salons WHERE ${where}`, [me]).map(parseSalon);
+    res.json(enrichRepSalons(me, mine));
+  });
+
+  // إحصائيات المندوبة (لبطاقاتها القابلة للضغط).
+  router.get('/salons/my-stats', requireRole('agent'), (req, res) => {
+    const me = req.salesUser.id;
+    const rows = queryAll(`SELECT status, is_task, follow_up FROM salons WHERE owner_id = ?`, [me]);
+    res.json({
+      tasks: rows.filter((r) => r.is_task === 1 && !['subscribed', 'not_interested', 'do_not_send'].includes(r.status || 'new')).length,
+      interested: rows.filter((r) => r.status === 'interested').length,
+      subscribed: rows.filter((r) => r.status === 'subscribed').length,
+      followup: rows.filter((r) => r.follow_up && String(r.follow_up).trim()).length,
+      total: rows.length,
+    });
   });
 
   // ── لوحة الفريق: لكل مندوب — المهام، كم ردّت عليها، وكم بانتظار ردّها ──────────

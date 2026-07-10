@@ -157,6 +157,8 @@ export const salesApi = {
   // ── متابعة الفريق (المرحلة ٢) ──
   assignSalon(id, ownerId) { return req('POST', `/salons/${id}/assign`, { owner_id: ownerId }); },
   myTasks() { return req('GET', '/salons/my-tasks'); },
+  myClients(filter) { return req('GET', `/salons/my-clients?filter=${encodeURIComponent(filter || 'interested')}`); },
+  myStats() { return req('GET', '/salons/my-stats'); },
   teamBoard() { return req('GET', '/wa/team-board'); },
   distributeTasks() { return req('POST', '/wa/distribute'); },
   campaignTaskCount() { return req('GET', '/wa/campaign-task-count'); },

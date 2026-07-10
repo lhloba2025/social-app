@@ -46,6 +46,9 @@ export default function SalesPortal({ language }) {
   const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
   const [adding, setAdding] = useState(false);     // نافذة إضافة صالون جديد
   const [view, setView] = useState('all');         // 'all' كل الصوالين | 'tasks' مهامي
+  const [repFilter, setRepFilter] = useState('tasks');  // فئة عرض المندوبة: tasks|interested|subscribed
+  const [repStats, setRepStats] = useState(null);       // عدّادات بطاقات المندوبة
+  const loadRepStats = useCallback(() => { salesApi.myStats().then(setRepStats).catch(() => {}); }, []);
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -101,10 +104,11 @@ export default function SalesPortal({ language }) {
     if (!user) return;
     salesApi.salonFilters().then(setFilterOpts).catch(() => {});
     salesApi.templates().then(setTemplates).catch(() => {});
+    loadRepStats();
     if (user.role === 'admin' || user.role === 'super_admin') {
       salesApi.members().then(setMembers).catch(() => {});
     }
-  }, [user]);
+  }, [user, loadRepStats]);
 
   // تحديث القوالب تلقائياً (لو الأدمن عدّلها والمندوب فاتح الصفحة): عند رجوع
   // المندوب للتطبيق (focus/visibility). كذلك تُحدَّث عند فتح نافذة واتساب أدناه.
@@ -213,14 +217,22 @@ export default function SalesPortal({ language }) {
       </header>
 
       <div className="relative max-w-6xl mx-auto p-4 space-y-5">
-        {/* شريط الإحصائيات */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatCard icon={Store} label={ar ? 'إجمالي الصوالين' : 'Total Salons'} value={stats.total} accent="text-white" />
-          <StatCard icon={PhoneOutgoing} label={ar ? 'تم التواصل' : 'Contacted'} value={stats.contacted} accent="text-blue-400" />
-          <StatCard icon={UserCheck} label={ar ? 'من نصيبي أنا' : 'Assigned to Me'} value={stats.mine} accent="text-indigo-400" />
-          <StatCard icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} accent="text-emerald-400" />
-          <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
-        </div>
+        {/* شريط الإحصائيات — للمدير: عام. للمندوبة: بطاقات فئات قابلة للضغط. */}
+        {isAdmin ? (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard icon={Store} label={ar ? 'إجمالي الصوالين' : 'Total Salons'} value={stats.total} accent="text-white" />
+            <StatCard icon={PhoneOutgoing} label={ar ? 'تم التواصل' : 'Contacted'} value={stats.contacted} accent="text-blue-400" />
+            <StatCard icon={UserCheck} label={ar ? 'من نصيبي أنا' : 'Assigned to Me'} value={stats.mine} accent="text-indigo-400" />
+            <StatCard icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} accent="text-emerald-400" />
+            <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <RepCard active={repFilter === 'tasks'} onClick={() => setRepFilter('tasks')} icon={CheckCircle2} label={ar ? 'مهامي' : 'My Tasks'} value={repStats?.tasks ?? 0} accent="text-fuchsia-400" />
+            <RepCard active={repFilter === 'interested'} onClick={() => setRepFilter('interested')} icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={repStats?.interested ?? 0} accent="text-emerald-400" />
+            <RepCard active={repFilter === 'subscribed'} onClick={() => setRepFilter('subscribed')} icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={repStats?.subscribed ?? 0} accent="text-green-400" />
+          </div>
+        )}
 
         {/* مبدّل العرض — للمدير فقط. المندوبة ترى «مهامي» فقط. */}
         {isAdmin && (
@@ -235,7 +247,7 @@ export default function SalesPortal({ language }) {
         )}
 
         {(!isAdmin || view === 'tasks') ? (
-          <MyTasksView ar={ar} showToast={showToast} me={user} templates={templates} onWhatsApp={(s) => setWaSalon(s)} />
+          <MyTasksView ar={ar} showToast={showToast} me={user} templates={templates} filter={isAdmin ? 'tasks' : repFilter} onChanged={loadRepStats} onWhatsApp={(s) => setWaSalon(s)} />
         ) : (<>
 
         {/* البحث + الفلاتر */}
@@ -383,8 +395,8 @@ export default function SalesPortal({ language }) {
   );
 }
 
-// ── مهامي: قائمة متابعة المندوب (ردّت أولاً) + نتيجة بنقرة واحدة ───────────────────
-function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
+// ── قائمة متابعة المندوبة (مهامي / مهتمين / مشتركين) + محادثة + نتيجة ─────────────
+function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks', onChanged }) {
   const [tasks, setTasks] = useState(null);
   const [chatSalon, setChatSalon] = useState(null);   // الصالون المفتوح للمحادثة داخل النظام
   const [followId, setFollowId] = useState(null);
@@ -394,9 +406,10 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
   const [refreshing, setRefreshing] = useState(false);
   const load = useCallback((spin = true) => {
     if (spin) setRefreshing(true);
-    salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err')).finally(() => setRefreshing(false));
-  }, [showToast]);
-  useEffect(() => { load(); }, [load]);
+    const p = filter === 'tasks' ? salesApi.myTasks() : salesApi.myClients(filter);
+    p.then(setTasks).catch((e) => showToast(e.message, 'err')).finally(() => setRefreshing(false));
+  }, [showToast, filter]);
+  useEffect(() => { setTasks(null); load(); }, [load]);
   // تحديث تلقائي كل ٤٥ ثانية لإظهار الردود الجديدة (تنبيه غير مقروء) دون تدخّل.
   useEffect(() => {
     const iv = setInterval(() => load(false), 45000);
@@ -410,6 +423,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
       await salesApi.updateSalon(t.id, payload);
       setTasks((ts) => (ts || []).filter((x) => x.id !== t.id));
       showToast(msg);
+      onChanged && onChanged();
     } catch (e) { showToast(e.message, 'err'); }
   };
   // فتح المحادثة: نُصفّر التاق غير المقروء فوراً (تفاؤلياً) بلا انتظار تحديث.
@@ -428,10 +442,20 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
   if (tasks === null) return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
 
   const totalUnread = tasks.reduce((n, t) => n + (t.unread_count || 0), 0);
+  const TITLE = {
+    tasks: ar ? 'مهامي' : 'My Tasks',
+    interested: ar ? 'المهتمين' : 'Interested',
+    subscribed: ar ? 'المشتركين' : 'Subscribed',
+  };
+  const EMPTY = {
+    tasks: ar ? 'لا مهام حالياً 🎉 كل ما أُسند إليك متابَع.' : 'No tasks right now 🎉',
+    interested: ar ? 'لا يوجد عملاء مهتمون بعد.' : 'No interested clients yet.',
+    subscribed: ar ? 'لا يوجد مشتركون بعد.' : 'No subscribers yet.',
+  };
   const header = (
     <div className="flex items-center justify-between">
       <h3 className="font-bold text-white flex items-center gap-2">
-        <CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {ar ? 'مهامي' : 'My Tasks'} <span className="text-slate-400 text-sm">({tasks.length})</span>
+        <CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {TITLE[filter] || TITLE.tasks} <span className="text-slate-400 text-sm">({tasks.length})</span>
         {totalUnread > 0 && (
           <span className="text-[11px] font-bold bg-rose-600 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
             <MessageCircle className="w-3 h-3" /> {ar ? `${totalUnread} غير مقروء` : `${totalUnread} unread`}
@@ -447,7 +471,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates }) {
   if (!tasks.length) return (
     <div className="space-y-3">
       {header}
-      <div className="text-center py-14 text-slate-500">{ar ? 'لا مهام حالياً 🎉 كل ما أُسند إليك متابَع.' : 'No tasks right now 🎉'}</div>
+      <div className="text-center py-14 text-slate-500">{EMPTY[filter] || EMPTY.tasks}</div>
     </div>
   );
 
@@ -655,6 +679,26 @@ function StatCard({ icon: Icon, label, value, accent }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// بطاقة فئة قابلة للضغط للمندوبة — تبدّل قائمة العرض (مهامي/مهتمين/مشتركين).
+function RepCard({ icon: Icon, label, value, accent, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-2xl border p-3.5 text-start transition ${active ? 'border-fuchsia-500/60 bg-fuchsia-500/10 ring-1 ring-fuchsia-500/40' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className={`text-[26px] leading-none font-extrabold ${accent}`}>{value}</div>
+          <div className="text-[11px] text-slate-300 mt-2 truncate">{label}</div>
+        </div>
+        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <Icon className={`w-[18px] h-[18px] ${accent}`} />
+        </div>
+      </div>
+    </button>
   );
 }
 
