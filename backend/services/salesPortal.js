@@ -202,6 +202,19 @@ export function mountSalesPortal(app, ctx) {
     }
   }
 
+  // قالب متابعة ردود حملة الواتساب — يُضاف كأوّل قالب دائماً (تاريخ إنشاء مبكّر
+  // يتصدّر الترتيب). معرّف ثابت + INSERT OR IGNORE: لا يتكرّر عند إعادة النشر،
+  // ويحفظ أي تعديل يجريه المدير عليه لاحقاً.
+  const FOLLOWUP_ID = 'wa-tpl-followup-campaign';
+  const FOLLOWUP_BODY =
+    'أهلاً وسهلاً 🌿 معك {me} من هوفيرا، وشاكرين تواصلك معنا بخصوص عرض الإطلاق ✨\n' +
+    'هوفيرا تدير صالونك من مكان واحد: حجوزات إلكترونية برابط بايو + عربون، إدارة الموظفات والرواتب، المحاسبة والفواتير الضريبية، والمخزون والتسويق.\n' +
+    'تحبين أرسل لك التفاصيل والأسعار الآن، أو نحدّد وقتاً مناسباً لعرض سريع؟ 💜';
+  run(
+    `INSERT OR IGNORE INTO wa_templates (id, body, created_date) VALUES (?, ?, '2000-01-01 00:00:00')`,
+    [FOLLOWUP_ID, FOLLOWUP_BODY]
+  );
+
   // ── أدوات مساعدة للمصادقة ───────────────────────────────────────────────────
   function userFromToken(token) {
     if (!token) return null;
@@ -450,9 +463,15 @@ export function mountSalesPortal(app, ctx) {
       .sort((a, b) => (b.days_since ?? 0) - (a.days_since ?? 0));
 
     // تجميع لكل عضو فريق.
+    // مهمة متابعة = صالون مُسند تجاوز حالة «جديد» (تفاعل/أُرسل له). منجزة = مشترك
+    // أو غير مهتم (وصل لقرار نهائي). قيد المتابعة = الباقي المفتوح.
+    const FOLLOWUP = new Set(['sent', 'replied', 'contacted', 'no_answer', 'interested', 'scheduled_visit', 'subscribed', 'not_interested']);
     const members = queryAll(`SELECT id, display_name, role FROM sales_users ORDER BY display_name`);
     const byMember = members.map((m) => {
       const mine = active.filter((s) => s.owner_id === m.id);
+      const ownedMine = owned.filter((s) => s.owner_id === m.id);
+      const tasksTotal = ownedMine.filter((s) => FOLLOWUP.has(s.status || 'new')).length;
+      const done = ownedMine.filter((s) => CLOSED.has(s.status || 'new')).length;
       const lastActivity = mine.reduce((acc, s) => {
         const d = s.last_contact_date || '';
         return d > acc ? d : acc;
@@ -460,6 +479,9 @@ export function mountSalesPortal(app, ctx) {
       return {
         user_id: m.id, name: m.display_name, role: m.role,
         active: mine.length,
+        tasks_total: tasksTotal,           // مهام المتابعة المُسندة
+        tasks_done: done,                  // منجزة (وصلت لقرار)
+        tasks_open: tasksTotal - done,     // قيد المتابعة
         stale: mine.filter((s) => (daysSince(s.last_contact_date || s.created_date) ?? 0) >= STALE_DAYS).length,
         overdue: mine.filter((s) => s.follow_up && s.follow_up < todayStr).length,
         last_activity: lastActivity || null,

@@ -143,7 +143,7 @@ function OversightTab({ ar, showToast }) {
 
   const staleDays = data.stale_days ?? 3;
   const neglected = data.neglected || [];
-  const byMember = (data.by_member || []).filter((m) => m.active > 0);
+  const byMember = (data.by_member || []).filter((m) => m.active > 0 || (m.tasks_total || 0) > 0);
   const totalOverdue = neglected.filter((n) => n.follow_up_overdue).length;
 
   return (
@@ -175,8 +175,18 @@ function OversightTab({ ar, showToast }) {
                     {m.last_activity ? (ar ? `آخر نشاط ${timeAgo(m.last_activity, ar)}` : `active ${timeAgo(m.last_activity, ar)}`) : (ar ? 'لا نشاط' : 'no activity')}
                   </span>
                 </div>
+                {/* مهام المتابعة: منجزة من الإجمالي + شريط تقدّم */}
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-slate-300">{ar ? 'مهام المتابعة المُسندة' : 'Assigned follow-up tasks'}: <b className="text-white">{m.tasks_total || 0}</b></span>
+                    <span className="text-emerald-300">{ar ? `أنجز ${m.tasks_done || 0}` : `${m.tasks_done || 0} done`}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: `${m.tasks_total ? Math.round((m.tasks_done / m.tasks_total) * 100) : 0}%` }} />
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-2 mt-2.5">
-                  <OvStat label={ar ? 'عملاء نشطين' : 'Active'} value={m.active} tone="text-white" />
+                  <OvStat label={ar ? 'قيد المتابعة' : 'Open'} value={m.tasks_open || 0} tone={(m.tasks_open || 0) > 0 ? 'text-fuchsia-300' : 'text-slate-500'} />
                   <OvStat label={ar ? `مهمل (≥${staleDays}ي)` : `Stale (≥${staleDays}d)`} value={m.stale} tone={m.stale > 0 ? 'text-amber-400' : 'text-slate-500'} />
                   <OvStat label={ar ? 'متابعة فائتة' : 'Overdue'} value={m.overdue} tone={m.overdue > 0 ? 'text-rose-400' : 'text-slate-500'} />
                 </div>

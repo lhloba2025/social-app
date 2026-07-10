@@ -222,17 +222,19 @@ export default function SalesPortal({ language }) {
           <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
         </div>
 
-        {/* مبدّل العرض: كل الصوالين / مهامي */}
-        <div className="flex gap-2">
-          <button onClick={() => setView('all')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
-            <Store className="w-4 h-4" /> {ar ? 'كل الصوالين' : 'All Salons'}
-          </button>
-          <button onClick={() => setView('tasks')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'tasks' ? 'bg-fuchsia-600 border-fuchsia-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
-            <CheckCircle2 className="w-4 h-4" /> {ar ? 'مهامي' : 'My Tasks'}
-          </button>
-        </div>
+        {/* مبدّل العرض — للمدير فقط. المندوبة ترى «مهامي» فقط. */}
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button onClick={() => setView('all')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+              <Store className="w-4 h-4" /> {ar ? 'كل الصوالين' : 'All Salons'}
+            </button>
+            <button onClick={() => setView('tasks')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'tasks' ? 'bg-fuchsia-600 border-fuchsia-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+              <CheckCircle2 className="w-4 h-4" /> {ar ? 'مهامي' : 'My Tasks'}
+            </button>
+          </div>
+        )}
 
-        {view === 'tasks' ? (
+        {(!isAdmin || view === 'tasks') ? (
           <MyTasksView ar={ar} showToast={showToast} onWhatsApp={(s) => setWaSalon(s)} />
         ) : (<>
 
@@ -388,8 +390,10 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
   const [followDate, setFollowDate] = useState('');
   const [openMsg, setOpenMsg] = useState(null);   // الصالون المعروض رسالته (مطويّة افتراضاً)
 
+  const [refreshing, setRefreshing] = useState(false);
   const load = useCallback(() => {
-    salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err'));
+    setRefreshing(true);
+    salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err')).finally(() => setRefreshing(false));
   }, [showToast]);
   useEffect(() => { load(); }, [load]);
 
@@ -402,10 +406,26 @@ function MyTasksView({ ar, showToast, onWhatsApp }) {
   };
 
   if (tasks === null) return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
-  if (!tasks.length) return <div className="text-center py-16 text-slate-500">{ar ? 'لا مهام حالياً 🎉 كل ما أُسند إليك متابَع.' : 'No tasks right now 🎉'}</div>;
+
+  const header = (
+    <div className="flex items-center justify-between">
+      <h3 className="font-bold text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {ar ? 'مهامي' : 'My Tasks'} <span className="text-slate-400 text-sm">({tasks.length})</span></h3>
+      <button onClick={load} disabled={refreshing} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-xl px-3 py-1.5 transition">
+        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {ar ? 'تحديث' : 'Refresh'}
+      </button>
+    </div>
+  );
+
+  if (!tasks.length) return (
+    <div className="space-y-3">
+      {header}
+      <div className="text-center py-14 text-slate-500">{ar ? 'لا مهام حالياً 🎉 كل ما أُسند إليك متابَع.' : 'No tasks right now 🎉'}</div>
+    </div>
+  );
 
   return (
     <div className="space-y-2">
+      {header}
       {tasks.map((t) => (
         <div key={t.id} className={`rounded-2xl border p-3 ${t.has_reply ? 'border-fuchsia-500/40 bg-fuchsia-500/[0.06]' : 'border-white/10 bg-white/[0.02]'}`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
