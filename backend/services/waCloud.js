@@ -109,6 +109,20 @@ export async function sendImageMessage({ to, mediaId, caption }) {
   }
 }
 
+// يجلب وسائط واردة (صورة/فيديو…) بمعرّفها: أولاً رابطها من Graph ثم بايتاتها
+// بالتوكن (روابط lookaside تتطلّب المصادقة). يُعيد { buffer, mime }.
+export async function fetchMedia(mediaId) {
+  if (!TOKEN()) throw new Error('WA_ACCESS_TOKEN غير مضبوط في الخادم');
+  const meta = (await axios.get(graph(String(mediaId)), { headers: authHeader(), timeout: 20000 })).data;
+  const url = meta?.url;
+  const mime = meta?.mime_type || 'application/octet-stream';
+  if (!url) throw new Error('لا يوجد رابط للوسائط');
+  const bin = await axios.get(url, {
+    headers: authHeader(), responseType: 'arraybuffer', timeout: 30000, maxContentLength: Infinity,
+  });
+  return { buffer: Buffer.from(bin.data), mime };
+}
+
 // يبني مصفوفة components لقالب: ترويسة صورة (اختيارية) + متغيّرات جسم (اختيارية).
 export function buildComponents({ mediaId, bodyParams = [] }) {
   const components = [];

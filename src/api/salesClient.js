@@ -175,4 +175,9 @@ export const salesApi = {
     if (caption) form.append('caption', caption);
     return req('POST', `/salons/${id}/wa-send-image`, form, true);
   },
+  async waMediaUrl(mediaId) {
+    const res = await req('GET', `/wa/media/${mediaId}`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  },
 };

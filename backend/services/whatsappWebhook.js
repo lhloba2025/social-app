@@ -66,6 +66,18 @@ export function initWhatsappSchema(run) {
       PRIMARY KEY (wamid, status)
     );
   `);
+  // وسائط الرسائل الواردة (صورة/فيديو…): معرّف الوسائط ونوعها لعرضها لاحقاً.
+  try { run(`ALTER TABLE wa_inbound ADD COLUMN media_id TEXT`); } catch { /* موجود */ }
+  try { run(`ALTER TABLE wa_inbound ADD COLUMN media_mime TEXT`); } catch { /* موجود */ }
+}
+
+// يستخرج من كائن وسائط التعليق والمعرّف والنوع (صورة/فيديو/مستند…).
+function parseMediaObj(obj) {
+  return {
+    body: obj?.caption || '',
+    media_id: obj?.id || null,
+    media_mime: obj?.mime_type || null,
+  };
 }
 
 // يركّب المسار العام /api/whatsapp/webhook (GET تحقّق + POST استقبال).
@@ -132,18 +144,27 @@ export function mountWhatsappWebhook(app, ctx) {
   console.log(`[wa-webhook] ✅ مستقبِل ويبهوك واتساب جاهز على /api/whatsapp/webhook (verify token ${VERIFY_TOKEN ? 'مضبوط' : 'غير مضبوط'})`);
 }
 
-// يخزّن ردّاً واردًا (dedup على wamid).
+// يخزّن ردّاً واردًا (dedup على wamid). للوسائط: نحفظ التعليق كنص + معرّف الوسائط
+// ونوعها لعرض الصورة/الملف لاحقاً (بدل تخزين JSON خام).
 function storeInbound(run, m, profileName, phoneNumberId) {
   if (!m?.id) return;
   const type = m.type || 'unknown';
-  const body = type === 'text'
-    ? (m.text?.body ?? '')
-    : JSON.stringify(m[type] ?? m);
+  let body = '', mediaId = null, mediaMime = null;
+  if (type === 'text') {
+    body = m.text?.body ?? '';
+  } else if (type === 'button') {
+    body = m.button?.text || '';
+  } else if (type === 'interactive') {
+    body = m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || '';
+  } else {
+    const obj = parseMediaObj(m[type]);           // image/video/document/audio/sticker
+    body = obj.body; mediaId = obj.media_id; mediaMime = obj.media_mime;
+  }
   run(
     `INSERT OR IGNORE INTO wa_inbound
-       (id, wamid, from_number, profile_name, msg_type, body, wa_timestamp, phone_number_id, received_at, handled)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-    [randomUUID(), m.id, m.from || '', profileName, type, body,
+       (id, wamid, from_number, profile_name, msg_type, body, media_id, media_mime, wa_timestamp, phone_number_id, received_at, handled)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    [randomUUID(), m.id, m.from || '', profileName, type, body, mediaId, mediaMime,
      Number(m.timestamp) || null, phoneNumberId, nowIso()]
   );
 }

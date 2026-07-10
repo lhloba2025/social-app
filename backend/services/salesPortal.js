@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   waCloudConfigured, listApprovedTemplates, uploadMedia, sendTemplateMessage,
-  sendTextMessage, sendImageMessage, buildComponents, templateHasImageHeader,
+  sendTextMessage, sendImageMessage, fetchMedia, buildComponents, templateHasImageHeader,
 } from './waCloud.js';
 
 // ترتيب الأدوار — كل دور يرث صلاحيات ما دونه.
@@ -1414,15 +1414,18 @@ export function mountSalesPortal(app, ctx) {
 
   // ── مهامي: صوالين المندوب مرتّبة (ردّت أولاً، ثم أُرسل ولم يردّ) ─────────────────
   // يُثري قائمة صوالين المندوبة بحالة المحادثة (وارد/صادر/غير مقروء/انتظار) ويرتّبها.
+  const MEDIA_LABEL = { image: '📷 صورة', video: '🎥 فيديو', audio: '🎙️ رسالة صوتية', document: '📎 مستند', sticker: '😀 ملصق' };
   function enrichRepSalons(me, salons) {
     const inboundByTail = new Map(); // tail -> { body, ts, list: [ts...] }
-    for (const m of queryAll(`SELECT from_number, body, wa_timestamp FROM wa_inbound ORDER BY wa_timestamp ASC`)) {
+    for (const m of queryAll(`SELECT from_number, body, wa_timestamp, msg_type FROM wa_inbound ORDER BY wa_timestamp ASC`)) {
       const t = phoneKeyOf(m.from_number);
       if (t.length < 9) continue;
       const tail = t.slice(-9);
       const ts = Number(m.wa_timestamp) || 0;
       const cur = inboundByTail.get(tail) || { body: null, ts: 0, list: [] };
-      cur.body = m.body; cur.ts = ts; cur.list.push(ts);
+      // للوسائط بلا تعليق: نعرض تسمية ودّية بدل الفراغ.
+      cur.body = m.body || MEDIA_LABEL[m.msg_type] || m.body || '';
+      cur.ts = ts; cur.list.push(ts);
       inboundByTail.set(tail, cur);
     }
     const reads = new Map();
@@ -1696,9 +1699,9 @@ export function mountSalesPortal(app, ctx) {
     const key = salon.phone_key || phoneKeyOf(salon.phone);
     const tail = key && key.length >= 9 ? key.slice(-9) : null;
     const inbound = tail
-      ? queryAll(`SELECT from_number, body, wa_timestamp, msg_type FROM wa_inbound`)
+      ? queryAll(`SELECT from_number, body, wa_timestamp, msg_type, media_id, media_mime FROM wa_inbound`)
           .filter((m) => { const t = phoneKeyOf(m.from_number); return t.length >= 9 && t.slice(-9) === tail; })
-          .map((m) => ({ dir: 'in', body: m.body, type: m.msg_type, ts: Number(m.wa_timestamp) || 0 }))
+          .map((m) => ({ dir: 'in', body: m.body, type: m.msg_type, media_id: m.media_id || null, media_mime: m.media_mime || null, ts: Number(m.wa_timestamp) || 0 }))
       : [];
     const outbound = queryAll(`SELECT body, created_date, sent_by_name FROM wa_outbound WHERE salon_id = ?`, [req.params.id])
       .map((o) => ({ dir: 'out', body: o.body, by: o.sent_by_name, ts: Math.floor(new Date(String(o.created_date).replace(' ', 'T') + 'Z').getTime() / 1000) || 0 }));
@@ -1783,6 +1786,19 @@ export function mountSalesPortal(app, ctx) {
       res.json({ ok: true, wamid: wamid || null });
     } catch (err) {
       res.status(502).json({ error: (err.code ? `[${err.code}] ` : '') + (err.message || 'فشل إرسال الصورة') });
+    }
+  });
+
+  // وسيط لعرض وسائط الرسائل الواردة (صورة/فيديو…) عبر التوكن (روابط ميتا محميّة).
+  router.get('/wa/media/:id', requireRole('agent'), async (req, res) => {
+    if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
+    try {
+      const { buffer, mime } = await fetchMedia(req.params.id);
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      res.send(buffer);
+    } catch (err) {
+      res.status(502).json({ error: err?.response?.data?.error?.message || err.message || 'تعذّر جلب الوسائط' });
     }
   });
 

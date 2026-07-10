@@ -571,6 +571,31 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
   );
 }
 
+// صورة واردة تُجلب عبر التوكن (رابط ميتا محمي) وتُعرض كـ blob.
+const WA_MEDIA_LABEL = { image: '📷 صورة', video: '🎥 فيديو', audio: '🎙️ رسالة صوتية', document: '📎 مستند', sticker: '😀 ملصق' };
+function WaImage({ mediaId }) {
+  const [url, setUrl] = useState(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let on = true, u;
+    salesApi.waMediaUrl(mediaId).then((x) => { if (on) { u = x; setUrl(x); } }).catch(() => setErr(true));
+    return () => { on = false; if (u) URL.revokeObjectURL(u); };
+  }, [mediaId]);
+  if (err) return <span className="text-[12px] opacity-80">📷 صورة (تعذّر التحميل)</span>;
+  if (!url) return <span className="text-[12px] opacity-70 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 📷</span>;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="rounded-lg max-h-56 max-w-full" /></a>;
+}
+// محتوى رسالة: صورة واردة → صورة فعلية + تعليق، وسائط أخرى → تسمية، غير ذلك نص.
+function WaMsgContent({ m }) {
+  if (m.dir === 'in' && m.type === 'image' && m.media_id) {
+    return (<><WaImage mediaId={m.media_id} />{m.body ? <div className="mt-1">{m.body}</div> : null}</>);
+  }
+  if (m.dir === 'in' && m.media_id) {
+    return <span>{WA_MEDIA_LABEL[m.type] || '📎 مرفق'}{m.body ? ` · ${m.body}` : ''}</span>;
+  }
+  return <>{m.body || (m.type && m.type !== 'text' ? (WA_MEDIA_LABEL[m.type] || `[${m.type}]`) : '')}</>;
+}
+
 // نافذة المحادثة داخل النظام — تعرض الخيط وترسل رداً حرّاً عبر رقم الأعمال (٢٤ ساعة).
 function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
   const [data, setData] = useState(null);      // { messages, window_open, last_inbound_at }
@@ -634,7 +659,7 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
           ) : data.messages.map((m, i) => (
             <div key={i} className={`flex ${m.dir === 'out' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line break-words ${m.dir === 'out' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
-                {m.body || (m.type ? `[${m.type}]` : '')}
+                <WaMsgContent m={m} ar={ar} />
                 <div className={`text-[10px] mt-1 ${m.dir === 'out' ? 'text-emerald-100/70' : 'text-slate-400'}`}>{fmt(m.ts)}{m.dir === 'out' && m.by ? ` · ${m.by}` : ''}</div>
               </div>
             </div>

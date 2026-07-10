@@ -861,7 +861,7 @@ function InboxTab({ ar, showToast }) {
                       <span className="text-[11px] rounded-full px-2 py-0.5 bg-slate-700/50 border border-slate-600 text-slate-300">{r.msg_type}</span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-200 mt-1.5 whitespace-pre-line break-words">{r.body || '—'}</p>
+                  <p className="text-sm text-slate-200 mt-1.5 whitespace-pre-line break-words">{r.body || (r.msg_type && r.msg_type !== 'text' ? (WA_MEDIA_LABEL[r.msg_type] || `[${r.msg_type}]`) : '—')}</p>
                   <div className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-2 flex-wrap">
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtTime(r.wa_timestamp, r.received_at)}</span>
                     {r.salon_id && (
@@ -924,7 +924,31 @@ function InboxTab({ ar, showToast }) {
   );
 }
 
-// عرض كامل محادثة صالون للأدمن (قراءة فقط) — لمتابعة رد المندوبات (يظهر اسم المُرسِلة).
+// صورة واردة تُجلب عبر التوكن (رابط ميتا محمي) وتُعرض كـ blob.
+const WA_MEDIA_LABEL = { image: '📷 صورة', video: '🎥 فيديو', audio: '🎙️ رسالة صوتية', document: '📎 مستند', sticker: '😀 ملصق' };
+function WaImage({ mediaId }) {
+  const [url, setUrl] = useState(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let on = true, u;
+    salesApi.waMediaUrl(mediaId).then((x) => { if (on) { u = x; setUrl(x); } }).catch(() => setErr(true));
+    return () => { on = false; if (u) URL.revokeObjectURL(u); };
+  }, [mediaId]);
+  if (err) return <span className="text-[12px] opacity-80">📷 صورة (تعذّر التحميل)</span>;
+  if (!url) return <span className="text-[12px] opacity-70 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 📷</span>;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="rounded-lg max-h-56 max-w-full" /></a>;
+}
+function WaMsgContent({ m }) {
+  if (m.dir === 'in' && m.type === 'image' && m.media_id) {
+    return (<><WaImage mediaId={m.media_id} />{m.body ? <div className="mt-1">{m.body}</div> : null}</>);
+  }
+  if (m.dir === 'in' && m.media_id) {
+    return <span>{WA_MEDIA_LABEL[m.type] || '📎 مرفق'}{m.body ? ` · ${m.body}` : ''}</span>;
+  }
+  return <>{m.body || (m.type && m.type !== 'text' ? (WA_MEDIA_LABEL[m.type] || `[${m.type}]`) : '')}</>;
+}
+
+// عرض كامل محادثة صالون للأدمن — مع إمكانية الرد بدل المندوبة (يظهر اسم المُرسِلة).
 function AdminChatModal({ ar, showToast, salon, onClose }) {
   const [data, setData] = useState(null);
   const [text, setText] = useState('');
@@ -974,7 +998,7 @@ function AdminChatModal({ ar, showToast, salon, onClose }) {
           ) : data.messages.map((m, i) => (
             <div key={i} className={`flex ${m.dir === 'out' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line break-words ${m.dir === 'out' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
-                {m.body || (m.type ? `[${m.type}]` : '')}
+                <WaMsgContent m={m} />
                 <div className={`text-[10px] mt-1 ${m.dir === 'out' ? 'text-emerald-100/70' : 'text-slate-400'}`}>{m.dir === 'out' ? `${m.by || (ar ? 'النظام' : 'System')} · ` : ''}{fmt(m.ts)}</div>
               </div>
             </div>
