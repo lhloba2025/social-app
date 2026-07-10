@@ -135,4 +135,19 @@ export const salesApi = {
     ).toString();
     return req('GET', `/wa/stats${qs ? `?${qs}` : ''}`);
   },
+
+  // ── حملات الواتساب (المرحلة ٢) ──
+  waTemplatesLive() { return req('GET', '/wa/templates-live'); },
+  waCampaigns() { return req('GET', '/wa/campaigns'); },
+  waCampaign(id) { return req('GET', `/wa/campaigns/${id}`); },
+  waCreateCampaign(formData) { return req('POST', '/wa/campaigns', formData, true); },
+  waStartCampaign(id) { return req('POST', `/wa/campaigns/${id}/start`); },
+  waPauseCampaign(id) { return req('POST', `/wa/campaigns/${id}/pause`); },
+  waCancelCampaign(id) { return req('POST', `/wa/campaigns/${id}/cancel`); },
+  async waExportCampaign(id) { return req('GET', `/wa/campaigns/${id}/export`); },
+
+  // ── متابعة الفريق (المرحلة ٢) ──
+  assignSalon(id, ownerId) { return req('POST', `/salons/${id}/assign`, { owner_id: ownerId }); },
+  myTasks() { return req('GET', '/salons/my-tasks'); },
+  teamBoard() { return req('GET', '/wa/team-board'); },
 };

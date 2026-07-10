@@ -2,12 +2,15 @@
 
 export const STATUS_OPTIONS = [
   { value: 'new',             ar: 'جديد',         en: 'New',            color: 'bg-slate-600' },
+  { value: 'sent',            ar: 'تم الإرسال',    en: 'Sent',           color: 'bg-cyan-700' },
+  { value: 'replied',         ar: 'ردت - بانتظار متابعة', en: 'Replied — Awaiting', color: 'bg-fuchsia-600' },
   { value: 'contacted',       ar: 'تم التواصل',   en: 'Contacted',      color: 'bg-blue-600' },
   { value: 'no_answer',       ar: 'لا يرد',        en: 'No Answer',      color: 'bg-amber-600' },
   { value: 'interested',      ar: 'مهتم',          en: 'Interested',     color: 'bg-emerald-600' },
   { value: 'not_interested',  ar: 'غير مهتم',      en: 'Not Interested', color: 'bg-rose-600' },
   { value: 'scheduled_visit', ar: 'موعد زيارة',    en: 'Visit Scheduled',color: 'bg-purple-600' },
   { value: 'subscribed',      ar: 'مشترك',         en: 'Subscribed',     color: 'bg-green-700' },
+  { value: 'do_not_send',     ar: 'لا ترسل',       en: 'Do Not Send',    color: 'bg-zinc-700' },
 ];
 
 export const PRIORITY_OPTIONS = [

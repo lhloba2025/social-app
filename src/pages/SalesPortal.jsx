@@ -45,6 +45,7 @@ export default function SalesPortal({ language }) {
   const [waSalon, setWaSalon] = useState(null);    // الصالون لنافذة واتساب
   const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
   const [adding, setAdding] = useState(false);     // نافذة إضافة صالون جديد
+  const [view, setView] = useState('all');         // 'all' كل الصوالين | 'tasks' مهامي
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -221,6 +222,20 @@ export default function SalesPortal({ language }) {
           <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
         </div>
 
+        {/* مبدّل العرض: كل الصوالين / مهامي */}
+        <div className="flex gap-2">
+          <button onClick={() => setView('all')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+            <Store className="w-4 h-4" /> {ar ? 'كل الصوالين' : 'All Salons'}
+          </button>
+          <button onClick={() => setView('tasks')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'tasks' ? 'bg-fuchsia-600 border-fuchsia-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+            <CheckCircle2 className="w-4 h-4" /> {ar ? 'مهامي' : 'My Tasks'}
+          </button>
+        </div>
+
+        {view === 'tasks' ? (
+          <MyTasksView ar={ar} showToast={showToast} onWhatsApp={(s) => setWaSalon(s)} />
+        ) : (<>
+
         {/* البحث + الفلاتر */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3 space-y-3">
           <div className="flex gap-2">
@@ -302,6 +317,7 @@ export default function SalesPortal({ language }) {
             )}
           </>
         )}
+        </>)}
       </div>
 
       {editing && (
@@ -361,6 +377,80 @@ export default function SalesPortal({ language }) {
           {toast.msg}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── مهامي: قائمة متابعة المندوب (ردّت أولاً) + نتيجة بنقرة واحدة ───────────────────
+function MyTasksView({ ar, showToast, onWhatsApp }) {
+  const [tasks, setTasks] = useState(null);
+  const [followId, setFollowId] = useState(null);
+  const [followDate, setFollowDate] = useState('');
+
+  const load = useCallback(() => {
+    salesApi.myTasks().then(setTasks).catch((e) => showToast(e.message, 'err'));
+  }, [showToast]);
+  useEffect(() => { load(); }, [load]);
+
+  const outcome = async (t, payload, msg) => {
+    try {
+      await salesApi.updateSalon(t.id, payload);
+      setTasks((ts) => (ts || []).filter((x) => x.id !== t.id));
+      showToast(msg);
+    } catch (e) { showToast(e.message, 'err'); }
+  };
+
+  if (tasks === null) return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
+  if (!tasks.length) return <div className="text-center py-16 text-slate-500">{ar ? 'لا مهام حالياً 🎉 كل ما أُسند إليك متابَع.' : 'No tasks right now 🎉'}</div>;
+
+  return (
+    <div className="space-y-2">
+      {tasks.map((t) => (
+        <div key={t.id} className={`rounded-2xl border p-3 ${t.has_reply ? 'border-fuchsia-500/40 bg-fuchsia-500/[0.06]' : 'border-white/10 bg-white/[0.02]'}`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-white">{t.name || (ar ? 'بدون اسم' : 'Unnamed')}</span>
+                {t.has_reply && <span className="text-[11px] rounded-full px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-200 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'ردّت' : 'Replied'}</span>}
+                <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${statusColor(t.status)}`}>{statusLabel(t.status, ar)}</span>
+              </div>
+              <div className="text-[12px] text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t.city || '—'}</span>
+                <span style={{ direction: 'ltr' }}>{t.phone}</span>
+              </div>
+              {t.last_inbound && (
+                <p className="text-sm text-slate-200 mt-1.5 bg-slate-900/50 rounded-lg px-2.5 py-1.5 whitespace-pre-line break-words">💬 {t.last_inbound}</p>
+              )}
+            </div>
+            <a
+              href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
+              onClick={() => onWhatsApp && onWhatsApp(t)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-4 py-3 text-sm flex-shrink-0"
+              title={ar ? 'محادثة من جوالك الشخصي' : 'Chat from your phone'}
+            >
+              <MessageCircle className="w-5 h-5" /> {ar ? 'محادثة واتساب' : 'WhatsApp'}
+            </a>
+          </div>
+
+          {followId === t.id ? (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <CalendarClock className="w-4 h-4 text-amber-400" />
+              <input type="date" value={followDate} onChange={(e) => setFollowDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+              <button
+                onClick={() => { if (!followDate) return; outcome(t, { status: 'contacted', follow_up: followDate, visit_result: 'متابعة لاحقة' }, ar ? 'حُدّد موعد المتابعة' : 'Follow-up set'); setFollowId(null); setFollowDate(''); }}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm">{ar ? 'تأكيد' : 'Confirm'}</button>
+              <button onClick={() => { setFollowId(null); setFollowDate(''); }} className="text-slate-400 px-2 text-sm">{ar ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          ) : (
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onClick={() => outcome(t, { status: 'interested', visit_result: 'مهتمة' }, ar ? 'سُجّلت: مهتمة' : 'Interested')} className="bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'مهتمة' : 'Interested'}</button>
+              <button onClick={() => outcome(t, { status: 'not_interested', visit_result: 'غير مهتمة' }, ar ? 'سُجّلت: غير مهتمة' : 'Not interested')} className="bg-rose-600/90 hover:bg-rose-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'غير مهتمة' : 'Not interested'}</button>
+              <button onClick={() => { setFollowId(t.id); setFollowDate(''); }} className="bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'متابعة لاحقة' : 'Follow up'}</button>
+              <button onClick={() => outcome(t, { status: 'subscribed', visit_result: 'اشتركت' }, ar ? 'مبروك! اشتركت 🎉' : 'Subscribed 🎉')} className="bg-green-700 hover:bg-green-600 text-white rounded-lg py-2 text-sm font-medium">{ar ? 'اشتركت' : 'Subscribed'}</button>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

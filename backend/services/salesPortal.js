@@ -15,6 +15,10 @@ import { randomUUID } from 'crypto';
 import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
+import {
+  waCloudConfigured, listApprovedTemplates, uploadMedia, sendTemplateMessage,
+  buildComponents, templateHasImageHeader,
+} from './waCloud.js';
 
 // ترتيب الأدوار — كل دور يرث صلاحيات ما دونه.
 const ROLE_RANK = { agent: 1, admin: 2, super_admin: 3 };
@@ -135,6 +139,40 @@ export function mountSalesPortal(app, ctx) {
   for (const col of ['file_url TEXT', 'file_name TEXT', 'file_type TEXT']) {
     try { run(`ALTER TABLE wa_templates ADD COLUMN ${col}`); } catch { /* العمود موجود */ }
   }
+
+  // ── المرحلة ٢: حملات الواتساب + منع الإرسال (opt-out) ────────────────────────
+  // علم «لا ترسل» على الصالون — يُستثنى تلقائياً من كل الحملات المستقبلية.
+  try { run(`ALTER TABLE salons ADD COLUMN do_not_send INTEGER DEFAULT 0`); } catch { /* موجود */ }
+
+  run(`
+    CREATE TABLE IF NOT EXISTS wa_campaigns (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      template_name TEXT,
+      template_lang TEXT,
+      media_id TEXT,
+      status TEXT DEFAULT 'draft',        -- draft/sending/paused/done/cancelled
+      filters TEXT,                       -- لقطة JSON من معايير الاختيار
+      total INTEGER DEFAULT 0,
+      created_by TEXT,
+      created_by_name TEXT,
+      note TEXT,
+      created_date TEXT DEFAULT (datetime('now')),
+      updated_date TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  run(`
+    CREATE TABLE IF NOT EXISTS wa_campaign_recipients (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT,
+      salon_id TEXT,
+      to_number TEXT,
+      wamid TEXT,
+      send_status TEXT DEFAULT 'pending', -- pending/sent/failed
+      error TEXT,
+      sent_at TEXT
+    );
+  `);
 
   // ── زرع حساب السوبر أدمن من متغيّرات البيئة (Railway) ────────────────────────
   const seedUser = process.env.SALES_ADMIN_USER;
@@ -620,9 +658,10 @@ export function mountSalesPortal(app, ctx) {
   router.get('/export', requireRole('super_admin'), (req, res) => {
     // خرائط للنص العربي حتى يطلع الإكسل مفهوماً بدل الأكواد الإنجليزية.
     const STATUS_AR = {
-      new: 'جديد', contacted: 'تم التواصل', no_answer: 'لا يرد',
+      new: 'جديد', sent: 'تم الإرسال', replied: 'ردت - بانتظار متابعة',
+      contacted: 'تم التواصل', no_answer: 'لا يرد',
       interested: 'مهتم', not_interested: 'غير مهتم',
-      scheduled_visit: 'موعد زيارة', subscribed: 'مشترك',
+      scheduled_visit: 'موعد زيارة', subscribed: 'مشترك', do_not_send: 'لا ترسل',
     };
     const PRIORITY_AR = { low: 'منخفضة', normal: 'عادية', high: 'عالية' };
     const dateOnly = (v) => (v ? String(v).split(/[ T]/)[0] : '');
@@ -801,12 +840,19 @@ export function mountSalesPortal(app, ctx) {
     const { search = '', from = '', to = '', handled = '' } = req.query;
     let rows = queryAll(`SELECT * FROM wa_inbound ORDER BY wa_timestamp DESC, received_at DESC`);
 
-    // خريطة الصوالين: آخر ٩ أرقام → { name, city }.
+    // خريطة الصوالين: آخر ٩ أرقام → { id, name, city, owner_name, status }.
     const salonByTail = new Map();
-    for (const s of queryAll(`SELECT name, city, phone, phone_key FROM salons`)) {
+    for (const s of queryAll(`SELECT id, name, city, phone, phone_key, owner_id, owner_name, status FROM salons`)) {
       const key = s.phone_key || phoneKeyOf(s.phone);
-      if (key && key.length >= 9) salonByTail.set(key.slice(-9), { name: s.name, city: s.city });
+      if (key && key.length >= 9) salonByTail.set(key.slice(-9), s);
     }
+    // خريطة اسم الحملة لكل صالون (آخر حملة أُرسل إليها فيها).
+    const campBySalon = new Map();
+    for (const r of queryAll(
+      `SELECT r.salon_id, c.name AS cname FROM wa_campaign_recipients r
+       JOIN wa_campaigns c ON c.id = r.campaign_id
+       WHERE r.salon_id IS NOT NULL AND r.salon_id != '' ORDER BY r.sent_at`
+    )) { campBySalon.set(r.salon_id, r.cname); }
 
     const q = String(search).trim().toLowerCase();
     const out = [];
@@ -827,7 +873,15 @@ export function mountSalesPortal(app, ctx) {
         const hay = `${r.from_number} ${r.profile_name || ''} ${r.body || ''} ${salon?.name || ''}`.toLowerCase();
         if (!hay.includes(q)) continue;
       }
-      out.push({ ...r, handled: !!r.handled, salon_name: salon?.name || null, salon_city: salon?.city || null });
+      out.push({
+        ...r, handled: !!r.handled,
+        salon_id: salon?.id || null,
+        salon_name: salon?.name || null,
+        salon_city: salon?.city || null,
+        salon_status: salon?.status || null,
+        assigned_to: salon?.owner_name || null,
+        campaign_name: salon ? (campBySalon.get(salon.id) || null) : null,
+      });
       if (out.length >= 500) break;
     }
     res.json(out);
@@ -861,6 +915,370 @@ export function mountSalesPortal(app, ctx) {
     );
     res.json({ ...counts, errors });
   });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  المرحلة ٢: حملات الواتساب الأصلية + متابعة الفريق
+  // ════════════════════════════════════════════════════════════════════════════
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // تطبيع الرقم لصيغة واتساب (السعودية افتراضاً) — أرقام فقط بدون +.
+  const normalizeMsisdn = (phone) => {
+    let d = String(phone || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.startsWith('00')) d = d.slice(2);
+    else if (d.startsWith('0')) d = '966' + d.slice(1);
+    else if (d.startsWith('5') && d.length === 9) d = '966' + d;
+    return d;
+  };
+
+  // عدد الرسائل المُرسَلة فعلياً خلال ٢٤ ساعة متحرّكة (لحدّ ميتا اليومي).
+  const sent24hCount = () => {
+    const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    return queryOne(
+      `SELECT COUNT(*) AS c FROM wa_campaign_recipients WHERE send_status = 'sent' AND sent_at >= ?`,
+      [cutoff]
+    )?.c ?? 0;
+  };
+
+  // مُشغّلات الحملات النشطة في الذاكرة (لمنع تشغيل نفس الحملة مرّتين).
+  const runners = new Set();
+
+  // محرّك الإرسال: رسالة/ثانية، قابل للاستئناف، يحترم الإلغاء/الإيقاف والحدّ اليومي.
+  async function runCampaign(campaignId) {
+    if (runners.has(campaignId)) return;
+    runners.add(campaignId);
+    try {
+      for (;;) {
+        const camp = queryOne(`SELECT * FROM wa_campaigns WHERE id = ?`, [campaignId]);
+        if (!camp || camp.status !== 'sending') break;
+
+        if (sent24hCount() >= 2000) {
+          run(`UPDATE wa_campaigns SET status = 'paused', note = ?, updated_date = ? WHERE id = ?`,
+            ['بلغت ٢٠٠٠ رسالة خلال ٢٤ ساعة — أُوقفت مؤقتاً، تُستأنف تلقائياً لاحقاً', nowIso(), campaignId]);
+          break;
+        }
+
+        const next = queryOne(
+          `SELECT * FROM wa_campaign_recipients WHERE campaign_id = ? AND send_status = 'pending' ORDER BY rowid LIMIT 1`,
+          [campaignId]
+        );
+        if (!next) {
+          run(`UPDATE wa_campaigns SET status = 'done', updated_date = ? WHERE id = ?`, [nowIso(), campaignId]);
+          break;
+        }
+
+        const components = buildComponents({ mediaId: camp.media_id || null });
+        try {
+          const { wamid } = await sendTemplateMessage({
+            to: next.to_number, name: camp.template_name, language: camp.template_lang || 'ar', components,
+          });
+          run(`UPDATE wa_campaign_recipients SET send_status = 'sent', wamid = ?, sent_at = ?, error = NULL WHERE id = ?`,
+            [wamid, nowIso(), next.id]);
+          // مزامنة الصالون: تم التواصل = نعم، الحالة = تم الإرسال، آخر تواصل = الآن.
+          if (next.salon_id) {
+            const salon = queryOne(`SELECT status FROM salons WHERE id = ?`, [next.salon_id]);
+            if (salon) {
+              // لا نُنزّل حالة متقدّمة (ردت/مهتم/مشترك…) — نرقّي فقط جديد→تم الإرسال.
+              const keep = ['replied', 'interested', 'scheduled_visit', 'subscribed'];
+              const newStatus = keep.includes(salon.status) ? salon.status : 'sent';
+              run(`UPDATE salons SET status = ?, last_contact_date = ?, updated_date = ? WHERE id = ?`,
+                [newStatus, nowIso(), nowIso(), next.salon_id]);
+              run(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+                [randomUUID(), next.salon_id, camp.created_by || '', 'حملة واتساب', 'sent', `حملة: ${camp.name}`]);
+            }
+          }
+          // تحذير ناعم فوق ١٨٠٠ (الحدّ ٢٠٠٠) — يُسجَّل في ملاحظة الحملة دون إيقاف.
+          if (sent24hCount() >= 1800) {
+            run(`UPDATE wa_campaigns SET note = ?, updated_date = ? WHERE id = ?`,
+              ['تحذير: تجاوزت ١٨٠٠ رسالة خلال ٢٤ ساعة (الحدّ ٢٠٠٠) — انتبه للسقف', nowIso(), campaignId]);
+          }
+        } catch (err) {
+          run(`UPDATE wa_campaign_recipients SET send_status = 'failed', error = ? WHERE id = ?`,
+            [(err.code ? `[${err.code}] ` : '') + (err.message || 'فشل الإرسال'), next.id]);
+        }
+        await sleep(1000); // ~رسالة واحدة في الثانية
+      }
+    } catch (err) {
+      console.error('[wa-campaign] runner error:', err?.stack || err?.message || err);
+    } finally {
+      runners.delete(campaignId);
+    }
+  }
+
+  // إسناد دوري متوازن: أقلّ عضو (agent) تحميلاً بالصوالين النشطة يأخذ التالي.
+  function pickRoundRobinAgent() {
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    if (!agents.length) return null;
+    let best = null, bestCount = Infinity;
+    for (const a of agents) {
+      const c = queryOne(
+        `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+        [a.id]
+      )?.c ?? 0;
+      if (c < bestCount) { bestCount = c; best = a; }
+    }
+    return best;
+  }
+
+  // ── القوالب الحيّة (المعتمدة فقط) من ميتا ─────────────────────────────────────
+  router.get('/wa/templates-live', requireRole('admin'), async (req, res) => {
+    if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
+    try {
+      const tpls = await listApprovedTemplates();
+      res.json(tpls.map((t) => ({
+        name: t.name, language: t.language, category: t.category,
+        components: t.components, has_image: templateHasImageHeader(t),
+      })));
+    } catch (err) {
+      res.status(502).json({ error: err?.response?.data?.error?.message || err.message || 'تعذّر جلب القوالب' });
+    }
+  });
+
+  // ── إنشاء حملة (مسودّة) — يحلّ المستلمين ويرفع الصورة مرّة واحدة ─────────────────
+  router.post('/wa/campaigns', requireRole('admin'),
+    upload.fields([{ name: 'image', maxCount: 1 }, { name: 'numbers', maxCount: 1 }]),
+    async (req, res) => {
+      if (!waCloudConfigured()) return res.status(400).json({ error: 'WA_ACCESS_TOKEN غير مضبوط في الخادم' });
+      const b = req.body || {};
+      const name = String(b.name || '').trim();
+      const template_name = String(b.template_name || '').trim();
+      const template_lang = String(b.template_lang || 'ar').trim();
+      if (!name || !template_name) return res.status(400).json({ error: 'اسم الحملة والقالب مطلوبان' });
+
+      // بناء قائمة المستلمين.
+      const seen = new Set();
+      const recipients = []; // { salon_id, to_number }
+      const numbersFile = req.files?.numbers?.[0];
+      const allSalons = queryAll(`SELECT id, name, phone, phone_key, city, status, do_not_send FROM salons`);
+
+      if (numbersFile) {
+        // من ملف أرقام: نطابق الصوالين بآخر ٩ أرقام، والأرقام غير المطابقة تُرسَل بلا صالون.
+        const salonByTail = new Map();
+        for (const s of allSalons) {
+          if (s.do_not_send) continue;
+          const key = s.phone_key || phoneKeyOf(s.phone);
+          if (key && key.length >= 9) salonByTail.set(key.slice(-9), s);
+        }
+        const wb = XLSX.read(numbersFile.buffer, { type: 'buffer' });
+        const optedOut = new Set(
+          allSalons.filter((s) => s.do_not_send).map((s) => (s.phone_key || phoneKeyOf(s.phone)).slice(-9))
+        );
+        for (const sheetName of wb.SheetNames) {
+          for (const row of XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })) {
+            for (const cell of row) {
+              const digits = String(cell ?? '').replace(/\D/g, '');
+              if (digits.length < 9) continue;
+              const tail = digits.slice(-9);
+              if (optedOut.has(tail)) continue;          // احترام منع الإرسال
+              const msisdn = normalizeMsisdn(digits);
+              if (!msisdn || seen.has(msisdn)) continue;
+              seen.add(msisdn);
+              const salon = salonByTail.get(tail);
+              recipients.push({ salon_id: salon?.id || null, to_number: msisdn });
+            }
+          }
+        }
+      } else {
+        // بالفلاتر: مدينة + حالة (الافتراضي: استثناء «تم التواصل» ⇒ الجدد فقط) + حدّ N.
+        const city = String(b.city || '').trim();
+        const status = String(b.status || '').trim();
+        const limit = Math.max(0, parseInt(b.limit, 10) || 0);
+        let list = allSalons.filter((s) => !s.do_not_send && String(s.phone || '').trim());
+        if (city) list = list.filter((s) => s.city === city);
+        if (status) list = list.filter((s) => (s.status || 'new') === status);
+        else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
+        for (const s of list) {
+          const msisdn = normalizeMsisdn(s.phone);
+          if (!msisdn || seen.has(msisdn)) continue;
+          seen.add(msisdn);
+          recipients.push({ salon_id: s.id, to_number: msisdn });
+          if (limit && recipients.length >= limit) break;
+        }
+      }
+
+      if (!recipients.length) return res.status(400).json({ error: 'لا يوجد مستلمون مطابقون بعد استثناء «لا ترسل» والمكرّرات' });
+
+      // رفع صورة الترويسة مرّة واحدة (إن وُجدت).
+      let media_id = null;
+      const imageFile = req.files?.image?.[0];
+      if (imageFile) {
+        try { media_id = await uploadMedia(imageFile.buffer, imageFile.originalname, imageFile.mimetype); }
+        catch (err) { return res.status(502).json({ error: 'تعذّر رفع الصورة لميتا: ' + (err.message || '') }); }
+      }
+
+      const id = randomUUID();
+      run(
+        `INSERT INTO wa_campaigns (id, name, template_name, template_lang, media_id, status, filters, total, created_by, created_by_name)
+         VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
+        [id, name, template_name, template_lang, media_id, JSON.stringify(b || {}), recipients.length, req.salesUser.id, req.salesUser.name]
+      );
+      for (const r of recipients) {
+        run(`INSERT INTO wa_campaign_recipients (id, campaign_id, salon_id, to_number, send_status) VALUES (?, ?, ?, ?, 'pending')`,
+          [randomUUID(), id, r.salon_id, r.to_number]);
+      }
+      res.status(201).json({ id, name, total: recipients.length, media_id, status: 'draft', warn24h: sent24hCount() });
+    });
+
+  // ── قائمة الحملات مع عدّادات ──────────────────────────────────────────────────
+  router.get('/wa/campaigns', requireRole('admin'), (req, res) => {
+    const camps = queryAll(`SELECT * FROM wa_campaigns ORDER BY created_date DESC`);
+    const out = camps.map((c) => {
+      const counts = { pending: 0, sent: 0, failed: 0 };
+      for (const r of queryAll(`SELECT send_status, COUNT(*) AS c FROM wa_campaign_recipients WHERE campaign_id = ? GROUP BY send_status`, [c.id])) {
+        counts[r.send_status] = r.c;
+      }
+      return { ...c, counts, running: runners.has(c.id) };
+    });
+    res.json(out);
+  });
+
+  // ── تفاصيل حملة + تفصيل لكل صالون (مع حالة التسليم من الويبهوك) ────────────────
+  function campaignDetail(id) {
+    const camp = queryOne(`SELECT * FROM wa_campaigns WHERE id = ?`, [id]);
+    if (!camp) return null;
+    const salonName = new Map();
+    for (const s of queryAll(`SELECT id, name, city, owner_name FROM salons`)) salonName.set(s.id, s);
+    const recips = queryAll(`SELECT * FROM wa_campaign_recipients WHERE campaign_id = ? ORDER BY rowid`, [id]);
+    const totals = { total: recips.length, sent: 0, failed: 0, pending: 0, delivered: 0, read: 0 };
+    const rows = recips.map((r) => {
+      totals[r.send_status] = (totals[r.send_status] || 0) + 1;
+      let delivery = null, error_code = null;
+      if (r.wamid) {
+        const st = queryOne(`SELECT status, error_code FROM wa_status WHERE wamid = ?`, [r.wamid]);
+        if (st) { delivery = st.status; error_code = st.error_code; }
+      }
+      if (delivery === 'delivered') totals.delivered++;
+      if (delivery === 'read') totals.read++;
+      const s = r.salon_id ? salonName.get(r.salon_id) : null;
+      return {
+        id: r.id, salon_id: r.salon_id, to_number: r.to_number,
+        salon_name: s?.name || null, salon_city: s?.city || null, assigned_to: s?.owner_name || null,
+        send_status: r.send_status, delivery, error: r.error, error_code, sent_at: r.sent_at,
+      };
+    });
+    return { campaign: camp, totals, rows };
+  }
+
+  router.get('/wa/campaigns/:id', requireRole('admin'), (req, res) => {
+    const d = campaignDetail(req.params.id);
+    if (!d) return res.status(404).json({ error: 'الحملة غير موجودة' });
+    res.json(d);
+  });
+
+  // بدء / إيقاف مؤقت / استئناف / إلغاء.
+  router.post('/wa/campaigns/:id/start', requireRole('admin'), (req, res) => {
+    const camp = queryOne(`SELECT * FROM wa_campaigns WHERE id = ?`, [req.params.id]);
+    if (!camp) return res.status(404).json({ error: 'الحملة غير موجودة' });
+    if (['done', 'cancelled'].includes(camp.status)) return res.status(400).json({ error: 'الحملة منتهية' });
+    run(`UPDATE wa_campaigns SET status = 'sending', updated_date = ? WHERE id = ?`, [nowIso(), req.params.id]);
+    runCampaign(req.params.id);
+    res.json({ id: req.params.id, status: 'sending' });
+  });
+  router.post('/wa/campaigns/:id/pause', requireRole('admin'), (req, res) => {
+    run(`UPDATE wa_campaigns SET status = 'paused', updated_date = ? WHERE id = ? AND status = 'sending'`, [nowIso(), req.params.id]);
+    res.json({ id: req.params.id, status: 'paused' });
+  });
+  router.post('/wa/campaigns/:id/cancel', requireRole('admin'), (req, res) => {
+    run(`UPDATE wa_campaigns SET status = 'cancelled', updated_date = ? WHERE id = ?`, [nowIso(), req.params.id]);
+    res.json({ id: req.params.id, status: 'cancelled' });
+  });
+
+  // تصدير تفصيل الحملة إكسل.
+  router.get('/wa/campaigns/:id/export', requireRole('admin'), (req, res) => {
+    const d = campaignDetail(req.params.id);
+    if (!d) return res.status(404).json({ error: 'الحملة غير موجودة' });
+    const STATUS_AR = { pending: 'بالانتظار', sent: 'أُرسلت', failed: 'فشلت' };
+    const DELIV_AR = { sent: 'أُرسلت', delivered: 'وصلت', read: 'قُرئت', failed: 'فشلت' };
+    const rows = d.rows.map((r) => ({
+      'الصالون': r.salon_name || '—',
+      'المدينة': r.salon_city || '',
+      'الرقم': r.to_number,
+      'المندوب': r.assigned_to || '',
+      'حالة الإرسال': STATUS_AR[r.send_status] || r.send_status,
+      'التسليم': DELIV_AR[r.delivery] || (r.delivery || ''),
+      'كود الخطأ': r.error_code || '',
+      'الخطأ': r.error || '',
+      'وقت الإرسال': r.sent_at || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'الحملة');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', `attachment; filename="campaign-${req.params.id}.xlsx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  });
+
+  // ── إسناد صالون لمندوب (يدوي) ────────────────────────────────────────────────
+  router.post('/salons/:id/assign', requireRole('admin'), (req, res) => {
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'الصالون غير موجود' });
+    const ownerId = (req.body && req.body.owner_id) || '';
+    if (!ownerId) {
+      run(`UPDATE salons SET owner_id = NULL, owner_name = NULL, updated_date = ? WHERE id = ?`, [nowIso(), req.params.id]);
+      return res.json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id])));
+    }
+    const u = queryOne(`SELECT id, display_name FROM sales_users WHERE id = ?`, [ownerId]);
+    if (!u) return res.status(404).json({ error: 'العضو غير موجود' });
+    run(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+      [u.id, u.display_name, nowIso(), req.params.id]);
+    res.json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id])));
+  });
+
+  // ── مهامي: صوالين المندوب مرتّبة (ردّت أولاً، ثم أُرسل ولم يردّ) ─────────────────
+  router.get('/salons/my-tasks', requireRole('agent'), (req, res) => {
+    const me = req.salesUser.id;
+    const mine = queryAll(
+      `SELECT * FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      [me]
+    ).map(parseSalon);
+
+    // آخر رسالة واردة لكل صالون (مطابقة بآخر ٩ أرقام).
+    const inboundByTail = new Map();
+    for (const m of queryAll(`SELECT from_number, body, wa_timestamp FROM wa_inbound ORDER BY wa_timestamp ASC`)) {
+      const t = phoneKeyOf(m.from_number);
+      if (t.length >= 9) inboundByTail.set(t.slice(-9), m); // آخر واحدة تبقى (ترتيب تصاعدي)
+    }
+    const enriched = mine.map((s) => {
+      const key = (s.phone_key || phoneKeyOf(s.phone));
+      const inb = key && key.length >= 9 ? inboundByTail.get(key.slice(-9)) : null;
+      return {
+        ...s,
+        last_inbound: inb?.body || null,
+        last_inbound_ts: inb?.wa_timestamp || null,
+        has_reply: !!inb || s.status === 'replied',
+      };
+    });
+    // ردّت أولاً (حسب أحدث رسالة)، ثم البقية حسب آخر تواصل.
+    enriched.sort((a, b) => {
+      if (a.has_reply !== b.has_reply) return a.has_reply ? -1 : 1;
+      if (a.has_reply && b.has_reply) return (b.last_inbound_ts || 0) - (a.last_inbound_ts || 0);
+      return String(b.last_contact_date || '').localeCompare(String(a.last_contact_date || ''));
+    });
+    res.json(enriched);
+  });
+
+  // ── لوحة الفريق: عدّادات لكل مندوب (للمساءلة) ─────────────────────────────────
+  router.get('/wa/team-board', requireRole('admin'), (req, res) => {
+    const agents = queryAll(`SELECT id, display_name, role FROM sales_users WHERE role IN ('agent','admin') ORDER BY display_name`);
+    const board = agents.map((a) => {
+      const rows = queryAll(`SELECT status, last_contact_date FROM salons WHERE owner_id = ?`, [a.id]);
+      return {
+        user_id: a.id, name: a.display_name, role: a.role,
+        assigned: rows.length,
+        contacted: rows.filter((r) => r.last_contact_date).length,
+        replied: rows.filter((r) => r.status === 'replied').length,
+        interested: rows.filter((r) => r.status === 'interested').length,
+        subscribed: rows.filter((r) => r.status === 'subscribed').length,
+      };
+    });
+    res.json(board);
+  });
+
+  // استئناف الحملات التي بقيت «قيد الإرسال» بعد إعادة تشغيل الخادم.
+  for (const c of queryAll(`SELECT id FROM wa_campaigns WHERE status = 'sending'`)) {
+    runCampaign(c.id);
+  }
 
   app.use('/api/sales', router);
   console.log('[Sales] ✅ بوابة فريق المبيعات «هوفيرا» جاهزة على /api/sales');

@@ -699,7 +699,7 @@ mountSalesPortal(app, { queryAll, queryOne, run, uploadsDir });
 // ---- WhatsApp Cloud API webhook (public, no auth) ----
 // Receives inbound customer replies + outbound message status updates from Meta
 // for ANY phone_number_id. Admin inbox reads these via /api/sales/wa/*.
-mountWhatsappWebhook(app, { run, queryOne });
+mountWhatsappWebhook(app, { run, queryOne, queryAll });
 
 // ---- OAuth: Meta ----
 app.get('/auth/meta', (req, res) => {

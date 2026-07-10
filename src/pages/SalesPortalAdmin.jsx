@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { salesApi, getStoredUser, clearSession } from '@/api/salesClient';
 import SalesLogin from '@/components/sales/SalesLogin';
 import HoveraLogo from '@/components/sales/HoveraLogo';
-import { roleLabel, statusLabel, statusColor, shortDate, timeAgo } from './salesConstants';
+import { roleLabel, statusLabel, statusColor, shortDate, timeAgo, STATUS_OPTIONS } from './salesConstants';
 import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Database, Trash2, Plus, LogOut, ArrowRight, ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
   Paperclip, FileText, Image as ImageIcon, Share2, Megaphone,
   Inbox, RefreshCw, ExternalLink, CheckCircle2, Search, Send, CheckCheck, XCircle,
+  Play, Pause, BarChart3, UserPlus, Ban,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -58,6 +59,7 @@ export default function SalesPortalAdmin({ language }) {
   const TABS = [
     { id: 'oversight', label: ar ? 'متابعة الفريق' : 'Team Oversight', icon: Gauge },
     { id: 'members', label: ar ? 'أعضاء الفريق' : 'Team Members', icon: Users },
+    { id: 'campaigns', label: ar ? 'حملات الواتساب' : 'WhatsApp Campaigns', icon: Megaphone },
     { id: 'templates', label: ar ? 'قوالب الواتساب' : 'WhatsApp Templates', icon: MessageSquare },
     { id: 'inbox', label: ar ? 'وارد الردود' : 'Replies Inbox', icon: Inbox },
     ...(isSuper ? [{ id: 'data', label: ar ? 'البيانات والنُّسخ' : 'Data & Backups', icon: Database }] : []),
@@ -105,6 +107,7 @@ export default function SalesPortalAdmin({ language }) {
 
         {tab === 'oversight' && <OversightTab ar={ar} showToast={showToast} />}
         {tab === 'members' && <MembersTab user={user} ar={ar} showToast={showToast} />}
+        {tab === 'campaigns' && <CampaignsTab ar={ar} showToast={showToast} />}
         {tab === 'templates' && <TemplatesTab ar={ar} showToast={showToast} />}
         {tab === 'inbox' && <InboxTab ar={ar} showToast={showToast} />}
         {tab === 'data' && isSuper && <DataTab ar={ar} showToast={showToast} />}
@@ -654,6 +657,19 @@ function InboxTab({ ar, showToast }) {
     return () => clearInterval(id);
   }, [load]);
 
+  // أعضاء الفريق لإسناد الصوالين من داخل الوارد.
+  const [members, setMembers] = useState([]);
+  useEffect(() => { salesApi.members().then((m) => setMembers(m.filter((u) => u.role === 'agent' || u.role === 'admin'))).catch(() => {}); }, []);
+  const assign = async (row, ownerId) => {
+    if (!row.salon_id) return;
+    try {
+      await salesApi.assignSalon(row.salon_id, ownerId);
+      const name = members.find((m) => m.id === ownerId)?.display_name || '';
+      setReplies((rs) => rs.map((r) => (r.salon_id === row.salon_id ? { ...r, assigned_to: name } : r)));
+      showToast(ar ? `تم الإسناد إلى ${name}` : `Assigned to ${name}`);
+    } catch (e) { showToast(e.message, 'err'); }
+  };
+
   const toggleHandled = async (row) => {
     const next = !row.handled;
     setReplies((rs) => rs.map((r) => (r.id === row.id ? { ...r, handled: next } : r)));
@@ -757,12 +773,31 @@ function InboxTab({ ar, showToast }) {
                         {r.salon_name}{r.salon_city ? ` · ${r.salon_city}` : ''}
                       </span>
                     )}
+                    {r.campaign_name && (
+                      <span className="text-[11px] rounded-full px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 flex items-center gap-1"><Megaphone className="w-2.5 h-2.5" />{r.campaign_name}</span>
+                    )}
                     {r.msg_type && r.msg_type !== 'text' && (
                       <span className="text-[11px] rounded-full px-2 py-0.5 bg-slate-700/50 border border-slate-600 text-slate-300">{r.msg_type}</span>
                     )}
                   </div>
                   <p className="text-sm text-slate-200 mt-1.5 whitespace-pre-line break-words">{r.body || '—'}</p>
-                  <div className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtTime(r.wa_timestamp, r.received_at)}</div>
+                  <div className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-2 flex-wrap">
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtTime(r.wa_timestamp, r.received_at)}</span>
+                    {r.salon_id && (
+                      <span className="flex items-center gap-1">
+                        <UserPlus className="w-3 h-3" />
+                        <select
+                          value=""
+                          onChange={(e) => { if (e.target.value) assign(r, e.target.value); }}
+                          className="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 outline-none"
+                          title={ar ? 'إسناد لمندوب' : 'Assign to rep'}
+                        >
+                          <option value="">{r.assigned_to ? `${ar ? 'مُسند: ' : 'Assigned: '}${r.assigned_to}` : (ar ? 'إسناد لمندوب' : 'Assign')}</option>
+                          {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+                        </select>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                   <a
@@ -793,6 +828,300 @@ function InboxTab({ ar, showToast }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── حملات الواتساب (المرحلة ٢) ──────────────────────────────────────────────────
+const CAMP_STATUS = {
+  draft:     { ar: 'مسودّة',        en: 'Draft',     color: 'bg-slate-600' },
+  sending:   { ar: 'قيد الإرسال',   en: 'Sending',   color: 'bg-cyan-600' },
+  paused:    { ar: 'موقوفة مؤقتاً', en: 'Paused',    color: 'bg-amber-600' },
+  done:      { ar: 'مكتملة',        en: 'Done',      color: 'bg-emerald-600' },
+  cancelled: { ar: 'ملغاة',         en: 'Cancelled', color: 'bg-rose-600' },
+};
+
+function CampaignsTab({ ar, showToast }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+
+  const load = React.useCallback(() => {
+    salesApi.waCampaigns()
+      .then(setCampaigns)
+      .catch((e) => showToast(e.message, 'err'))
+      .finally(() => setLoading(false));
+  }, [showToast]);
+
+  useEffect(() => { load(); }, [load]);
+  // تحديث تلقائي كل ٥ ثوانٍ طالما هناك حملة قيد الإرسال.
+  useEffect(() => {
+    if (!campaigns.some((c) => c.status === 'sending')) return;
+    const id = setInterval(load, 5000);
+    return () => clearInterval(id);
+  }, [campaigns, load]);
+
+  const action = async (fn, id) => {
+    try { await fn(id); load(); }
+    catch (e) { showToast(e.message, 'err'); }
+  };
+  const exportCamp = async (id) => {
+    try {
+      const res = await salesApi.waExportCampaign(id);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `campaign-${id}.xlsx`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { showToast(e.message, 'err'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="font-bold text-lg flex items-center gap-2"><Megaphone className="w-5 h-5 text-indigo-400" /> {ar ? 'حملات الواتساب' : 'WhatsApp Campaigns'}</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+          <button onClick={() => setCreating(true)} className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-1.5"><Plus className="w-4 h-4" /> {ar ? 'حملة جديدة' : 'New Campaign'}</button>
+        </div>
+      </div>
+
+      {creating && <CreateCampaign ar={ar} showToast={showToast} onClose={() => setCreating(false)} onCreated={() => { setCreating(false); load(); }} />}
+      {detailId && <CampaignDetail ar={ar} showToast={showToast} id={detailId} onClose={() => { setDetailId(null); load(); }} />}
+
+      {loading && campaigns.length === 0 ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+      ) : campaigns.length === 0 ? (
+        <div className="text-center py-12 text-slate-500"><Megaphone className="w-10 h-10 mx-auto mb-2 opacity-50" />{ar ? 'لا توجد حملات بعد. أنشئ حملة جديدة للبدء.' : 'No campaigns yet.'}</div>
+      ) : (
+        <div className="space-y-2">
+          {campaigns.map((c) => {
+            const st = CAMP_STATUS[c.status] || CAMP_STATUS.draft;
+            const sent = c.counts?.sent || 0, failed = c.counts?.failed || 0;
+            const pct = c.total ? Math.round(((sent + failed) / c.total) * 100) : 0;
+            return (
+              <div key={c.id} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-white">{c.name}</span>
+                      <span className={`text-[11px] text-white px-2 py-0.5 rounded-full ${st.color}`}>{ar ? st.ar : st.en}</span>
+                      {c.media_id && <span className="text-[11px] text-slate-300 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {ar ? 'صورة' : 'image'}</span>}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">{ar ? 'القالب' : 'Template'}: {c.template_name} · {c.total} {ar ? 'مستلم' : 'recipients'}</div>
+                    {c.note && <div className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> {c.note}</div>}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(c.status === 'draft' || c.status === 'paused') && (
+                      <button onClick={() => action(salesApi.waStartCampaign, c.id)} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2.5 py-1.5"><Play className="w-3.5 h-3.5" /> {ar ? (c.status === 'paused' ? 'استئناف' : 'بدء الإرسال') : 'Start'}</button>
+                    )}
+                    {c.status === 'sending' && (
+                      <button onClick={() => action(salesApi.waPauseCampaign, c.id)} className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-lg px-2.5 py-1.5"><Pause className="w-3.5 h-3.5" /> {ar ? 'إيقاف' : 'Pause'}</button>
+                    )}
+                    {!['done', 'cancelled'].includes(c.status) && (
+                      <button onClick={() => action(salesApi.waCancelCampaign, c.id)} className="flex items-center gap-1 text-xs bg-slate-700 hover:bg-rose-600 text-white rounded-lg px-2.5 py-1.5"><XCircle className="w-3.5 h-3.5" /> {ar ? 'إلغاء' : 'Cancel'}</button>
+                    )}
+                    <button onClick={() => setDetailId(c.id)} className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg px-2.5 py-1.5"><BarChart3 className="w-3.5 h-3.5" /> {ar ? 'التفاصيل' : 'Details'}</button>
+                    <button onClick={() => exportCamp(c.id)} className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg px-2.5 py-1.5"><FileDown className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                {/* شريط التقدّم */}
+                <div className="mt-2">
+                  <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-cyan-500" style={{ width: `${pct}%` }} /></div>
+                  <div className="text-[11px] text-slate-400 mt-1 flex gap-3">
+                    <span>{ar ? 'أُرسل' : 'Sent'}: {sent}/{c.total}</span>
+                    {failed > 0 && <span className="text-rose-400">{ar ? 'فشل' : 'Failed'}: {failed}</span>}
+                    {c.counts?.pending > 0 && <span>{ar ? 'متبقٍ' : 'Pending'}: {c.counts.pending}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <TeamBoard ar={ar} showToast={showToast} />
+    </div>
+  );
+}
+
+function CreateCampaign({ ar, showToast, onClose, onCreated }) {
+  const [name, setName] = useState('');
+  const [mode, setMode] = useState('filters'); // filters | file
+  const [cities, setCities] = useState([]);
+  const [city, setCity] = useState('');
+  const [status, setStatus] = useState('');   // '' = الجدد فقط (الافتراضي)
+  const [limit, setLimit] = useState('');
+  const [numbersFile, setNumbersFile] = useState(null);
+  const [templates, setTemplates] = useState(null);
+  const [tpl, setTpl] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    salesApi.salonFilters().then((f) => setCities(f.cities || [])).catch(() => {});
+    salesApi.waTemplatesLive()
+      .then((t) => setTemplates(t))
+      .catch((e) => { setTemplates([]); showToast(e.message, 'err'); });
+  }, [showToast]);
+
+  const submit = async () => {
+    if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
+    if (!tpl) return showToast(ar ? 'اختر قالباً' : 'Pick a template', 'err');
+    if (tpl.has_image && !imageFile) return showToast(ar ? 'هذا القالب يتطلّب صورة ترويسة' : 'This template needs a header image', 'err');
+    if (mode === 'file' && !numbersFile) return showToast(ar ? 'ارفع ملف الأرقام' : 'Upload numbers file', 'err');
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', name.trim());
+      fd.append('template_name', tpl.name);
+      fd.append('template_lang', tpl.language || 'ar');
+      if (mode === 'file') fd.append('numbers', numbersFile);
+      else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); }
+      if (imageFile) fd.append('image', imageFile);
+      const r = await salesApi.waCreateCampaign(fd);
+      showToast(ar ? `أُنشئت الحملة — ${r.total} مستلم. اضغط «بدء الإرسال».` : `Created — ${r.total} recipients.`);
+      onCreated();
+    } catch (e) { showToast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  const inputCls = 'bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full outline-none focus:border-indigo-500';
+  return (
+    <ModalShell title={ar ? 'حملة واتساب جديدة' : 'New WhatsApp Campaign'} ar={ar} onClose={onClose}>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs text-slate-400">{ar ? 'اسم الحملة' : 'Campaign name'}</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={ar ? 'مثال: إطلاق العرض - الرياض' : 'e.g. Launch - Riyadh'} />
+        </div>
+
+        {/* اختيار المستلمين */}
+        <div className="flex gap-2 text-sm">
+          <button onClick={() => setMode('filters')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'filters' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'بالفلاتر' : 'By filters'}</button>
+          <button onClick={() => setMode('file')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'file' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'ملف أرقام' : 'Numbers file'}</button>
+        </div>
+        {mode === 'filters' ? (
+          <div className="grid grid-cols-3 gap-2">
+            <select value={city} onChange={(e) => setCity(e.target.value)} className={inputCls}><option value="">{ar ? 'كل المدن' : 'All cities'}</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+              <option value="">{ar ? 'الجدد فقط (افتراضي)' : 'New only'}</option>
+              {STATUS_OPTIONS.filter((s) => !['do_not_send'].includes(s.value)).map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
+            </select>
+            <input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} className={inputCls} placeholder={ar ? 'حدّ N' : 'Limit N'} inputMode="numeric" />
+          </div>
+        ) : (
+          <label className="bg-slate-800 hover:bg-indigo-600 cursor-pointer text-white rounded-lg py-2 text-sm flex items-center justify-center gap-2">
+            <Upload className="w-4 h-4" /> {numbersFile ? numbersFile.name : (ar ? 'اختيار ملف الأرقام (Excel/CSV)' : 'Choose numbers file')}
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setNumbersFile(e.target.files?.[0] || null)} />
+          </label>
+        )}
+        <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة.' : 'Opt-outs excluded, duplicates removed.'}</p>
+
+        {/* القالب */}
+        <div>
+          <label className="text-xs text-slate-400">{ar ? 'القالب (المعتمد فقط)' : 'Template (approved)'}</label>
+          {templates === null ? (
+            <div className="text-sm text-slate-500 flex items-center gap-2 py-2"><Loader2 className="w-4 h-4 animate-spin" /> {ar ? 'جلب القوالب…' : 'Loading…'}</div>
+          ) : templates.length === 0 ? (
+            <div className="text-sm text-rose-400 py-2">{ar ? 'لا توجد قوالب معتمدة (أو التوكن غير مضبوط).' : 'No approved templates.'}</div>
+          ) : (
+            <select value={tpl?.name || ''} onChange={(e) => setTpl(templates.find((t) => t.name === e.target.value) || null)} className={inputCls}>
+              <option value="">{ar ? '— اختر —' : '— pick —'}</option>
+              {templates.map((t) => <option key={t.name + t.language} value={t.name}>{t.name} ({t.language}){t.has_image ? ' 🖼' : ''}</option>)}
+            </select>
+          )}
+        </div>
+        {tpl?.has_image && (
+          <label className="bg-slate-800 hover:bg-indigo-600 cursor-pointer text-white rounded-lg py-2 text-sm flex items-center justify-center gap-2">
+            <ImageIcon className="w-4 h-4" /> {imageFile ? imageFile.name : (ar ? 'صورة الترويسة (مطلوبة)' : 'Header image (required)')}
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+          </label>
+        )}
+
+        <button onClick={submit} disabled={busy} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-2">
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />} {ar ? 'إنشاء الحملة (مسودّة)' : 'Create campaign (draft)'}
+        </button>
+        <p className="text-[11px] text-slate-500 text-center">{ar ? 'تُنشأ كمسودّة أولاً — راجع العدد ثم اضغط «بدء الإرسال».' : 'Created as draft — review count then Start.'}</p>
+      </div>
+    </ModalShell>
+  );
+}
+
+function CampaignDetail({ ar, showToast, id, onClose }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let on = true;
+    const load = () => salesApi.waCampaign(id).then((d) => { if (on) setData(d); }).catch((e) => showToast(e.message, 'err'));
+    load();
+    const iv = setInterval(load, 5000);
+    return () => { on = false; clearInterval(iv); };
+  }, [id, showToast]);
+
+  const DELIV = { sent: ar ? 'أُرسلت' : 'Sent', delivered: ar ? 'وصلت' : 'Delivered', read: ar ? 'قُرئت' : 'Read', failed: ar ? 'فشلت' : 'Failed' };
+  const t = data?.totals;
+  return (
+    <ModalShell title={data?.campaign?.name || (ar ? 'تفاصيل الحملة' : 'Campaign')} ar={ar} onClose={onClose}>
+      {!data ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[['sent', ar ? 'أُرسلت' : 'Sent'], ['delivered', ar ? 'وصلت' : 'Delivered'], ['read', ar ? 'قُرئت' : 'Read'], ['failed', ar ? 'فشلت' : 'Failed'], ['pending', ar ? 'متبقٍ' : 'Pending'], ['total', ar ? 'الإجمالي' : 'Total']].map(([k, lbl]) => (
+              <div key={k} className="bg-slate-800 rounded-lg p-2"><div className="text-lg font-bold text-white">{t?.[k] ?? 0}</div><div className="text-[10px] text-slate-400">{lbl}</div></div>
+            ))}
+          </div>
+          <div className="max-h-72 overflow-y-auto space-y-1">
+            {data.rows.map((r) => (
+              <div key={r.id} className="bg-slate-800/60 rounded-lg px-2.5 py-1.5 text-xs flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-white truncate">{r.salon_name || r.to_number}</div>
+                  <div className="text-slate-500" style={{ direction: 'ltr' }}>{r.to_number}{r.salon_city ? ` · ${r.salon_city}` : ''}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className={`px-1.5 py-0.5 rounded ${r.send_status === 'failed' ? 'bg-rose-500/20 text-rose-300' : r.send_status === 'sent' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-600/40 text-slate-300'}`}>
+                    {r.delivery ? DELIV[r.delivery] : (r.send_status === 'sent' ? DELIV.sent : r.send_status === 'failed' ? DELIV.failed : (ar ? 'بالانتظار' : 'pending'))}
+                  </span>
+                  {r.error_code && <div className="text-rose-400 mt-0.5">{r.error_code}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </ModalShell>
+  );
+}
+
+function TeamBoard({ ar, showToast }) {
+  const [board, setBoard] = useState(null);
+  useEffect(() => { salesApi.teamBoard().then(setBoard).catch((e) => showToast(e.message, 'err')); }, [showToast]);
+  if (!board) return null;
+  return (
+    <div className="mt-6">
+      <h3 className="font-bold text-sm text-slate-300 mb-2 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="text-slate-400 text-xs border-b border-slate-800">
+            <th className="text-start py-2 px-2">{ar ? 'المندوب' : 'Rep'}</th>
+            <th className="py-2 px-2">{ar ? 'مُسند' : 'Assigned'}</th>
+            <th className="py-2 px-2">{ar ? 'تواصل' : 'Contacted'}</th>
+            <th className="py-2 px-2">{ar ? 'ردّت' : 'Replied'}</th>
+            <th className="py-2 px-2">{ar ? 'مهتم' : 'Interested'}</th>
+            <th className="py-2 px-2">{ar ? 'مشترك' : 'Subscribed'}</th>
+          </tr></thead>
+          <tbody>
+            {board.map((m) => (
+              <tr key={m.user_id} className="border-b border-slate-800/50">
+                <td className="py-2 px-2 text-white">{m.name}</td>
+                <td className="py-2 px-2 text-center text-slate-300">{m.assigned}</td>
+                <td className="py-2 px-2 text-center text-slate-300">{m.contacted}</td>
+                <td className="py-2 px-2 text-center text-fuchsia-300">{m.replied}</td>
+                <td className="py-2 px-2 text-center text-emerald-300">{m.interested}</td>
+                <td className="py-2 px-2 text-center text-green-400">{m.subscribed}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

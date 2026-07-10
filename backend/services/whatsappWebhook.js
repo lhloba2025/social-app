@@ -14,6 +14,10 @@ import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 
 const nowIso = () => new Date().toISOString();
 
+// كلمات إيقاف الإرسال (opt-out) — أهمّها «إيقاف».
+const OPT_OUT = new Set(['إيقاف', 'ايقاف', 'الغاء', 'إلغاء', 'stop', 'unsubscribe']);
+const digitsOnly = (v) => String(v ?? '').replace(/\D/g, '');
+
 // الرياض = UTC+3 ثابتة (بلا توقيت صيفي). نشتق اليوم المحلي من طابع زمني unix.
 function riyadhDay(tsSec) {
   const ms = (Number(tsSec) || Math.floor(Date.now() / 1000)) * 1000 + 3 * 3600 * 1000;
@@ -66,7 +70,7 @@ export function initWhatsappSchema(run) {
 
 // يركّب المسار العام /api/whatsapp/webhook (GET تحقّق + POST استقبال).
 export function mountWhatsappWebhook(app, ctx) {
-  const { run, queryOne } = ctx;
+  const { run, queryOne, queryAll } = ctx;
   initWhatsappSchema(run);
 
   const router = express.Router();
@@ -112,6 +116,7 @@ export function mountWhatsappWebhook(app, ctx) {
 
           for (const m of (Array.isArray(value.messages) ? value.messages : [])) {
             storeInbound(run, m, profileName, phoneNumberId);
+            syncSalonOnInbound(run, queryOne, queryAll, m);
           }
           for (const s of (Array.isArray(value.statuses) ? value.statuses : [])) {
             storeStatus(run, queryOne, s, phoneNumberId);
@@ -141,6 +146,64 @@ function storeInbound(run, m, profileName, phoneNumberId) {
     [randomUUID(), m.id, m.from || '', profileName, type, body,
      Number(m.timestamp) || null, phoneNumberId, nowIso()]
   );
+}
+
+// عند وصول رد وارد: نطابق الصالون (بآخر ٩ أرقام) ونحدّث حالته.
+//   • «إيقاف» ⇒ لا ترسل (do_not_send) واستثناء من كل الحملات القادمة.
+//   • غير ذلك ⇒ الحالة «ردت - بانتظار متابعة» + إسناد دوري لأقلّ مندوب تحميلاً
+//     إن لم يكن للصالون مالك. لا نُنزّل حالة نهائية (مشترك/غير مهتم).
+function syncSalonOnInbound(run, queryOne, queryAll, m) {
+  try {
+    const tail = digitsOnly(m?.from).slice(-9);
+    if (!tail || tail.length < 9) return;
+    // نطابق بآخر ٩ أرقام من phone_key أو phone.
+    const salon = queryAll(
+      `SELECT id, status, owner_id, phone, phone_key FROM salons`
+    ).find((s) => {
+      const key = s.phone_key || digitsOnly(s.phone);
+      return key && key.length >= 9 && key.slice(-9) === tail;
+    });
+    if (!salon) return;
+
+    const text = m?.type === 'text' ? String(m.text?.body || '').trim() : '';
+    const isOptOut = text && OPT_OUT.has(text.toLowerCase());
+
+    if (isOptOut) {
+      run(`UPDATE salons SET do_not_send = 1, status = 'do_not_send', updated_date = ? WHERE id = ?`, [nowIso(), salon.id]);
+      run(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+        [randomUUID(), salon.id, '', 'واتساب', 'do_not_send', 'طلب إيقاف الرسائل (إيقاف)']);
+      return;
+    }
+
+    // حالات نهائية لا نلمسها.
+    const cur = salon.status || 'new';
+    const updates = { updated_date: nowIso() };
+    if (!['subscribed', 'not_interested', 'do_not_send', 'interested', 'scheduled_visit'].includes(cur)) {
+      updates.status = 'replied';
+    }
+    // إسناد دوري متوازن إن كان الصالون بلا مالك.
+    if (!salon.owner_id) {
+      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+      if (agents.length) {
+        let best = null, bestCount = Infinity;
+        for (const a of agents) {
+          const c = queryOne(
+            `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+            [a.id]
+          )?.c ?? 0;
+          if (c < bestCount) { bestCount = c; best = a; }
+        }
+        if (best) { updates.owner_id = best.id; updates.owner_name = best.display_name; }
+      }
+    }
+    const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+    run(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), salon.id]);
+    const snippet = text ? text.slice(0, 120) : `[${m?.type || 'رسالة'}]`;
+    run(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+      [randomUUID(), salon.id, updates.owner_id || salon.owner_id || '', 'رد وارد', updates.status || cur, `رد وارد: ${snippet}`]);
+  } catch (err) {
+    console.error('[wa-webhook] syncSalonOnInbound error:', err?.message || err);
+  }
 }
 
 // يخزّن/يحدّث حالة رسالة صادرة + يسجّل حدثاً فريداً لأغراض الإحصاء.
