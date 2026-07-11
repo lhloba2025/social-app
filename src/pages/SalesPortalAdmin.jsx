@@ -1248,6 +1248,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
             <select value={city} onChange={(e) => setCity(e.target.value)} className={inputCls}><option value="">{ar ? 'كل المدن' : 'All cities'}</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
               <option value="">{ar ? 'الجدد فقط (افتراضي)' : 'New only'}</option>
+              <option value="campaigned">{ar ? '★ من سبق أن أُرسلت له حملة' : '★ Already campaigned'}</option>
               {STATUS_OPTIONS.filter((s) => !['do_not_send'].includes(s.value)).map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
             </select>
             <input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} className={inputCls} placeholder={ar ? 'حدّ N' : 'Limit N'} inputMode="numeric" />
@@ -1264,8 +1265,8 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setNumbersFile(e.target.files?.[0] || null)} />
           </label>
         )}
-        <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
-          <input type="checkbox" checked={excludeCampaigned} onChange={(e) => setExcludeCampaigned(e.target.checked)} className="w-4 h-4 accent-indigo-500" />
+        <label className={`flex items-center gap-2 text-sm cursor-pointer bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2 ${(mode !== 'filters' ? false : status === 'campaigned') ? 'opacity-50' : 'text-slate-200'}`}>
+          <input type="checkbox" disabled={mode === 'filters' && status === 'campaigned'} checked={excludeCampaigned && !(mode === 'filters' && status === 'campaigned')} onChange={(e) => setExcludeCampaigned(e.target.checked)} className="w-4 h-4 accent-indigo-500" />
           {ar ? 'استبعاد من سبق أن أُرسلت له حملة («حملة ميتا»)' : 'Exclude anyone already campaigned'}
         </label>
         <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة. ومن تُرسَل له الحملة يُوسَم «حملة ميتا» تلقائياً.' : 'Opt-outs excluded, duplicates removed; sent recipients get the «حملة ميتا» tag.'}</p>

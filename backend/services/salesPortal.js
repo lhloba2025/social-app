@@ -1166,15 +1166,19 @@ export function mountSalesPortal(app, ctx) {
   );
 
   // يحلّ مستلمي الحملة بالفلاتر (نفس منطق الإنشاء) — يُستخدم للمعاينة والإنشاء.
+  //   status='campaigned' ⇒ فقط من سبق أن أُرسلت له حملة (لحملات المتابعة/التذكير).
   function resolveFilterRecipients({ city, status, limit, excludeCampaigned }) {
     let list = queryAll(`SELECT id, name, phone, phone_key, city, status, tags, do_not_send FROM salons`)
       .filter((s) => !s.do_not_send && String(s.phone || '').trim());
     if (city) list = list.filter((s) => s.city === city);
-    if (status) list = list.filter((s) => (s.status || 'new') === status);
-    else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
-    if (excludeCampaigned) {
-      const sentIds = campaignedSalonIdSet();
-      list = list.filter((s) => !wasTaggedCampaign(s) && !sentIds.has(s.id)); // استبعاد من سبق (وسم أو إرسال فعلي)
+    const sentIds = campaignedSalonIdSet();
+    const isCampaigned = (s) => wasTaggedCampaign(s) || sentIds.has(s.id);
+    if (status === 'campaigned') {
+      list = list.filter(isCampaigned);          // فقط من سبق — نتجاهل «استبعاد من سبق»
+    } else {
+      if (status) list = list.filter((s) => (s.status || 'new') === status);
+      else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
+      if (excludeCampaigned) list = list.filter((s) => !isCampaigned(s)); // استبعاد من سبق
     }
     const seen = new Set();
     const out = [];
