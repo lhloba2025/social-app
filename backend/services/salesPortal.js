@@ -1109,15 +1109,17 @@ export function mountSalesPortal(app, ctx) {
           });
           run(`UPDATE wa_campaign_recipients SET send_status = 'sent', wamid = ?, sent_at = ?, error = NULL WHERE id = ?`,
             [wamid, nowIso(), next.id]);
-          // مزامنة الصالون: تم التواصل = نعم، الحالة = تم الإرسال، آخر تواصل = الآن.
+          // مزامنة الصالون: الحالة = تم الإرسال + وسم «حملة ميتا» (ليُستبعد مستقبلاً).
           if (next.salon_id) {
-            const salon = queryOne(`SELECT status FROM salons WHERE id = ?`, [next.salon_id]);
+            const salon = queryOne(`SELECT status, tags FROM salons WHERE id = ?`, [next.salon_id]);
             if (salon) {
               // لا نُنزّل حالة متقدّمة (ردت/مهتم/مشترك…) — نرقّي فقط جديد→تم الإرسال.
               const keep = ['replied', 'interested', 'scheduled_visit', 'subscribed'];
               const newStatus = keep.includes(salon.status) ? salon.status : 'sent';
-              run(`UPDATE salons SET status = ?, last_contact_date = ?, updated_date = ? WHERE id = ?`,
-                [newStatus, nowIso(), nowIso(), next.salon_id]);
+              const tags = tryParseArr(salon.tags);
+              if (!tags.includes('حملة ميتا')) tags.push('حملة ميتا');
+              run(`UPDATE salons SET status = ?, tags = ?, last_contact_date = ?, updated_date = ? WHERE id = ?`,
+                [newStatus, JSON.stringify(tags), nowIso(), nowIso(), next.salon_id]);
               run(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
                 [randomUUID(), next.salon_id, camp.created_by || '', 'حملة واتساب', 'sent', `حملة: ${camp.name}`]);
             }
@@ -1155,13 +1157,17 @@ export function mountSalesPortal(app, ctx) {
     return best;
   }
 
+  // هل سبق أن أُرسلت للصالون حملة؟ (موسوم «حملة ميتا»)
+  const wasCampaigned = (s) => { try { const t = s.tags ? JSON.parse(s.tags) : []; return Array.isArray(t) && t.includes('حملة ميتا'); } catch { return false; } };
+
   // يحلّ مستلمي الحملة بالفلاتر (نفس منطق الإنشاء) — يُستخدم للمعاينة والإنشاء.
-  function resolveFilterRecipients({ city, status, limit }) {
-    let list = queryAll(`SELECT id, name, phone, phone_key, city, status, do_not_send FROM salons`)
+  function resolveFilterRecipients({ city, status, limit, excludeCampaigned }) {
+    let list = queryAll(`SELECT id, name, phone, phone_key, city, status, tags, do_not_send FROM salons`)
       .filter((s) => !s.do_not_send && String(s.phone || '').trim());
     if (city) list = list.filter((s) => s.city === city);
     if (status) list = list.filter((s) => (s.status || 'new') === status);
     else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
+    if (excludeCampaigned) list = list.filter((s) => !wasCampaigned(s)); // استبعاد من سبق
     const seen = new Set();
     const out = [];
     for (const s of list) {
@@ -1176,14 +1182,16 @@ export function mountSalesPortal(app, ctx) {
 
   // يحلّ مستلمي الحملة من أرقام خام (ملف أو إدخال يدوي) — يطابق الصالون بآخر ٩
   // أرقام، يستثني «لا ترسل»، ويمنع التكرار. الأرقام غير المطابقة تُرسَل بلا صالون.
-  function resolveTokenRecipients(tokens) {
+  function resolveTokenRecipients(tokens, excludeCampaigned) {
     const salonByTail = new Map();
     const optedOut = new Set();
-    for (const s of queryAll(`SELECT id, name, city, phone, phone_key, do_not_send FROM salons`)) {
+    const campaignedTails = new Set();
+    for (const s of queryAll(`SELECT id, name, city, phone, phone_key, tags, do_not_send FROM salons`)) {
       const key = s.phone_key || phoneKeyOf(s.phone);
       if (!key || key.length < 9) continue;
       const tail = key.slice(-9);
       if (s.do_not_send) { optedOut.add(tail); continue; }
+      if (wasCampaigned(s)) campaignedTails.add(tail);
       salonByTail.set(tail, s);
     }
     const seen = new Set();
@@ -1193,6 +1201,7 @@ export function mountSalesPortal(app, ctx) {
       if (digits.length < 9) continue;
       const tail = digits.slice(-9);
       if (optedOut.has(tail)) continue;
+      if (excludeCampaigned && campaignedTails.has(tail)) continue; // استبعاد من سبق
       const msisdn = normalizeMsisdn(digits);
       if (!msisdn || seen.has(msisdn)) continue;
       seen.add(msisdn);
@@ -1206,13 +1215,15 @@ export function mountSalesPortal(app, ctx) {
   router.get('/wa/recipients-preview', requireRole('admin'), (req, res) => {
     const search = String(req.query.search || '').trim().toLowerCase();
     const numbers = String(req.query.numbers || '').trim();
+    const excludeCampaigned = req.query.exclude_campaigned === '1' || req.query.exclude_campaigned === 'true';
     // أرقام يدوية إن وُجدت، وإلا بالفلاتر.
     const recips = numbers
-      ? resolveTokenRecipients(numbers.split(/[\s,;]+/))
+      ? resolveTokenRecipients(numbers.split(/[\s,;]+/), excludeCampaigned)
       : resolveFilterRecipients({
           city: String(req.query.city || '').trim(),
           status: String(req.query.status || '').trim(),
           limit: Math.max(0, parseInt(req.query.limit, 10) || 0),
+          excludeCampaigned,
         });
     let rows = recips;
     if (search) rows = rows.filter((r) => `${r.name || ''} ${r.to_number} ${r.city || ''}`.toLowerCase().includes(search));
@@ -1247,6 +1258,7 @@ export function mountSalesPortal(app, ctx) {
       // بناء قائمة المستلمين — نفس مُحلّلات المعاينة (ملف/أرقام يدوية/فلاتر).
       const numbersFile = req.files?.numbers?.[0];
       const numbersText = String(b.numbers_text || '').trim();
+      const excludeCampaigned = b.exclude_campaigned === '1' || b.exclude_campaigned === 'true';
       let resolved;
       if (numbersFile) {
         const wb = XLSX.read(numbersFile.buffer, { type: 'buffer' });
@@ -1256,14 +1268,15 @@ export function mountSalesPortal(app, ctx) {
             for (const cell of row) tokens.push(cell);
           }
         }
-        resolved = resolveTokenRecipients(tokens);
+        resolved = resolveTokenRecipients(tokens, excludeCampaigned);
       } else if (numbersText) {
-        resolved = resolveTokenRecipients(numbersText.split(/[\s,;]+/));
+        resolved = resolveTokenRecipients(numbersText.split(/[\s,;]+/), excludeCampaigned);
       } else {
         resolved = resolveFilterRecipients({
           city: String(b.city || '').trim(),
           status: String(b.status || '').trim(),
           limit: Math.max(0, parseInt(b.limit, 10) || 0),
+          excludeCampaigned,
         });
       }
       const recipients = resolved.map((r) => ({ salon_id: r.salon_id, to_number: r.to_number }));

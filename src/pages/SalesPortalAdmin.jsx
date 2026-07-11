@@ -1169,6 +1169,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [preview, setPreview] = useState(null);   // { total, matched, rows }
   const [previewLoading, setPreviewLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [excludeCampaigned, setExcludeCampaigned] = useState(true);   // استبعاد من سبق أن أُرسلت لهم حملة
   const [picked, setPicked] = useState({});       // to_number -> name (اختيار يدوي من القائمة)
   const pickedNums = Object.keys(picked);
   const togglePick = (r) => setPicked((p) => {
@@ -1190,14 +1191,15 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
     if (mode === 'manual' && !numbersText.trim()) { setPreview({ total: 0, matched: 0, rows: [] }); return; }
     setPreviewLoading(true);
     const t = setTimeout(() => {
-      const params = mode === 'manual' ? { numbers: numbersText, search } : { city, status, limit, search };
+      const base = mode === 'manual' ? { numbers: numbersText, search } : { city, status, limit, search };
+      const params = { ...base, ...(excludeCampaigned ? { exclude_campaigned: 1 } : {}) };
       salesApi.waRecipientsPreview(params)
         .then(setPreview)
         .catch(() => setPreview(null))
         .finally(() => setPreviewLoading(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [mode, city, status, limit, search, numbersText]);
+  }, [mode, city, status, limit, search, numbersText, excludeCampaigned]);
 
   const submit = async () => {
     if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
@@ -1214,6 +1216,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       fd.append('name', name.trim());
       fd.append('template_name', tpl.name);
       fd.append('template_lang', tpl.language || 'ar');
+      if (excludeCampaigned) fd.append('exclude_campaigned', '1');
       if (pickedNums.length) fd.append('numbers_text', pickedNums.join('\n'));
       else if (mode === 'file') fd.append('numbers', numbersFile);
       else if (mode === 'manual') fd.append('numbers_text', numbersText.trim());
@@ -1261,7 +1264,11 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setNumbersFile(e.target.files?.[0] || null)} />
           </label>
         )}
-        <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة.' : 'Opt-outs excluded, duplicates removed.'}</p>
+        <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+          <input type="checkbox" checked={excludeCampaigned} onChange={(e) => setExcludeCampaigned(e.target.checked)} className="w-4 h-4 accent-indigo-500" />
+          {ar ? 'استبعاد من سبق أن أُرسلت له حملة («حملة ميتا»)' : 'Exclude anyone already campaigned'}
+        </label>
+        <p className="text-[11px] text-slate-500">{ar ? 'يُستثنى تلقائياً كل من طلب «لا ترسل»، وتُمنع الأرقام المكرّرة. ومن تُرسَل له الحملة يُوسَم «حملة ميتا» تلقائياً.' : 'Opt-outs excluded, duplicates removed; sent recipients get the «حملة ميتا» tag.'}</p>
 
         {/* معاينة المستلمين — العدد + بحث + قائمة (فلاتر أو أرقام يدوية) */}
         {mode !== 'file' && (
