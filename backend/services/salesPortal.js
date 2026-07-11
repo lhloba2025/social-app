@@ -1158,7 +1158,12 @@ export function mountSalesPortal(app, ctx) {
   }
 
   // هل سبق أن أُرسلت للصالون حملة؟ (موسوم «حملة ميتا»)
-  const wasCampaigned = (s) => { try { const t = s.tags ? JSON.parse(s.tags) : []; return Array.isArray(t) && t.includes('حملة ميتا'); } catch { return false; } };
+  const wasTaggedCampaign = (s) => { try { const t = s.tags ? JSON.parse(s.tags) : []; return Array.isArray(t) && t.includes('حملة ميتا'); } catch { return false; } };
+  // مجموعة معرّفات الصوالين التي أُرسلت لها حملة فعلاً (من سجل المستلمين) — تلتقط
+  // حتى الحملات القديمة قبل الوسم التلقائي.
+  const campaignedSalonIdSet = () => new Set(
+    queryAll(`SELECT DISTINCT salon_id FROM wa_campaign_recipients WHERE send_status = 'sent' AND salon_id IS NOT NULL AND salon_id != ''`).map((r) => r.salon_id)
+  );
 
   // يحلّ مستلمي الحملة بالفلاتر (نفس منطق الإنشاء) — يُستخدم للمعاينة والإنشاء.
   function resolveFilterRecipients({ city, status, limit, excludeCampaigned }) {
@@ -1167,7 +1172,10 @@ export function mountSalesPortal(app, ctx) {
     if (city) list = list.filter((s) => s.city === city);
     if (status) list = list.filter((s) => (s.status || 'new') === status);
     else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
-    if (excludeCampaigned) list = list.filter((s) => !wasCampaigned(s)); // استبعاد من سبق
+    if (excludeCampaigned) {
+      const sentIds = campaignedSalonIdSet();
+      list = list.filter((s) => !wasTaggedCampaign(s) && !sentIds.has(s.id)); // استبعاد من سبق (وسم أو إرسال فعلي)
+    }
     const seen = new Set();
     const out = [];
     for (const s of list) {
@@ -1186,12 +1194,13 @@ export function mountSalesPortal(app, ctx) {
     const salonByTail = new Map();
     const optedOut = new Set();
     const campaignedTails = new Set();
+    const sentIds = excludeCampaigned ? campaignedSalonIdSet() : new Set();
     for (const s of queryAll(`SELECT id, name, city, phone, phone_key, tags, do_not_send FROM salons`)) {
       const key = s.phone_key || phoneKeyOf(s.phone);
       if (!key || key.length < 9) continue;
       const tail = key.slice(-9);
       if (s.do_not_send) { optedOut.add(tail); continue; }
-      if (wasCampaigned(s)) campaignedTails.add(tail);
+      if (excludeCampaigned && (wasTaggedCampaign(s) || sentIds.has(s.id))) campaignedTails.add(tail);
       salonByTail.set(tail, s);
     }
     const seen = new Set();
