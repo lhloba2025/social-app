@@ -19,10 +19,8 @@ const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const ImageGenPage = lazy(() => import('./pages/ImageGenPage'));
-const TeamLinks = lazy(() => import('./pages/TeamLinks'));
-const WhatsappOutreach = lazy(() => import('./pages/WhatsappOutreach'));
 const Marketing = lazy(() => import('./pages/Marketing'));
-const EngagementPage = lazy(() => import('./pages/EngagementPage'));
+// Removed tools (kept on disk, unrouted): TeamLinks, WhatsappOutreach, EngagementPage
 const AccountingPage = lazy(() => import('./pages/AccountingPage'));
 const SalesPortal = lazy(() => import('./pages/SalesPortal'));
 const SalesPortalAdmin = lazy(() => import('./pages/SalesPortalAdmin'));
@@ -84,11 +82,8 @@ const AuthenticatedApp = () => {
 
       <Route path="/DesignStudio" element={<LayoutWrapper currentPageName="DesignStudio"><DesignStudio /></LayoutWrapper>} />
       <Route path="/ImageGen" element={<LayoutWrapper currentPageName="ImageGen"><ImageGenPage language={localStorage.getItem('appLanguage') || 'ar'} /></LayoutWrapper>} />
-      <Route path="/Engagement" element={<LayoutWrapper currentPageName="Engagement"><EngagementPage language={localStorage.getItem('appLanguage') || 'ar'} /></LayoutWrapper>} />
       <Route path="/DesignLibraryPage" element={<LayoutWrapper currentPageName="DesignLibraryPage"><DesignLibraryPage /></LayoutWrapper>} />
       <Route path="/AccountsPage" element={<LayoutWrapper currentPageName="AccountsPage"><AccountsPage /></LayoutWrapper>} />
-      <Route path="/TeamLinks" element={<LayoutWrapper currentPageName="TeamLinks"><TeamLinks /></LayoutWrapper>} />
-      <Route path="/WhatsappOutreach" element={<LayoutWrapper currentPageName="WhatsappOutreach"><WhatsappOutreach /></LayoutWrapper>} />
       <Route path="/GreetingCards" element={<LayoutWrapper currentPageName="GreetingCards"><GreetingCardsPage /></LayoutWrapper>} />
       <Route path="/PostComposer" element={<LayoutWrapper currentPageName="PostComposer"><PostComposer /></LayoutWrapper>} />
       <Route path="/PostsManager" element={<LayoutWrapper currentPageName="PostsManager"><PostsManager /></LayoutWrapper>} />
