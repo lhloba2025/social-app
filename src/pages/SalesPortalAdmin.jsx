@@ -1170,6 +1170,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [excludeCampaigned, setExcludeCampaigned] = useState(true);   // استبعاد من سبق أن أُرسلت لهم حملة
+  const [randomPick, setRandomPick] = useState(false);               // عيّنة عشوائية بحدّ N
   const [picked, setPicked] = useState({});       // to_number -> name (اختيار يدوي من القائمة)
   const pickedNums = Object.keys(picked);
   const togglePick = (r) => setPicked((p) => {
@@ -1192,14 +1193,14 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
     setPreviewLoading(true);
     const t = setTimeout(() => {
       const base = mode === 'manual' ? { numbers: numbersText, search } : { city, status, limit, search };
-      const params = { ...base, ...(excludeCampaigned ? { exclude_campaigned: 1 } : {}) };
+      const params = { ...base, ...(excludeCampaigned ? { exclude_campaigned: 1 } : {}), ...(randomPick && limit ? { random: 1 } : {}) };
       salesApi.waRecipientsPreview(params)
         .then(setPreview)
         .catch(() => setPreview(null))
         .finally(() => setPreviewLoading(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [mode, city, status, limit, search, numbersText, excludeCampaigned]);
+  }, [mode, city, status, limit, search, numbersText, excludeCampaigned, randomPick]);
 
   const submit = async () => {
     if (!name.trim()) return showToast(ar ? 'أدخل اسم الحملة' : 'Enter campaign name', 'err');
@@ -1220,7 +1221,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       if (pickedNums.length) fd.append('numbers_text', pickedNums.join('\n'));
       else if (mode === 'file') fd.append('numbers', numbersFile);
       else if (mode === 'manual') fd.append('numbers_text', numbersText.trim());
-      else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); }
+      else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); if (randomPick && limit) fd.append('random', '1'); }
       if (imageFile) fd.append('image', imageFile);
       const r = await salesApi.waCreateCampaign(fd);
       showToast(ar ? `أُنشئت الحملة — ${r.total} مستلم. اضغط «بدء الإرسال».` : `Created — ${r.total} recipients.`);
@@ -1244,15 +1245,23 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
           <button onClick={() => setMode('file')} className={`flex-1 rounded-lg py-1.5 border ${mode === 'file' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>{ar ? 'ملف أرقام' : 'Numbers file'}</button>
         </div>
         {mode === 'filters' ? (
-          <div className="grid grid-cols-3 gap-2">
-            <select value={city} onChange={(e) => setCity(e.target.value)} className={inputCls}><option value="">{ar ? 'كل المدن' : 'All cities'}</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
-              <option value="">{ar ? 'الجدد فقط (افتراضي)' : 'New only'}</option>
-              <option value="campaigned">{ar ? '★ من سبق أن أُرسلت له حملة' : '★ Already campaigned'}</option>
-              {STATUS_OPTIONS.filter((s) => !['do_not_send'].includes(s.value)).map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
-            </select>
-            <input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} className={inputCls} placeholder={ar ? 'حدّ N' : 'Limit N'} inputMode="numeric" />
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <select value={city} onChange={(e) => setCity(e.target.value)} className={inputCls}><option value="">{ar ? 'كل المدن' : 'All cities'}</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+                <option value="">{ar ? 'الجدد فقط (افتراضي)' : 'New only'}</option>
+                <option value="campaigned">{ar ? '★ من سبق أن أُرسلت له حملة' : '★ Already campaigned'}</option>
+                {STATUS_OPTIONS.filter((s) => !['do_not_send'].includes(s.value)).map((s) => <option key={s.value} value={s.value}>{ar ? s.ar : s.en}</option>)}
+              </select>
+              <input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} className={inputCls} placeholder={ar ? 'حدّ N (مثلاً 500)' : 'Limit N'} inputMode="numeric" />
+            </div>
+            {limit ? (
+              <label className="flex items-center gap-2 text-[13px] text-slate-300 cursor-pointer mt-2">
+                <input type="checkbox" checked={randomPick} onChange={(e) => setRandomPick(e.target.checked)} className="w-4 h-4 accent-indigo-500" />
+                🎲 {ar ? `اختيار ${limit} عشوائياً من المطابقين (بدل الأحدث)` : `Pick ${limit} at random`}
+              </label>
+            ) : null}
+          </>
         ) : mode === 'manual' ? (
           <textarea
             value={numbersText} onChange={(e) => setNumbersText(e.target.value)} rows={3}

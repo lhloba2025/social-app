@@ -1167,7 +1167,8 @@ export function mountSalesPortal(app, ctx) {
 
   // يحلّ مستلمي الحملة بالفلاتر (نفس منطق الإنشاء) — يُستخدم للمعاينة والإنشاء.
   //   status='campaigned' ⇒ فقط من سبق أن أُرسلت له حملة (لحملات المتابعة/التذكير).
-  function resolveFilterRecipients({ city, status, limit, excludeCampaigned }) {
+  //   random=true مع حدّ ⇒ عيّنة عشوائية بالعدد المطلوب بدل الأحدث.
+  function resolveFilterRecipients({ city, status, limit, excludeCampaigned, random }) {
     let list = queryAll(`SELECT id, name, phone, phone_key, city, status, tags, do_not_send FROM salons`)
       .filter((s) => !s.do_not_send && String(s.phone || '').trim());
     if (city) list = list.filter((s) => s.city === city);
@@ -1180,16 +1181,24 @@ export function mountSalesPortal(app, ctx) {
       else list = list.filter((s) => (s.status || 'new') === 'new'); // افتراضي: الجدد فقط
       if (excludeCampaigned) list = list.filter((s) => !isCampaigned(s)); // استبعاد من سبق
     }
+    // إزالة تكرار الأرقام أولاً (قبل الحدّ/العشوائية).
     const seen = new Set();
-    const out = [];
+    let recips = [];
     for (const s of list) {
       const msisdn = normalizeMsisdn(s.phone);
       if (!msisdn || seen.has(msisdn)) continue;
       seen.add(msisdn);
-      out.push({ salon_id: s.id, name: s.name, city: s.city, to_number: msisdn });
-      if (limit && out.length >= limit) break;
+      recips.push({ salon_id: s.id, name: s.name, city: s.city, to_number: msisdn });
     }
-    return out;
+    // عيّنة عشوائية (Fisher–Yates) عند الطلب، وإلا نُبقي الترتيب (الأحدث أولاً).
+    if (random && limit && recips.length > limit) {
+      for (let i = recips.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [recips[i], recips[j]] = [recips[j], recips[i]];
+      }
+    }
+    if (limit) recips = recips.slice(0, limit);
+    return recips;
   }
 
   // يحلّ مستلمي الحملة من أرقام خام (ملف أو إدخال يدوي) — يطابق الصالون بآخر ٩
@@ -1237,6 +1246,7 @@ export function mountSalesPortal(app, ctx) {
           status: String(req.query.status || '').trim(),
           limit: Math.max(0, parseInt(req.query.limit, 10) || 0),
           excludeCampaigned,
+          random: req.query.random === '1' || req.query.random === 'true',
         });
     let rows = recips;
     if (search) rows = rows.filter((r) => `${r.name || ''} ${r.to_number} ${r.city || ''}`.toLowerCase().includes(search));
@@ -1290,6 +1300,7 @@ export function mountSalesPortal(app, ctx) {
           status: String(b.status || '').trim(),
           limit: Math.max(0, parseInt(b.limit, 10) || 0),
           excludeCampaigned,
+          random: b.random === '1' || b.random === 'true',
         });
       }
       const recipients = resolved.map((r) => ({ salon_id: r.salon_id, to_number: r.to_number }));
