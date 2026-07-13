@@ -1819,7 +1819,8 @@ export function mountSalesPortal(app, ctx) {
     const me = req.salesUser;
     try {
       const { wamid } = await sendTextMessage({ to, body: text });
-      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
+      // الرد = المهمة تمّت (is_task=0) — تعود مهمة تلقائياً لو ردّت العميلة من جديد.
+      const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1855,7 +1856,7 @@ export function mountSalesPortal(app, ctx) {
       const mediaId = await uploadMedia(req.file.buffer, req.file.originalname, req.file.mimetype);
       const { wamid } = await sendImageMessage({ to, mediaId, caption });
       const body = caption ? `📷 ${caption}` : '📷 صورة';
-      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
+      const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1869,6 +1870,27 @@ export function mountSalesPortal(app, ctx) {
     } catch (err) {
       res.status(502).json({ error: (err.code ? `[${err.code}] ` : '') + (err.message || 'فشل إرسال الصورة') });
     }
+  });
+
+  // تعليم أن المندوبة ردّت من واتساب جوالها الشخصي (خصوصاً بعد نافذة ٢٤ ساعة حيث
+  // لا يمكن الرد من النظام) — تُسجَّل كرسالة صادرة فتخرج المهمة من «بانتظار ردّها»
+  // ومن «مهامي» (is_task=0). تعود مهمة تلقائياً لو ردّت العميلة من جديد.
+  router.post('/salons/:id/wa-mark-replied', requireRole('agent'), (req, res) => {
+    const salon = queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id]);
+    if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
+    const me = req.salesUser;
+    const to = normalizeMsisdn(salon.phone);
+    const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+    if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
+    runBatch((r) => {
+      r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, '', ?, ?)`,
+        [randomUUID(), salon.id, to, '📱 ردّت المندوبة عبر واتساب الشخصي', me.id, me.name]);
+      const sets = Object.keys(updates).map((k) => `${k} = ?`).join(', ');
+      r(`UPDATE salons SET ${sets} WHERE id = ?`, [...Object.values(updates), salon.id]);
+      r(`INSERT INTO contact_log (id, salon_id, user_id, user_name, status, note) VALUES (?, ?, ?, ?, ?, ?)`,
+        [randomUUID(), salon.id, me.id, me.name, salon.status || '', 'ردّت عبر واتساب الجوال الشخصي']);
+    });
+    res.json({ ok: true });
   });
 
   // وسيط لعرض وسائط الرسائل الواردة (صورة/فيديو…) عبر التوكن (روابط ميتا محميّة).

@@ -437,6 +437,11 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
     setChatSalon(t);
     if (t.unread_count) setTasks((ts) => (ts || []).map((x) => (x.id === t.id ? { ...x, unread_count: 0 } : x)));
   };
+  // الرد من واتساب الجوال الشخصي = المهمة تمّت (تخرج من القائمة، وتعود لو ردّت العميلة).
+  const markReplied = (t) => {
+    setTasks((ts) => (ts || []).filter((x) => x.id !== t.id));
+    salesApi.waMarkReplied(t.id).then(() => onChanged && onChanged()).catch(() => {});
+  };
   // اختيار النتيجة من القائمة المنسدلة.
   const pickOutcome = (t, v) => {
     if (v === 'follow') { setFollowId(t.id); setFollowDate(''); }
@@ -557,9 +562,9 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
 
               <a
                 href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
-                onClick={() => onWhatsApp && onWhatsApp(t)}
+                onClick={() => { onWhatsApp && onWhatsApp(t); markReplied(t); }}
                 className="text-[11px] text-center text-slate-400 hover:text-emerald-300"
-                title={ar ? 'أو من جوالك الشخصي' : 'or from your phone'}
+                title={ar ? 'رد من جوالك الشخصي (تُحسب المهمة تمّت)' : 'reply from your phone (marks done)'}
               >{ar ? 'أو واتساب جوالي' : 'my WhatsApp'}</a>
             </div>
           </div>
@@ -675,8 +680,15 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
         {/* ردود سريعة + الإدخال */}
         <div className="border-t border-slate-700 p-2.5 flex-shrink-0 space-y-2">
           {open === false ? (
-            <div className="text-[12px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-              {ar ? '⏳ انتهت نافذة الـ٢٤ ساعة (لم تردّ العميلة خلالها). لإرسال جديد استخدم حملة بقالب معتمد.' : '24h window closed — use an approved template campaign.'}
+            <div className="space-y-2">
+              <div className="text-[12px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                {ar ? '⏳ انتهت نافذة الـ٢٤ ساعة — لا يمكن الرد من النظام. ردّي من واتساب جوالك:' : '24h window closed — reply from your own WhatsApp:'}
+              </div>
+              <a
+                href={`https://wa.me/${waNumber(salon.phone)}`} target="_blank" rel="noreferrer"
+                onClick={() => { salesApi.waMarkReplied(salon.id).then(() => onSent && onSent()).catch(() => {}); if (onClose) onClose(); }}
+                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl py-3 text-sm"
+              ><MessageCircle className="w-5 h-5" /> {ar ? 'رد من واتساب جوالي (تُحسب المهمة تمّت)' : 'Reply from my WhatsApp (marks done)'}</a>
             </div>
           ) : (
             <>
