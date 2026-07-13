@@ -612,9 +612,33 @@ export function mountSalesPortal(app, ctx) {
     if (target.role === 'super_admin' && req.salesUser.role !== 'super_admin') {
       return res.status(403).json({ error: 'لا يمكنك حذف سوبر أدمن' });
     }
-    run(`DELETE FROM sales_users WHERE id = ?`, [req.params.id]);
-    run(`DELETE FROM sales_sessions WHERE user_id = ?`, [req.params.id]);
-    res.json({ success: true });
+    // تحويل مهامه المفتوحة لباقي المناديب بالتساوي، وإلغاء إسناد الباقي — حتى لا
+    // تبقى مهام «معلّقة» باسم عضو محذوف.
+    const others = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND id != ?`, [req.params.id]);
+    const load = new Map();
+    for (const a of others) {
+      load.set(a.id, queryOne(
+        `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+        [a.id]
+      )?.c ?? 0);
+    }
+    const openTasks = queryAll(
+      `SELECT id FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+      [req.params.id]
+    );
+    let moved = 0;
+    runBatch((r) => {
+      for (const s of openTasks) {
+        let best = null, bestC = Infinity;
+        for (const a of others) { const c = load.get(a.id); if (c < bestC) { bestC = c; best = a; } }
+        if (best) { r(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`, [best.id, best.display_name, nowIso(), s.id]); load.set(best.id, load.get(best.id) + 1); moved++; }
+      }
+      // أي صوالين بقيت مُسندة له (غير مهام أو لا يوجد مناديب) → تُصبح بلا مالك.
+      r(`UPDATE salons SET owner_id = NULL, owner_name = NULL WHERE owner_id = ?`, [req.params.id]);
+      r(`DELETE FROM sales_users WHERE id = ?`, [req.params.id]);
+      r(`DELETE FROM sales_sessions WHERE user_id = ?`, [req.params.id]);
+    });
+    res.json({ success: true, movedTasks: moved });
   });
 
   // ── قوالب الواتساب ──────────────────────────────────────────────────────────
