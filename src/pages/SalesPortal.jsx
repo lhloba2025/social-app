@@ -560,12 +560,19 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
                 </select>
               )}
 
-              <a
-                href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
-                onClick={() => { onWhatsApp && onWhatsApp(t); markReplied(t); }}
-                className="text-[11px] text-center text-slate-400 hover:text-emerald-300"
-                title={ar ? 'رد من جوالك الشخصي (تُحسب المهمة تمّت)' : 'reply from your phone (marks done)'}
-              >{ar ? 'أو واتساب جوالي' : 'my WhatsApp'}</a>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => markReplied(t)}
+                  className="flex-1 text-[11px] bg-slate-800 hover:bg-emerald-600 border border-slate-600 text-slate-200 rounded-lg py-1.5 flex items-center justify-center gap-1"
+                  title={ar ? 'علّم المهمة كمنجزة (بعد ما ردّيتِ)' : 'Mark done'}
+                ><CheckCircle2 className="w-3 h-3" /> {ar ? 'تمّت' : 'Done'}</button>
+                <a
+                  href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
+                  onClick={() => onWhatsApp && onWhatsApp(t)}
+                  className="flex-1 text-[11px] text-center text-slate-400 hover:text-emerald-300 py-1.5"
+                  title={ar ? 'فتح واتساب جوالك (لا يُنهي المهمة)' : 'open your WhatsApp'}
+                >{ar ? 'واتساب جوالي' : 'my WhatsApp'}</a>
+              </div>
             </div>
           </div>
         </div>
@@ -686,9 +693,12 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
               </div>
               <a
                 href={`https://wa.me/${waNumber(salon.phone)}`} target="_blank" rel="noreferrer"
-                onClick={() => { salesApi.waMarkReplied(salon.id).then(() => onSent && onSent()).catch(() => {}); if (onClose) onClose(); }}
                 className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl py-3 text-sm"
-              ><MessageCircle className="w-5 h-5" /> {ar ? 'رد من واتساب جوالي (تُحسب المهمة تمّت)' : 'Reply from my WhatsApp (marks done)'}</a>
+              ><MessageCircle className="w-5 h-5" /> {ar ? 'رد من واتساب جوالي' : 'Reply from my WhatsApp'}</a>
+              <button
+                onClick={() => { salesApi.waMarkReplied(salon.id).then(() => onSent && onSent()).catch(() => {}); if (onClose) onClose(); }}
+                className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl py-2.5 text-sm"
+              ><CheckCircle2 className="w-4 h-4" /> {ar ? 'علّم المهمة تمّت' : 'Mark task done'}</button>
             </div>
           ) : (
             <>
