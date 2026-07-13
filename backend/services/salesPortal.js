@@ -1262,19 +1262,27 @@ export function mountSalesPortal(app, ctx) {
     const search = String(req.query.search || '').trim().toLowerCase();
     const numbers = String(req.query.numbers || '').trim();
     const excludeCampaigned = req.query.exclude_campaigned === '1' || req.query.exclude_campaigned === 'true';
+    const city = String(req.query.city || '').trim();
+    const status = String(req.query.status || '').trim();
+    const limit = Math.max(0, parseInt(req.query.limit, 10) || 0);
+    const random = req.query.random === '1' || req.query.random === 'true';
     // أرقام يدوية إن وُجدت، وإلا بالفلاتر.
     const recips = numbers
       ? resolveTokenRecipients(numbers.split(/[\s,;]+/), excludeCampaigned)
-      : resolveFilterRecipients({
-          city: String(req.query.city || '').trim(),
-          status: String(req.query.status || '').trim(),
-          limit: Math.max(0, parseInt(req.query.limit, 10) || 0),
-          excludeCampaigned,
-          random: req.query.random === '1' || req.query.random === 'true',
-        });
+      : resolveFilterRecipients({ city, status, limit, excludeCampaigned, random });
+
+    // كم من المطابقين (بنفس المدينة/الحالة) سبق أن أُرسلت له حملة — للشفافية،
+    // حتى يفهم المستخدم لماذا قد لا يتغيّر العدد (الجدد أصلاً لم يُراسَلوا).
+    let excluded = 0;
+    if (!numbers && status !== 'campaigned') {
+      const withCamp = resolveFilterRecipients({ city, status, limit: 0, excludeCampaigned: false }).length;
+      const noCamp = resolveFilterRecipients({ city, status, limit: 0, excludeCampaigned: true }).length;
+      excluded = Math.max(0, withCamp - noCamp);
+    }
+
     let rows = recips;
     if (search) rows = rows.filter((r) => `${r.name || ''} ${r.to_number} ${r.city || ''}`.toLowerCase().includes(search));
-    res.json({ total: recips.length, matched: rows.length, rows: rows.slice(0, 300) });
+    res.json({ total: recips.length, matched: rows.length, excluded, rows: rows.slice(0, 300) });
   });
 
   // ── القوالب الحيّة (المعتمدة فقط) من ميتا ─────────────────────────────────────

@@ -1290,6 +1290,13 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
                 {preview ? preview.total : '—'}
               </span>
             </div>
+            {mode === 'filters' && excludeCampaigned && preview && (
+              preview.excluded > 0 ? (
+                <p className="text-[11px] text-emerald-300">{ar ? `✓ استُبعد ${preview.excluded} سبق أن أُرسلت لهم حملة` : `✓ Excluded ${preview.excluded} already-campaigned`}</p>
+              ) : (
+                <p className="text-[11px] text-slate-500">{ar ? 'لا يوجد ضمن هذه القائمة من سبق مراسلته (الجدد لم تُرسل لهم أصلاً).' : 'None in this list were previously campaigned.'}</p>
+              )
+            )}
             <div className="relative">
               <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 ${ar ? 'right-2.5' : 'left-2.5'}`} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={ar ? 'بحث بالاسم أو الرقم…' : 'Search name/number…'} className={`${inputCls} ${ar ? 'pr-8' : 'pl-8'}`} />
