@@ -849,6 +849,9 @@ function InboxTab({ ar, showToast }) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-white text-sm">{r.profile_name || (ar ? 'بدون اسم' : 'Unknown')}</span>
                     <span className="text-xs text-slate-400 dir-ltr" style={{ direction: 'ltr' }}>{r.from_number}</span>
+                    {r.msg_count > 1 && (
+                      <span className="text-[11px] rounded-full px-2 py-0.5 bg-slate-700 text-slate-200 flex items-center gap-1"><MessageSquare className="w-2.5 h-2.5" />{r.msg_count} {ar ? 'رسائل' : 'msgs'}</span>
+                    )}
                     {r.salon_name && (
                       <span className="text-[11px] rounded-full px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
                         {r.salon_name}{r.salon_city ? ` · ${r.salon_city}` : ''}

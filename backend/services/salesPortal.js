@@ -1006,9 +1006,20 @@ export function mountSalesPortal(app, ctx) {
     )) { campBySalon.set(r.salon_id, r.cname); }
 
     const q = String(search).trim().toLowerCase();
-    const out = [];
+    // تجميع حسب العميلة (آخر ٩ أرقام): صندوق واحد لكل عميلة = آخر رسالة + عدد رسائلها.
+    // rows مرتّبة تنازلياً بالوقت، فأول ظهور لكل رقم هو الأحدث.
+    const groupCount = new Map();
+    const repByKey = new Map();
     for (const r of rows) {
-      // فلترة الحالة (تمّت معالجته؟).
+      const digits = phoneKeyOf(r.from_number);
+      const key = digits.length >= 9 ? digits.slice(-9) : (r.from_number || r.id);
+      groupCount.set(key, (groupCount.get(key) || 0) + 1);
+      if (!repByKey.has(key)) repByKey.set(key, r);   // الأحدث (أول ظهور بالترتيب التنازلي)
+    }
+
+    const out = [];
+    for (const [key, r] of repByKey) {
+      // فلترة الحالة (تمّت معالجته؟) — على أحدث رسالة.
       if (handled === 'true' && !r.handled) continue;
       if (handled === 'false' && r.handled) continue;
       // فلترة التاريخ (بيوم الرياض).
@@ -1034,6 +1045,7 @@ export function mountSalesPortal(app, ctx) {
       }
       out.push({
         ...r, handled: !!r.handled,
+        msg_count: groupCount.get(key) || 1,
         salon_id: salon?.id || null,
         salon_name: salon?.name || null,
         salon_city: salon?.city || null,
@@ -1043,6 +1055,7 @@ export function mountSalesPortal(app, ctx) {
       });
       if (out.length >= 500) break;
     }
+    out.sort((a, b) => (Number(b.wa_timestamp) || 0) - (Number(a.wa_timestamp) || 0));
     res.json(out);
   });
 
