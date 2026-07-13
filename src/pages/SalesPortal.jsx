@@ -45,6 +45,7 @@ export default function SalesPortal({ language }) {
   const [waSalon, setWaSalon] = useState(null);    // الصالون لنافذة واتساب
   const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
   const [adding, setAdding] = useState(false);     // نافذة إضافة صالون جديد
+  const [detailSalon, setDetailSalon] = useState(null);  // نافذة معلومات الصالون
   const [view, setView] = useState('all');         // 'all' كل الصوالين | 'tasks' مهامي
   const [repFilter, setRepFilter] = useState('tasks');  // فئة عرض المندوبة: tasks|interested|subscribed
   const [repStats, setRepStats] = useState(null);       // عدّادات بطاقات المندوبة
@@ -314,6 +315,7 @@ export default function SalesPortal({ language }) {
                   onLog={() => setLogSalon(s)}
                   onContact={(channel) => claimSalon(s, channel)}
                   onDelete={isAdmin ? () => handleDelete(s) : undefined}
+                  onDetails={() => setDetailSalon(s)}
                 />
               ))}
             </div>
@@ -382,6 +384,10 @@ export default function SalesPortal({ language }) {
           }}
           onError={(m) => showToast(m, 'err')}
         />
+      )}
+
+      {detailSalon && (
+        <SalonDetailsModal ar={ar} salon={detailSalon} showToast={showToast} onClose={() => setDetailSalon(null)} />
       )}
 
       {toast && (
@@ -759,7 +765,68 @@ function Select({ value, onChange, options, placeholder, allowEmpty = true }) {
   );
 }
 
-function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDelete }) {
+// نافذة معلومات الصالون — عرض كل الحقول مع نسخ كل حقل بضغطة.
+function SalonDetailsModal({ ar, salon, showToast, onClose }) {
+  const [copied, setCopied] = useState('');
+  const copy = async (val, key) => {
+    if (val == null || val === '') return;
+    try {
+      await navigator.clipboard.writeText(String(val));
+      setCopied(key); setTimeout(() => setCopied(''), 1200);
+      showToast && showToast(ar ? 'تم النسخ' : 'Copied');
+    } catch { showToast && showToast(ar ? 'تعذّر النسخ' : 'Copy failed', 'err'); }
+  };
+  const maps = salon.lat != null && salon.lng != null
+    ? `https://www.google.com/maps/search/?api=1&query=${salon.lat},${salon.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([salon.name, salon.district, salon.city].filter(Boolean).join(' '))}`;
+  const rows = [
+    { k: 'name', label: ar ? 'الاسم' : 'Name', val: salon.name },
+    { k: 'phone', label: ar ? 'الجوال' : 'Phone', val: salon.phone, ltr: true },
+    { k: 'city', label: ar ? 'المدينة' : 'City', val: salon.city },
+    { k: 'district', label: ar ? 'الحي' : 'District', val: salon.district },
+    { k: 'address', label: ar ? 'العنوان' : 'Address', val: salon.address },
+    { k: 'status', label: ar ? 'الحالة' : 'Status', val: statusLabel(salon.status, ar) },
+    { k: 'owner', label: ar ? 'المندوبة' : 'Rep', val: salon.owner_name },
+    { k: 'rating', label: ar ? 'التقييم' : 'Rating', val: salon.rating ? `${salon.rating} (${salon.reviews_count || 0})` : '' },
+    { k: 'type', label: ar ? 'النوع' : 'Type', val: typeLabel(salon.type, ar) },
+    { k: 'subscription', label: ar ? 'نوع الاشتراك' : 'Subscription', val: salon.subscription_type },
+    { k: 'visit', label: ar ? 'نتيجة الزيارة' : 'Visit result', val: salon.visit_result },
+    { k: 'follow', label: ar ? 'موعد المتابعة' : 'Follow-up', val: salon.follow_up ? shortDate(salon.follow_up, ar) : '' },
+    { k: 'note', label: ar ? 'ملاحظات' : 'Notes', val: salon.note },
+  ].filter((r) => r.val != null && String(r.val).trim() !== '');
+
+  return (
+    <div dir={ar ? 'rtl' : 'ltr'} className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[88vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
+          <h3 className="font-bold text-white truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          {rows.map((r) => (
+            <button key={r.k} onClick={() => copy(r.val, r.k)}
+              className="w-full text-start bg-slate-800/60 hover:bg-slate-800 rounded-lg px-3 py-2 flex items-center justify-between gap-3 group transition">
+              <div className="min-w-0">
+                <div className="text-[11px] text-slate-400">{r.label}</div>
+                <div className="text-sm text-white break-words" style={r.ltr ? { direction: 'ltr', textAlign: ar ? 'right' : 'left' } : undefined}>{r.val}</div>
+              </div>
+              <span className="text-[11px] text-slate-500 group-hover:text-indigo-300 flex-shrink-0 flex items-center gap-1">
+                {copied === r.k ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />{ar ? 'نُسخ' : 'Copied'}</> : <><Paperclip className="w-3.5 h-3.5" />{ar ? 'نسخ' : 'Copy'}</>}
+              </span>
+            </button>
+          ))}
+          <div className="flex gap-2 pt-1">
+            <a href={maps} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg py-2"><MapPin className="w-3.5 h-3.5" /> {ar ? 'الموقع في قوقل' : 'Google Maps'}</a>
+            <a href={`https://wa.me/${waNumber(salon.phone)}`} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg py-2"><MessageCircle className="w-3.5 h-3.5" /> {ar ? 'واتساب' : 'WhatsApp'}</a>
+          </div>
+        </div>
+        <div className="px-4 py-2 border-t border-slate-700 text-[10px] text-slate-500 text-center flex-shrink-0">{ar ? 'اضغط أي حقل لنسخه' : 'Tap a field to copy'}</div>
+      </div>
+    </div>
+  );
+}
+
+function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDelete, onDetails }) {
   const ownedByMe = salon.owner_id && salon.owner_id === me.id;
   const owner = salon.owner_name;
   const wa = waNumber(salon.phone);
@@ -783,7 +850,7 @@ function SalonRow({ salon, me, ar, onUpdate, onWhatsApp, onLog, onContact, onDel
       {/* الاسم + المدينة + الحالة */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-bold text-white text-sm truncate">{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</span>
+          <button onClick={() => onDetails && onDetails(salon)} className="font-bold text-white text-sm truncate hover:text-indigo-300 transition text-start" title={ar ? 'عرض المعلومات' : 'View details'}>{salon.name || (ar ? 'بدون اسم' : 'Unnamed')}</button>
           {fuFlag && (
             <CalendarClock
               className={`w-3.5 h-3.5 flex-shrink-0 ${fuState === 'overdue' ? 'text-rose-400' : 'text-amber-400'}`}
