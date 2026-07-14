@@ -161,6 +161,7 @@ export const salesApi = {
   myStats() { return req('GET', '/salons/my-stats'); },
   teamBoard() { return req('GET', '/wa/team-board'); },
   distributeTasks() { return req('POST', '/wa/distribute'); },
+  rebalanceAll() { return req('POST', '/wa/rebalance-all'); },
   campaignTaskCount() { return req('GET', '/wa/campaign-task-count'); },
   resetDistributeCampaign() { return req('POST', '/wa/reset-distribute-campaign'); },
   reassignFrom(userId) { return req('POST', '/wa/reassign-from', { user_id: userId }); },

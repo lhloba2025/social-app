@@ -85,6 +85,27 @@ export function mountWhatsappWebhook(app, ctx) {
   const { run, queryOne, queryAll } = ctx;
   initWhatsappSchema(run);
 
+  // ترحيل لمرّة واحدة: رسائل وسائط قديمة خُزّن فيها كائن الوسائط JSON خام داخل body
+  // (قبل إصلاح التحليل) فتظهر كنص JSON بدل الصورة — نعيد تحليلها لاستخراج
+  // التعليق ومعرّف الوسائط ونوعها حتى تُعرض الصورة عرضاً سليماً.
+  try {
+    const legacy = queryAll(
+      `SELECT id, body FROM wa_inbound WHERE (media_id IS NULL OR media_id = '') AND body LIKE '{%"id"%'`
+    );
+    let fixed = 0;
+    for (const row of legacy) {
+      try {
+        const obj = JSON.parse(row.body);
+        if (obj && obj.id) {
+          run(`UPDATE wa_inbound SET body = ?, media_id = ?, media_mime = ? WHERE id = ?`,
+            [obj.caption || '', String(obj.id), obj.mime_type || null, row.id]);
+          fixed++;
+        }
+      } catch { /* ليس JSON صالحاً — نتركه كما هو */ }
+    }
+    if (fixed) console.log(`[wa-webhook] ✅ أُعيد تحليل ${fixed} رسالة وسائط قديمة (كانت تظهر JSON).`);
+  } catch (e) { console.warn('[wa-webhook] media backfill skipped:', e?.message || e); }
+
   const router = express.Router();
   const VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || 'hovera123';
   const APP_SECRET = process.env.WA_APP_SECRET || '';
@@ -211,7 +232,7 @@ function syncSalonOnInbound(run, queryOne, queryAll, m) {
         let best = null, bestCount = Infinity;
         for (const a of agents) {
           const c = queryOne(
-            `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND status NOT IN ('subscribed','not_interested','do_not_send')`,
+            `SELECT COUNT(*) AS c FROM salons WHERE owner_id = ? AND is_task = 1 AND status NOT IN ('subscribed','not_interested','do_not_send')`,
             [a.id]
           )?.c ?? 0;
           if (c < bestCount) { bestCount = c; best = a; }

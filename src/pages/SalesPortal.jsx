@@ -490,7 +490,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
     <div className="space-y-2">
       {header}
       {tasks.map((t) => (
-        <div key={t.id} className={`rounded-2xl border p-3 ${(t.unread_count > 0 || t.wait_state === 'awaiting_rep') ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.wait_state === 'awaiting_customer' ? 'border-emerald-500/30 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+        <div key={t.id} className={`rounded-2xl border p-3 ${t.unread_count > 0 ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.wait_state === 'seen' ? 'border-amber-500/30 bg-amber-500/[0.05]' : t.wait_state === 'awaiting_customer' ? 'border-emerald-500/30 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -500,6 +500,8 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
                   <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? `بانتظار ردّك · ${t.unread_count} جديدة` : `Your reply · ${t.unread_count} new`}</span>
                 ) : t.wait_state === 'awaiting_rep' ? (
                   <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-rose-600 text-white flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'بانتظار ردّك' : 'Awaiting your reply'}</span>
+                ) : t.wait_state === 'seen' ? (
+                  <span className="text-[11px] rounded-full px-2 py-0.5 bg-amber-500/20 text-amber-200 flex items-center gap-1"><MessageCircle className="w-3 h-3" />{ar ? 'قرأتِها · لم تردّي بعد' : 'Read · not replied'}</span>
                 ) : t.wait_state === 'awaiting_customer' ? (
                   <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-500/20 text-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{ar ? 'ردّيتِ · بانتظار العميلة' : 'Replied · awaiting client'}</span>
                 ) : (
@@ -603,9 +605,22 @@ function WaImage({ mediaId }) {
   if (!url) return <span className="text-[12px] opacity-70 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 📷</span>;
   return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="rounded-lg max-h-56 max-w-full" /></a>;
 }
+// شبكة أمان: بعض الرسائل القديمة خُزّن فيها كائن الوسائط JSON خام في body.
+// نلتقطها ونستخرج المعرّف والتعليق حتى تُعرض كصورة لا كنص JSON.
+function coerceMedia(m) {
+  const b = m && m.body;
+  if (m && m.dir === 'in' && !m.media_id && typeof b === 'string' && b.startsWith('{') && b.includes('"id"')) {
+    try {
+      const o = JSON.parse(b);
+      if (o && o.id) return { ...m, media_id: String(o.id), media_mime: o.mime_type || null, body: o.caption || '', type: m.type || (String(o.mime_type || '').startsWith('image') ? 'image' : m.type) };
+    } catch { /* نتركها كما هي */ }
+  }
+  return m;
+}
 // محتوى رسالة: صورة واردة → صورة فعلية + تعليق، وسائط أخرى → تسمية، غير ذلك نص.
-function WaMsgContent({ m }) {
-  if (m.dir === 'in' && m.type === 'image' && m.media_id) {
+function WaMsgContent({ m: raw }) {
+  const m = coerceMedia(raw);
+  if (m.dir === 'in' && m.media_id && (m.type === 'image' || String(m.media_mime || '').startsWith('image'))) {
     return (<><WaImage mediaId={m.media_id} />{m.body ? <div className="mt-1">{m.body}</div> : null}</>);
   }
   if (m.dir === 'in' && m.media_id) {

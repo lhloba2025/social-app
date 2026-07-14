@@ -941,8 +941,20 @@ function WaImage({ mediaId }) {
   if (!url) return <span className="text-[12px] opacity-70 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 📷</span>;
   return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" className="rounded-lg max-h-56 max-w-full" /></a>;
 }
-function WaMsgContent({ m }) {
-  if (m.dir === 'in' && m.type === 'image' && m.media_id) {
+// شبكة أمان: رسائل قديمة خُزّن فيها كائن الوسائط JSON خام في body → نستخرجه لعرض الصورة.
+function coerceMedia(m) {
+  const b = m && m.body;
+  if (m && m.dir === 'in' && !m.media_id && typeof b === 'string' && b.startsWith('{') && b.includes('"id"')) {
+    try {
+      const o = JSON.parse(b);
+      if (o && o.id) return { ...m, media_id: String(o.id), media_mime: o.mime_type || null, body: o.caption || '', type: m.type || (String(o.mime_type || '').startsWith('image') ? 'image' : m.type) };
+    } catch { /* نتركها كما هي */ }
+  }
+  return m;
+}
+function WaMsgContent({ m: raw }) {
+  const m = coerceMedia(raw);
+  if (m.dir === 'in' && m.media_id && (m.type === 'image' || String(m.media_mime || '').startsWith('image'))) {
     return (<><WaImage mediaId={m.media_id} />{m.body ? <div className="mt-1">{m.body}</div> : null}</>);
   }
   if (m.dir === 'in' && m.media_id) {
@@ -1436,12 +1448,34 @@ function TeamBoard({ ar, showToast }) {
     } catch (e) { showToast(e.message, 'err'); } finally { setBusyId(null); }
   };
 
+  const [balancing, setBalancing] = useState(false);
+  const rebalance = async () => {
+    if (!window.confirm(ar
+      ? 'إعادة توزيع كل المهام المفتوحة بالتساوي على المناديب الآن؟\n(تتساوى الأحمال — قد تنتقل بعض المحادثات الجارية لمندوبة أخرى.)'
+      : 'Redistribute all open tasks equally now?')) return;
+    setBalancing(true);
+    try {
+      const r = await salesApi.rebalanceAll();
+      const per = (r.perAgent || []).map((a) => `${a.name}: ${a.total}`).join(' · ');
+      showToast(ar ? `تم التوزيع بالتساوي (${r.assigned} مهمة) — ${per}` : `Rebalanced ${r.assigned} tasks — ${per}`);
+      load();
+    } catch (e) { showToast(e.message, 'err'); } finally { setBalancing(false); }
+  };
+
   if (!board) return null;
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> {ar ? 'لوحة الفريق (المساءلة)' : 'Team Board'}</h3>
-        <span className="text-[11px] text-slate-500 flex items-center gap-1"><Megaphone className="w-3 h-3" /> {ar ? 'التوزيع تلقائي عند رفع كل دفعة حملة' : 'Auto-distributed on each campaign upload'}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={rebalance} disabled={balancing}
+            className="inline-flex items-center gap-1.5 text-[12px] bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-3 py-1.5 transition disabled:opacity-60"
+            title={ar ? 'إعادة توزيع كل المهام المفتوحة بالتساوي على المناديب' : 'Redistribute all open tasks equally'}>
+            {balancing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
+            {ar ? 'توزيع عادل الآن' : 'Rebalance now'}
+          </button>
+          <span className="text-[11px] text-slate-500 flex items-center gap-1"><Megaphone className="w-3 h-3" /> {ar ? 'التوزيع تلقائي عند رفع كل دفعة حملة' : 'Auto-distributed on each campaign upload'}</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

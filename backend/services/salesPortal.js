@@ -1489,7 +1489,8 @@ export function mountSalesPortal(app, ctx) {
     }
     const u = queryOne(`SELECT id, display_name FROM sales_users WHERE id = ?`, [ownerId]);
     if (!u) return res.status(404).json({ error: 'العضو غير موجود' });
-    run(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+    // التحويل يجعلها مهمة نشِطة للمالك الجديد وتختفي فوراً من قائمة المندوب السابق.
+    run(`UPDATE salons SET owner_id = ?, owner_name = ?, is_task = 1, updated_date = ? WHERE id = ?`,
       [u.id, u.display_name, nowIso(), req.params.id]);
     res.json(parseSalon(queryOne(`SELECT * FROM salons WHERE id = ?`, [req.params.id])));
   });
@@ -1526,9 +1527,18 @@ export function mountSalesPortal(app, ctx) {
       const unread = inb ? inb.list.filter((ts) => ts > lastRead).length : 0;
       const lastOut = lastOutBySalon.get(s.id) || 0;
       const lastIn = inb?.ts || 0;
+      // حالة الانتظار:
+      //   awaiting_rep   = وصلت رسالة جديدة لم تُقرأ بعد (أحمر — تحتاج انتباهك).
+      //   seen           = قرأتِها لكن لم تردّي بعد (كهرماني — لا أحمر).
+      //   awaiting_customer = آخر رسالة منّا (بانتظار العميلة).
       let wait_state = 'none';
-      if (lastIn) wait_state = (lastOut >= lastIn) ? 'awaiting_customer' : 'awaiting_rep';
-      else if (s.status === 'replied') wait_state = 'awaiting_rep';
+      if (lastIn) {
+        if (lastOut >= lastIn) wait_state = 'awaiting_customer';
+        else if (lastRead >= lastIn) wait_state = 'seen';
+        else wait_state = 'awaiting_rep';
+      } else if (s.status === 'replied') {
+        wait_state = (lastRead > 0) ? 'seen' : 'awaiting_rep';
+      }
       return {
         ...s,
         last_inbound: inb?.body || null,
@@ -1640,7 +1650,8 @@ export function mountSalesPortal(app, ctx) {
       [uid]
     ).map(parseSalon);
     let enriched = enrichRepSalons(uid, salons);
-    if (filter === 'awaiting') enriched = enriched.filter((s) => s.wait_state === 'awaiting_rep');
+    // «بانتظار ردّها» = العميلة ردّت والمندوبة لم تردّ بعد (مقروءة أو لا) — يطابق عدّاد لوحة الفريق.
+    if (filter === 'awaiting') enriched = enriched.filter((s) => s.wait_state === 'awaiting_rep' || s.wait_state === 'seen');
     res.json(enriched);
   });
 
@@ -1714,6 +1725,35 @@ export function mountSalesPortal(app, ctx) {
         load.set(best.id, load.get(best.id) + 1);
       }
     });
+    res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
+  });
+
+  // ── إعادة توزيع عادلة لكل المهام المفتوحة ────────────────────────────────────
+  // يعيد إسناد كل مهمة مفتوحة (is_task=1، غير مغلقة، لها جوال) بالتناوب على المناديب
+  // ابتداءً من الصفر — فتتساوى الأحمال تماماً (فرق واحد كحدّ أقصى). للأدمن عند اختلال التوزيع.
+  router.post('/wa/rebalance-all', requireRole('admin'), (req, res) => {
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' ORDER BY display_name`);
+    if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
+
+    const pool = queryAll(
+      `SELECT id FROM salons
+       WHERE is_task = 1
+         AND status NOT IN ('subscribed','not_interested','do_not_send')
+         AND phone IS NOT NULL AND phone != ''
+         AND (do_not_send IS NULL OR do_not_send = 0)`
+    );
+    const load = new Map(agents.map((a) => [a.id, 0]));
+    if (pool.length) {
+      runBatch((r) => {
+        let i = 0;
+        for (const s of pool) {
+          const a = agents[i % agents.length]; i++;
+          r(`UPDATE salons SET owner_id = ?, owner_name = ?, updated_date = ? WHERE id = ?`,
+            [a.id, a.display_name, nowIso(), s.id]);
+          load.set(a.id, load.get(a.id) + 1);
+        }
+      });
+    }
     res.json({ assigned: pool.length, perAgent: agents.map((a) => ({ name: a.display_name, total: load.get(a.id) })) });
   });
 
