@@ -583,8 +583,8 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
       {chatSalon && (
         <ChatModal
           salon={chatSalon} me={me} ar={ar} showToast={showToast} templates={templates}
-          onClose={() => { setChatSalon(null); load(false); }}
-          onSent={() => load(false)}
+          onClose={() => { setChatSalon(null); load(false); onChanged && onChanged(); }}
+          onSent={() => { load(false); onChanged && onChanged(); }}
         />
       )}
     </div>
