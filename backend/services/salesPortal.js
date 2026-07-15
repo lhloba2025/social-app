@@ -1004,6 +1004,15 @@ export function mountSalesPortal(app, ctx) {
        JOIN wa_campaigns c ON c.id = r.campaign_id
        WHERE r.salon_id IS NOT NULL AND r.salon_id != '' ORDER BY r.sent_at`
     )) { campBySalon.set(r.salon_id, r.cname); }
+    // آخر ردٍّ صادر منّا لكل صالون (بالثواني) — لترتيب الصندوق حسب آخر نشاط في
+    // المحادثة كلها (وارد أو صادر)، لا حسب آخر رسالة واردة فقط.
+    const outTsBySalon = new Map();
+    for (const o of queryAll(`SELECT salon_id, created_date FROM wa_outbound`)) {
+      if (!o.salon_id) continue;
+      const ep = Date.parse(String(o.created_date || '').replace(' ', 'T') + 'Z') / 1000;
+      if (!Number.isFinite(ep)) continue;
+      if (ep > (outTsBySalon.get(o.salon_id) || 0)) outTsBySalon.set(o.salon_id, ep);
+    }
 
     const q = String(search).trim().toLowerCase();
     // تجميع حسب العميلة (آخر ٩ أرقام): صندوق واحد لكل عميلة = آخر رسالة + عدد رسائلها.
@@ -1043,9 +1052,13 @@ export function mountSalesPortal(app, ctx) {
         const hay = `${r.from_number} ${r.profile_name || ''} ${r.body || ''} ${salon?.name || ''}`.toLowerCase();
         if (!hay.includes(q)) continue;
       }
+      // آخر نشاط = الأحدث بين آخر رسالة واردة وآخر رسالة صادرة منّا.
+      const outTs = salon ? (outTsBySalon.get(salon.id) || 0) : 0;
+      const last_activity = Math.max(Number(r.wa_timestamp) || 0, outTs);
       out.push({
         ...r, handled: !!r.handled,
         msg_count: groupCount.get(key) || 1,
+        last_activity,
         salon_id: salon?.id || null,
         salon_name: salon?.name || null,
         salon_city: salon?.city || null,
@@ -1055,7 +1068,7 @@ export function mountSalesPortal(app, ctx) {
       });
       if (out.length >= 500) break;
     }
-    out.sort((a, b) => (Number(b.wa_timestamp) || 0) - (Number(a.wa_timestamp) || 0));
+    out.sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0));
     res.json(out);
   });
 
