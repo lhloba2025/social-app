@@ -142,6 +142,16 @@ export function mountSalesPortal(app, ctx) {
   for (const col of ['file_url TEXT', 'file_name TEXT', 'file_type TEXT']) {
     try { run(`ALTER TABLE wa_templates ADD COLUMN ${col}`); } catch { /* العمود موجود */ }
   }
+  // ترتيب عرض القوالب للمناديب (يتحكّم به المدير بالسحب/الأسهم).
+  let sortOrderAdded = false;
+  try { run(`ALTER TABLE wa_templates ADD COLUMN sort_order INTEGER`); sortOrderAdded = true; } catch { /* موجود */ }
+  if (sortOrderAdded) {
+    // تهيئة الترتيب الأولي حسب تاريخ الإنشاء (نفس الترتيب الظاهر حالياً).
+    let i = 0;
+    for (const t of queryAll(`SELECT id FROM wa_templates ORDER BY created_date`)) {
+      run(`UPDATE wa_templates SET sort_order = ? WHERE id = ?`, [i++, t.id]);
+    }
+  }
 
   // ── المرحلة ٢: حملات الواتساب + منع الإرسال (opt-out) ────────────────────────
   // علم «لا ترسل» على الصالون — يُستثنى تلقائياً من كل الحملات المستقبلية.
@@ -643,15 +653,26 @@ export function mountSalesPortal(app, ctx) {
 
   // ── قوالب الواتساب ──────────────────────────────────────────────────────────
   router.get('/templates', requireRole('agent'), (req, res) => {
-    res.json(queryAll(`SELECT * FROM wa_templates ORDER BY created_date`));
+    res.json(queryAll(`SELECT * FROM wa_templates ORDER BY sort_order IS NULL, sort_order, created_date`));
   });
 
   router.post('/templates', requireRole('admin'), (req, res) => {
     const { body } = req.body || {};
     if (!body || !body.trim()) return res.status(400).json({ error: 'نص القالب مطلوب' });
     const id = randomUUID();
-    run(`INSERT INTO wa_templates (id, body) VALUES (?, ?)`, [id, body.trim()]);
-    res.status(201).json({ id, body: body.trim() });
+    // القالب الجديد يُضاف في نهاية الترتيب.
+    const maxOrder = queryOne(`SELECT MAX(sort_order) AS m FROM wa_templates`)?.m;
+    const nextOrder = (typeof maxOrder === 'number' ? maxOrder : -1) + 1;
+    run(`INSERT INTO wa_templates (id, body, sort_order) VALUES (?, ?, ?)`, [id, body.trim(), nextOrder]);
+    res.status(201).json({ id, body: body.trim(), sort_order: nextOrder });
+  });
+
+  // إعادة ترتيب القوالب: يستقبل مصفوفة معرّفات بالترتيب الجديد.
+  router.post('/templates/reorder', requireRole('admin'), (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'قائمة الترتيب مطلوبة' });
+    ids.forEach((id, i) => run(`UPDATE wa_templates SET sort_order = ? WHERE id = ?`, [i, id]));
+    res.json({ success: true });
   });
 
   // تعديل نص قالب موجود.

@@ -10,7 +10,7 @@ import {
   Pencil, Check, Sparkles, Gauge, AlertTriangle, CalendarClock, Clock, Home, Languages,
   Paperclip, FileText, Image as ImageIcon, Share2, Megaphone,
   Inbox, RefreshCw, ExternalLink, CheckCircle2, Search, Send, CheckCheck, XCircle,
-  Play, Pause, BarChart3, UserPlus, Ban,
+  Play, Pause, BarChart3, UserPlus, Ban, ChevronUp, ChevronDown,
 } from 'lucide-react';
 
 export default function SalesPortalAdmin({ language }) {
@@ -484,6 +484,16 @@ function TemplatesTab({ ar, showToast }) {
     try { await salesApi.deleteTemplateFile(id); showToast(ar ? 'تم حذف الملف' : 'File removed'); load(); }
     catch (e) { showToast(e.message, 'err'); }
   };
+  // تحريك قالب لأعلى/أسفل — يغيّر ترتيب ظهوره عند المناديب.
+  const move = async (index, dir) => {
+    const to = index + dir;
+    if (to < 0 || to >= templates.length) return;
+    const next = templates.slice();
+    [next[index], next[to]] = [next[to], next[index]];
+    setTemplates(next); // تحديث فوري للواجهة
+    try { await salesApi.reorderTemplates(next.map((t) => t.id)); }
+    catch (e) { showToast(e.message, 'err'); load(); }
+  };
   const startEdit = (tpl) => { setEditingId(tpl.id); setEditBody(tpl.body); };
   const saveEdit = async (id) => {
     if (!editBody.trim()) return;
@@ -530,7 +540,7 @@ function TemplatesTab({ ar, showToast }) {
         <div className="flex justify-center py-8"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
       ) : (
         <div className="space-y-2">
-          {templates.map((tpl) => (
+          {templates.map((tpl, idx) => (
             <div key={tpl.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3">
               {editingId === tpl.id ? (
                 <div className="space-y-2">
@@ -546,7 +556,11 @@ function TemplatesTab({ ar, showToast }) {
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm text-slate-200 whitespace-pre-wrap flex-1">{tpl.body}</p>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 items-center">
+                      <div className="flex flex-col -my-0.5">
+                        <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-slate-500 hover:text-emerald-400 disabled:opacity-25 disabled:hover:text-slate-500" title={ar ? 'تحريك لأعلى' : 'Move up'}><ChevronUp className="w-4 h-4" /></button>
+                        <button onClick={() => move(idx, 1)} disabled={idx === templates.length - 1} className="text-slate-500 hover:text-emerald-400 disabled:opacity-25 disabled:hover:text-slate-500" title={ar ? 'تحريك لأسفل' : 'Move down'}><ChevronDown className="w-4 h-4" /></button>
+                      </div>
                       <button onClick={() => startEdit(tpl)} className="text-slate-500 hover:text-indigo-400" title={ar ? 'تعديل' : 'Edit'}><Pencil className="w-4 h-4" /></button>
                       <button onClick={() => remove(tpl.id)} className="text-slate-500 hover:text-rose-400" title={ar ? 'حذف' : 'Delete'}><Trash2 className="w-4 h-4" /></button>
                     </div>

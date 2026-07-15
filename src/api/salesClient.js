@@ -94,6 +94,7 @@ export const salesApi = {
   updateTemplate(id, body) { return req('PUT', `/templates/${id}`, { body }); },
   deleteTemplate(id) { return req('DELETE', `/templates/${id}`); },
   seedDefaultTemplates() { return req('POST', '/templates/seed-defaults'); },
+  reorderTemplates(ids) { return req('POST', '/templates/reorder', { ids }); },
   uploadTemplateFile(id, file) {
     const form = new FormData();
     form.append('file', file);
