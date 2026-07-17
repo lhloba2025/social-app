@@ -1228,6 +1228,24 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
   const [exportTransparent, setExportTransparent] = useState(false);
   const [exportAllPages, setExportAllPages] = useState(false);
 
+  // Convert a (possibly cross-origin) image URL to an inline data URL by drawing
+  // it to a canvas. The on-screen <img> already loads with crossOrigin="anonymous",
+  // so the pixels are CORS-clean and safe to read here. Returns the original URL
+  // on failure so the export still tries the live source.
+  const inlineImageUrl = async (url) => {
+    if (!url || url.startsWith("data:")) return url;
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      c.getContext("2d").drawImage(img, 0, 0);
+      return c.toDataURL("image/png");
+    } catch { return url; }
+  };
+
   // Capture the canvas as a data URL with the chosen format / scale / transparency
   const captureCanvas = async (format, quality, scaleMul, transparent) => {
     const element = /** @type {HTMLElement} */ (/** @type {unknown} */ (canvasWrapRef.current));
@@ -1242,6 +1260,19 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
       prevBg = bg;
       flushSync(() => setBg({ mode: "color", color: "transparent" }));
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
+
+    // Inline a remote background image as a data URL so the capture engine never
+    // drops it (cross-origin images loaded from another domain are otherwise
+    // missed on export — e.g. an iMac/device background behind the design).
+    let prevBgEmbed = null;
+    if (!transparent && bg?.mode === "image" && bg?.imageUrl && !bg.imageUrl.startsWith("data:")) {
+      const inlined = await inlineImageUrl(bg.imageUrl);
+      if (inlined && inlined.startsWith("data:")) {
+        prevBgEmbed = bg;
+        flushSync(() => setBg({ ...bg, imageUrl: inlined }));
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      }
     }
 
     let dataUrl = null;
@@ -1270,6 +1301,10 @@ export default function StudioEditor({ size, language, onBack, onChangeSize, loa
         dataUrl = await htmlToImage.toPng(element, { pixelRatio });
       }
     } finally {
+      if (prevBgEmbed) {
+        flushSync(() => setBg(prevBgEmbed));
+        await new Promise(r => requestAnimationFrame(r));
+      }
       if (prevBg) {
         flushSync(() => setBg(prevBg));
         await new Promise(r => requestAnimationFrame(r));
