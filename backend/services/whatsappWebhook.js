@@ -200,7 +200,7 @@ function syncSalonOnInbound(run, queryOne, queryAll, m) {
     if (!tail || tail.length < 9) return;
     // نطابق بآخر ٩ أرقام من phone_key أو phone.
     const salon = queryAll(
-      `SELECT id, status, owner_id, phone, phone_key FROM salons`
+      `SELECT id, status, owner_id, phone, phone_key, personal_handled FROM salons`
     ).find((s) => {
       const key = s.phone_key || digitsOnly(s.phone);
       return key && key.length >= 9 && key.slice(-9) === tail;
@@ -217,16 +217,20 @@ function syncSalonOnInbound(run, queryOne, queryAll, m) {
       return;
     }
 
+    // «أُنجزت عبر واتساب الشخصي»: المندوبة نقلت العميلة لجوالها، فلا نُرجِعها كمهمة
+    // ولا نغيّر حالتها عند ورود ردّ على رقم النظام (نُسجّل الرسالة فقط في السجلّ).
+    const movedToPersonal = salon.personal_handled === 1;
+
     // حالات نهائية لا نلمسها.
     const cur = salon.status || 'new';
     const updates = { updated_date: nowIso() };
-    if (!['subscribed', 'not_interested', 'do_not_send', 'interested', 'scheduled_visit'].includes(cur)) {
+    if (!movedToPersonal && !['subscribed', 'not_interested', 'do_not_send', 'interested', 'scheduled_visit'].includes(cur)) {
       updates.status = 'replied';
     }
-    // ردّ وارد ⇒ يصبح مهمة نشِطة (ما لم يكن مغلقاً).
-    if (!['subscribed', 'not_interested', 'do_not_send'].includes(cur)) updates.is_task = 1;
-    // إسناد دوري متوازن إن كان الصالون بلا مالك.
-    if (!salon.owner_id) {
+    // ردّ وارد ⇒ يصبح مهمة نشِطة (ما لم يكن مغلقاً أو مُنجزاً عبر واتساب الشخصي).
+    if (!movedToPersonal && !['subscribed', 'not_interested', 'do_not_send'].includes(cur)) updates.is_task = 1;
+    // إسناد دوري متوازن إن كان الصالون بلا مالك (نتخطّاه للمُنجز عبر واتساب الشخصي).
+    if (!movedToPersonal && !salon.owner_id) {
       const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
       if (agents.length) {
         let best = null, bestCount = Infinity;

@@ -156,6 +156,9 @@ export function mountSalesPortal(app, ctx) {
   // ── المرحلة ٢: حملات الواتساب + منع الإرسال (opt-out) ────────────────────────
   // علم «لا ترسل» على الصالون — يُستثنى تلقائياً من كل الحملات المستقبلية.
   try { run(`ALTER TABLE salons ADD COLUMN do_not_send INTEGER DEFAULT 0`); } catch { /* موجود */ }
+  // علم «أُنجزت عبر واتساب الشخصي»: لمّا تخلّص المندوبة العميلة من جوالها الشخصي،
+  // لا نُرجِع المحادثة كمهمة حتى لو ردّت العميلة على رقم النظام (نقلتها لجوالها).
+  try { run(`ALTER TABLE salons ADD COLUMN personal_handled INTEGER DEFAULT 0`); } catch { /* موجود */ }
   // علم «مهمة»: يفصل المهمة (متابعة نشِطة) عن العميل (صالون مملوك). «مهامي» =
   // owner_id=me AND is_task=1. يُضبط عند دخول حملة أو ورود رد، ويُلغى عند الإغلاق
   // أو التصفير. لا يمسّ الملكية إطلاقاً.
@@ -1893,8 +1896,9 @@ export function mountSalesPortal(app, ctx) {
     const me = req.salesUser;
     try {
       const { wamid } = await sendTextMessage({ to, body: text });
-      // الرد = المهمة تمّت (is_task=0) — تعود مهمة تلقائياً لو ردّت العميلة من جديد.
-      const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+      // الرد داخل النظام = المهمة تمّت (is_task=0) وتعود تلقائياً لو ردّت العميلة من
+      // جديد (نُلغي علم واتساب الشخصي لأن المتابعة رجعت داخل النظام).
+      const updates = { is_task: 0, personal_handled: 0, last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1930,7 +1934,7 @@ export function mountSalesPortal(app, ctx) {
       const mediaId = await uploadMedia(req.file.buffer, req.file.originalname, req.file.mimetype);
       const { wamid } = await sendImageMessage({ to, mediaId, caption });
       const body = caption ? `📷 ${caption}` : '📷 صورة';
-      const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+      const updates = { is_task: 0, personal_handled: 0, last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1954,7 +1958,8 @@ export function mountSalesPortal(app, ctx) {
     if (!salon) return res.status(404).json({ error: 'العميل غير موجود' });
     const me = req.salesUser;
     const to = normalizeMsisdn(salon.phone);
-    const updates = { is_task: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+    // personal_handled=1 ⇒ لا تُبعث كمهمة مجدداً عند ورود ردّ (نُقلت لواتساب الشخصي).
+    const updates = { is_task: 0, personal_handled: 1, last_contact_date: nowIso(), updated_date: nowIso() };
     if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
     runBatch((r) => {
       r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, '', ?, ?)`,
