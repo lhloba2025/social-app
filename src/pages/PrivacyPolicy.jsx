@@ -1,13 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
+import LegalHeader from "../components/LegalHeader";
 
 // Public privacy policy — required for TikTok / Meta app review. Reachable at
 // /privacy with no login so reviewers can open it directly.
 export default function PrivacyPolicy() {
+  // TikTok review: browser-tab title must match the app name exactly.
+  useEffect(() => { document.title = "Hovera social App"; }, []);
   return (
     <div dir="rtl" style={{ minHeight: "100vh", background: "#0f172a", color: "#e2e8f0", padding: "32px 16px" }}>
       <div style={{ maxWidth: 820, margin: "0 auto", lineHeight: 1.9, fontFamily: "Tajawal, system-ui, sans-serif" }}>
-        <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 800 }}>سياسة الخصوصية — Hovera social App</h1>
-        <p style={{ color: "#94a3b8" }}>آخر تحديث: مايو 2026</p>
+        <LegalHeader title="سياسة الخصوصية" />
+        <p style={{ color: "#94a3b8" }}>آخر تحديث: يوليو 2026</p>
 
         <p>تطبيق <b>Hovera social App</b> لإدارة وجدولة محتوى السوشيال ميديا يساعد أصحاب الصالونات والأعمال على تصميم المنشورات وجدولتها ونشرها على حساباتهم في منصات التواصل. توضّح هذه السياسة البيانات التي نصل إليها وكيف نستخدمها.</p>
 
