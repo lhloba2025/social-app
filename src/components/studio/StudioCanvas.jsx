@@ -1365,17 +1365,23 @@ export default function StudioCanvas({
     resizeRef.current = { id, type, startMX, startMY, startW: currentW, startH: currentH, corner, startX: currentX, startY: currentY };
   }, []);
 
-  // Render 4 corner resize handles for an element (image / logo / shape).
-  // Dragging any corner keeps the OPPOSITE corner anchored, so the box grows
-  // from the side you pull — not always from the bottom-right.
+  // Render 8 resize handles (4 corners + 4 edges) for an element.
+  // Corners resize both axes (keeping the opposite corner anchored); edge
+  // handles resize a single axis freely (top/bottom = height, left/right =
+  // width) so you can drag from any side — including the bottom.
   const resizeHandles = (id, type, x, y, w, h) => {
-    const corners = [
+    const handles = [
       { k: "nw", pos: { top: -6, left: -6 }, cursor: "nwse-resize" },
       { k: "ne", pos: { top: -6, right: -6 }, cursor: "nesw-resize" },
       { k: "sw", pos: { bottom: -6, left: -6 }, cursor: "nesw-resize" },
       { k: "se", pos: { bottom: -6, right: -6 }, cursor: "nwse-resize" },
+      // Edge handles (centered on each side).
+      { k: "n", pos: { top: -6, left: "calc(50% - 6px)" }, cursor: "ns-resize" },
+      { k: "s", pos: { bottom: -6, left: "calc(50% - 6px)" }, cursor: "ns-resize" },
+      { k: "w", pos: { left: -6, top: "calc(50% - 6px)" }, cursor: "ew-resize" },
+      { k: "e", pos: { right: -6, top: "calc(50% - 6px)" }, cursor: "ew-resize" },
     ];
-    return corners.map((c) => (
+    return handles.map((c) => (
       <div key={c.k}
         onMouseDown={(e) => { e.stopPropagation(); startResize(e, id, type, w, h, c.k, x, y); }}
         style={{ position: "absolute", width: 12, height: 12, background: "#fff", border: "2px solid #4f46e5", borderRadius: 3, cursor: c.cursor, ...c.pos }}
@@ -1472,16 +1478,21 @@ export default function StudioCanvas({
         if (type === "text") {
           onUpdateText(id, { textWidth: Math.max(10, startW + dx * 2) });
         } else if (type === "shape" || type === "image" || type === "logo") {
-          // Corner-aware resize: pulling a corner keeps the OPPOSITE corner fixed.
-          const left = corner === "nw" || corner === "sw";  // dragging a left handle
-          const top  = corner === "nw" || corner === "ne";  // dragging a top handle
-          let newW = Math.max(2, startW + (left ? -dx : dx));
-          let newH = Math.max(2, startH + (top ? -dy : dy));
-          // Images/logos KEEP their aspect ratio by default (so the box always
-          // hugs the picture — no letterbox gap inside the selection); hold Shift
-          // to stretch freely. Shapes are free by default; Shift locks them.
+          // Handle-aware resize. Corner keys are two letters (nw/ne/sw/se);
+          // edge keys are one letter (n/s/e/w). We derive which axes/sides move
+          // from the letters, so corners resize both axes and edges resize one.
+          const left = corner.includes("w");   // dragging a left side
+          const top  = corner.includes("n");   // dragging a top side
+          const affectsW = corner.includes("e") || corner.includes("w");
+          const affectsH = corner.includes("n") || corner.includes("s");
+          const isCorner = affectsW && affectsH;
+          let newW = affectsW ? Math.max(2, startW + (left ? -dx : dx)) : startW;
+          let newH = affectsH ? Math.max(2, startH + (top ? -dy : dy)) : startH;
+          // On CORNERS, images/logos keep their aspect ratio by default (box hugs
+          // the picture); hold Shift to stretch. Shapes are free (Shift locks).
+          // EDGE handles always stretch a single axis freely — that's their point.
           const isImg = type === "image" || type === "logo";
-          const keepRatio = isImg ? !e.shiftKey : e.shiftKey;
+          const keepRatio = isCorner && (isImg ? !e.shiftKey : e.shiftKey);
           if (keepRatio && startW > 0 && startH > 0) {
             const ratio = startW / startH;
             if (Math.abs(dx) > Math.abs(dy)) newH = Math.max(2, newW / ratio);
