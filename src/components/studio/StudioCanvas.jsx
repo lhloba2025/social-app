@@ -1502,6 +1502,10 @@ export default function StudioCanvas({
           // When the left/top edge moves, shift x/y so the opposite edge stays put.
           if (left) patch.x = startX + (startW - newW);
           if (top)  patch.y = startY + (startH - newH);
+          // Free single-axis stretch of an image ⇒ make the picture fill the box
+          // so the selection/handles hug the image (no letterbox gap on the side
+          // being stretched). Corner (ratio-locked) resize keeps "contain".
+          if (type === "image" && !isCorner) patch.objectFit = "fill";
           const updateFn = type === "shape" ? onUpdateShape : (type === "image" ? onUpdateImage : onUpdateLogo);
           updateFn(id, patch);
         } else if (type === "group") {
