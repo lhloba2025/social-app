@@ -159,6 +159,9 @@ export function mountSalesPortal(app, ctx) {
   // علم «أُنجزت عبر واتساب الشخصي»: لمّا تخلّص المندوبة العميلة من جوالها الشخصي،
   // لا نُرجِع المحادثة كمهمة حتى لو ردّت العميلة على رقم النظام (نقلتها لجوالها).
   try { run(`ALTER TABLE salons ADD COLUMN personal_handled INTEGER DEFAULT 0`); } catch { /* موجود */ }
+  // حالة العضو: active=1 نشِط، active=0 موقوف (يبقى ببياناته لكن لا تُسند له مهام
+  // جديدة ولا يستطيع تسجيل الدخول). الأعمدة القديمة تأخذ 1 تلقائياً.
+  try { run(`ALTER TABLE sales_users ADD COLUMN active INTEGER DEFAULT 1`); } catch { /* موجود */ }
   // علم «مهمة»: يفصل المهمة (متابعة نشِطة) عن العميل (صالون مملوك). «مهامي» =
   // owner_id=me AND is_task=1. يُضبط عند دخول حملة أو ورود رد، ويُلغى عند الإغلاق
   // أو التصفير. لا يمسّ الملكية إطلاقاً.
@@ -294,6 +297,10 @@ export function mountSalesPortal(app, ctx) {
     const user = queryOne(`SELECT * FROM sales_users WHERE username = ?`, [username]);
     if (!user || !verifyPassword(password, user.password_salt, user.password_hash)) {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+    // الحساب الموقوف لا يدخل النظام.
+    if (user.active === 0) {
+      return res.status(403).json({ error: 'هذا الحساب موقوف. راجع المدير لتفعيله.' });
     }
     const token = crypto.randomBytes(32).toString('hex');
     run(`INSERT INTO sales_sessions (token, user_id) VALUES (?, ?)`, [token, user.id]);
@@ -544,7 +551,7 @@ export function mountSalesPortal(app, ctx) {
 
   // ── أعضاء الفريق — للمدير فأعلى ──────────────────────────────────────────────
   router.get('/members', requireRole('admin'), (req, res) => {
-    const users = queryAll(`SELECT id, username, display_name, role, created_date FROM sales_users ORDER BY created_date`);
+    const users = queryAll(`SELECT id, username, display_name, role, active, created_date FROM sales_users ORDER BY created_date`);
     const members = users.map((u) => {
       const clients = queryOne(`SELECT COUNT(*) AS c FROM salons WHERE owner_id = ?`, [u.id])?.c ?? 0;
       const today = queryOne(
@@ -591,7 +598,7 @@ export function mountSalesPortal(app, ctx) {
     if (target.role === 'super_admin' && req.salesUser.role !== 'super_admin') {
       return res.status(403).json({ error: 'لا يمكنك تعديل حساب سوبر أدمن' });
     }
-    const { display_name, password, role } = req.body || {};
+    const { display_name, password, role, active } = req.body || {};
     const updates = {};
     if (display_name != null && String(display_name).trim()) updates.display_name = String(display_name).trim();
     if (role && ['agent', 'admin', 'super_admin'].includes(role)) {
@@ -604,6 +611,16 @@ export function mountSalesPortal(app, ctx) {
       const { hash, salt } = hashPassword(password);
       updates.password_hash = hash; updates.password_salt = salt;
     }
+    // إيقاف/تفعيل العضو (لا يمكن إيقاف سوبر أدمن ولا إيقاف نفسك).
+    if (active === 0 || active === 1) {
+      if (active === 0 && target.role === 'super_admin') {
+        return res.status(403).json({ error: 'لا يمكن إيقاف حساب المدير العام' });
+      }
+      if (active === 0 && target.id === req.salesUser.id) {
+        return res.status(403).json({ error: 'لا يمكنك إيقاف حسابك أنت' });
+      }
+      updates.active = active;
+    }
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'لا يوجد تغيير' });
 
     runBatch((r) => {
@@ -611,8 +628,10 @@ export function mountSalesPortal(app, ctx) {
       r(`UPDATE sales_users SET ${sets} WHERE id = ?`, [...Object.values(updates), req.params.id]);
       // مزامنة الاسم الظاهر على صوالين هذا العضو.
       if (updates.display_name) r(`UPDATE salons SET owner_name = ? WHERE owner_id = ?`, [updates.display_name, req.params.id]);
+      // عند الإيقاف: أوقف جلساته الحالية فوراً (يخرج من النظام).
+      if (updates.active === 0) r(`DELETE FROM sales_sessions WHERE user_id = ?`, [req.params.id]);
     });
-    const u = queryOne(`SELECT id, username, display_name, role FROM sales_users WHERE id = ?`, [req.params.id]);
+    const u = queryOne(`SELECT id, username, display_name, role, active FROM sales_users WHERE id = ?`, [req.params.id]);
     res.json(u);
   });
 
@@ -627,7 +646,7 @@ export function mountSalesPortal(app, ctx) {
     }
     // تحويل مهامه المفتوحة لباقي المناديب بالتساوي، وإلغاء إسناد الباقي — حتى لا
     // تبقى مهام «معلّقة» باسم عضو محذوف.
-    const others = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND id != ?`, [req.params.id]);
+    const others = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1 AND id != ?`, [req.params.id]);
     const load = new Map();
     for (const a of others) {
       load.set(a.id, queryOne(
@@ -945,7 +964,7 @@ export function mountSalesPortal(app, ctx) {
       // توزيع تلقائي: الدفعة الجديدة تُوسَم كمهام وتُوزَّع بالتساوي على المناديب،
       // موازِنةً مع الأحمال الحالية — دون المساس بالدفعات السابقة (المهام القائمة).
       const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);
-      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1`);
       const load = new Map();
       for (const a of agents) {
         load.set(a.id, queryOne(
@@ -1218,7 +1237,7 @@ export function mountSalesPortal(app, ctx) {
 
   // إسناد دوري متوازن: أقلّ عضو (agent) تحميلاً بالصوالين النشطة يأخذ التالي.
   function pickRoundRobinAgent() {
-    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1`);
     if (!agents.length) return null;
     let best = null, bestCount = Infinity;
     for (const a of agents) {
@@ -1700,7 +1719,7 @@ export function mountSalesPortal(app, ctx) {
     const source = queryOne(`SELECT display_name FROM sales_users WHERE id = ?`, [sourceId]);
     if (!source) return res.status(404).json({ error: 'المندوب غير موجود' });
 
-    const targets = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND id != ?`, [sourceId]);
+    const targets = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1 AND id != ?`, [sourceId]);
     if (!targets.length) return res.status(400).json({ error: 'لا يوجد مناديب آخرون للتحويل إليهم' });
 
     const pool = queryAll(
@@ -1731,7 +1750,7 @@ export function mountSalesPortal(app, ctx) {
   // توزيع المهام بالتساوي: يوزّع الصوالين النشطة غير المُسندة على المندوبات بحيث
   // تتساوى الأحمال (يأخذ في الحسبان ما لديهنّ حالياً — الأقل تحميلاً يأخذ أولاً).
   router.post('/wa/distribute', requireRole('admin'), (req, res) => {
-    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1`);
     if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
 
     // الحمل الحالي لكل مندوبة (الصوالين النشطة).
@@ -1769,7 +1788,7 @@ export function mountSalesPortal(app, ctx) {
   // يعيد إسناد كل مهمة مفتوحة (is_task=1، غير مغلقة، لها جوال) بالتناوب على المناديب
   // ابتداءً من الصفر — فتتساوى الأحمال تماماً (فرق واحد كحدّ أقصى). للأدمن عند اختلال التوزيع.
   router.post('/wa/rebalance-all', requireRole('admin'), (req, res) => {
-    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' ORDER BY display_name`);
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1 ORDER BY display_name`);
     if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
 
     const pool = queryAll(
@@ -1810,7 +1829,7 @@ export function mountSalesPortal(app, ctx) {
   // «تصفير» = is_task=0 للجميع (لا يمسّ الملكية → العملاء يبقون عملاء بلا مهام).
   // ثم صوالين موسومة «حملة ميتا» (غير المغلقة) تُوسَم كمهام وتُوزَّع بالتساوي.
   router.post('/wa/reset-distribute-campaign', requireRole('admin'), (req, res) => {
-    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+    const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1`);
     if (!agents.length) return res.status(400).json({ error: 'لا يوجد أعضاء فريق (مناديب) للتوزيع عليهم' });
 
     const CLOSED = new Set(['subscribed', 'not_interested', 'do_not_send']);

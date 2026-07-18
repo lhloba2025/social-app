@@ -231,7 +231,7 @@ function syncSalonOnInbound(run, queryOne, queryAll, m) {
     if (!movedToPersonal && !['subscribed', 'not_interested', 'do_not_send'].includes(cur)) updates.is_task = 1;
     // إسناد دوري متوازن إن كان الصالون بلا مالك (نتخطّاه للمُنجز عبر واتساب الشخصي).
     if (!movedToPersonal && !salon.owner_id) {
-      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent'`);
+      const agents = queryAll(`SELECT id, display_name FROM sales_users WHERE role = 'agent' AND active = 1`);
       if (agents.length) {
         let best = null, bestCount = Infinity;
         for (const a of agents) {

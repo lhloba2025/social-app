@@ -275,6 +275,20 @@ function MembersTab({ user, ar, showToast }) {
     catch (e) { showToast(e.message, 'err'); }
   };
 
+  // إيقاف/تفعيل عضو — الموقوف يبقى ببياناته لكن لا تُسند له مهام جديدة ولا يدخل النظام.
+  const toggleActive = async (m) => {
+    const suspend = m.active !== 0; // نشِط الآن ⇒ سنوقفه
+    const msg = suspend
+      ? (ar ? `إيقاف «${m.display_name}»؟ لن تصله مهام جديدة ولن يستطيع الدخول (تبقى بياناته).` : `Suspend “${m.display_name}”?`)
+      : (ar ? `إعادة تفعيل «${m.display_name}»؟` : `Reactivate “${m.display_name}”?`);
+    if (!window.confirm(msg)) return;
+    try {
+      await salesApi.updateMember(m.id, { active: suspend ? 0 : 1 });
+      showToast(suspend ? (ar ? 'تم إيقاف العضو' : 'Member suspended') : (ar ? 'تم تفعيل العضو' : 'Member reactivated'));
+      load();
+    } catch (e) { showToast(e.message, 'err'); }
+  };
+
   // مشاركة رابط البوابة مع المناديب الجدد (مشاركة أصلية، أو نسخ كبديل).
   const shareLink = async () => {
     const url = `${window.location.origin}/SalesPortal`;
@@ -307,13 +321,23 @@ function MembersTab({ user, ar, showToast }) {
       ) : (
         <div className="space-y-2">
           {members.map((m) => (
-            <div key={m.id} className="bg-slate-900 border border-slate-700 rounded-xl p-4">
+            <div key={m.id} className={`bg-slate-900 border rounded-xl p-4 ${m.active === 0 ? 'border-amber-600/50 opacity-70' : 'border-slate-700'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-bold text-white">{m.display_name}</div>
+                  <div className="font-bold text-white flex items-center gap-2">
+                    {m.display_name}
+                    {m.active === 0 && (
+                      <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full px-2 py-0.5">{ar ? 'موقوف' : 'Suspended'}</span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400 mt-0.5">{m.username} · {roleLabel(m.role, ar)}</div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {m.id !== user.id && m.role !== 'super_admin' && (
+                    <button onClick={() => toggleActive(m)} className={m.active === 0 ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-500 hover:text-amber-400'} title={m.active === 0 ? (ar ? 'إعادة تفعيل' : 'Reactivate') : (ar ? 'إيقاف العضو' : 'Suspend')}>
+                      {m.active === 0 ? <Play className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                    </button>
+                  )}
                   <button onClick={() => setEditing(m)} className="text-slate-500 hover:text-indigo-400" title={ar ? 'تعديل' : 'Edit'}>
                     <Pencil className="w-4 h-4" />
                   </button>
