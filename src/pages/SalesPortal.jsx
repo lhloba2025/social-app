@@ -408,6 +408,7 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
   const [followId, setFollowId] = useState(null);
   const [followDate, setFollowDate] = useState('');
   const [openMsg, setOpenMsg] = useState(null);   // الصالون المعروض رسالته (مطويّة افتراضاً)
+  const [q, setQ] = useState('');   // بحث داخل قائمة المندوبة (اسم/جوال/مدينة)
 
   const [refreshing, setRefreshing] = useState(false);
   const load = useCallback((spin = true) => {
@@ -452,6 +453,11 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
 
   if (tasks === null) return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
 
+  // بحث محلي داخل قائمة المندوبة: بالاسم أو الجوال أو المدينة.
+  const nq = q.trim().toLowerCase();
+  const shown = nq
+    ? tasks.filter((t) => `${t.name || ''} ${t.phone || ''} ${t.city || ''}`.toLowerCase().includes(nq))
+    : tasks;
   const totalUnread = tasks.reduce((n, t) => n + (t.unread_count || 0), 0);
   const TITLE = {
     tasks: ar ? 'مهامي' : 'My Tasks',
@@ -464,18 +470,36 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
     subscribed: ar ? 'لا يوجد مشتركون بعد.' : 'No subscribers yet.',
   };
   const header = (
-    <div className="flex items-center justify-between">
-      <h3 className="font-bold text-white flex items-center gap-2">
-        <CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {TITLE[filter] || TITLE.tasks} <span className="text-slate-400 text-sm">({tasks.length})</span>
-        {totalUnread > 0 && (
-          <span className="text-[11px] font-bold bg-rose-600 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
-            <MessageCircle className="w-3 h-3" /> {ar ? `${totalUnread} غير مقروء` : `${totalUnread} unread`}
-          </span>
-        )}
-      </h3>
-      <button onClick={() => load()} disabled={refreshing} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-xl px-3 py-1.5 transition">
-        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {ar ? 'تحديث' : 'Refresh'}
-      </button>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-white flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-fuchsia-400" /> {TITLE[filter] || TITLE.tasks} <span className="text-slate-400 text-sm">({nq ? `${shown.length}/${tasks.length}` : tasks.length})</span>
+          {totalUnread > 0 && (
+            <span className="text-[11px] font-bold bg-rose-600 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
+              <MessageCircle className="w-3 h-3" /> {ar ? `${totalUnread} غير مقروء` : `${totalUnread} unread`}
+            </span>
+          )}
+        </h3>
+        <button onClick={() => load()} disabled={refreshing} className="flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-xl px-3 py-1.5 transition">
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {ar ? 'تحديث' : 'Refresh'}
+        </button>
+      </div>
+      {tasks.length > 0 && (
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-500 absolute top-1/2 -translate-y-1/2" style={{ [ar ? 'right' : 'left']: '10px' }} />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={ar ? 'ابحثي باسم الصالون أو الجوال أو المدينة…' : 'Search by name, phone, or city…'}
+            className={`w-full bg-white/5 border border-white/10 text-white rounded-xl py-2 text-sm outline-none focus:border-indigo-500 ${ar ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
+          />
+          {q && (
+            <button onClick={() => setQ('')} className="absolute top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" style={{ [ar ? 'left' : 'right']: '10px' }}>
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -489,7 +513,10 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
   return (
     <div className="space-y-2">
       {header}
-      {tasks.map((t) => (
+      {shown.length === 0 && (
+        <div className="text-center py-10 text-slate-500 text-sm">{ar ? 'لا نتائج تطابق بحثك.' : 'No matches for your search.'}</div>
+      )}
+      {shown.map((t) => (
         <div key={t.id} className={`rounded-2xl border p-3 ${t.unread_count > 0 ? 'border-rose-500/50 bg-rose-500/[0.06]' : t.wait_state === 'seen' ? 'border-amber-500/30 bg-amber-500/[0.05]' : t.wait_state === 'awaiting_customer' ? 'border-emerald-500/30 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0 flex-1">
