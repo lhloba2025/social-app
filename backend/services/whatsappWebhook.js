@@ -4,15 +4,23 @@
 //   • ردود العملاء الواردة (value.messages)
 //   • تحديثات حالة الرسائل الصادرة (value.statuses): sent/delivered/read/failed
 //
-// نخزّن الأحداث لأي phone_number_id (قد تُضاف أرقام لاحقاً). المعالجة تتم بعد
-// الرد بـ 200 فوراً، ودائماً نبتلع الأخطاء حتى لا يعيد ميتا الإرسال بلا نهاية.
+// نقبل فقط أحداث رقم النظام (أو قائمة WA_ALLOWED_PHONE_IDS) ونتجاهل باقي أرقام
+// نفس التوكن. المعالجة تتم بعد الرد بـ 200 فوراً، ودائماً نبتلع الأخطاء حتى لا
+// يعيد ميتا الإرسال بلا نهاية.
 //
 // جداول البيانات تُنشأ هنا وتُقرأ من صفحة الإدارة عبر مسارات /api/sales/wa/*.
 
 import express from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
+import { waCloudPhoneId } from './waCloud.js';
 
 const nowIso = () => new Date().toISOString();
+
+// أرقام النظام المسموح استقبال ردودها. نفس التوكن (WABA) قد يحمل أكثر من رقم،
+// وميتا ترسل أحداث كل الأرقام — فنقبل فقط رقم النظام (أو قائمة عبر
+// WA_ALLOWED_PHONE_IDS) ونتجاهل باقي الأرقام حتى لا تختلط محادثاتها بالنظام.
+const ALLOWED_PHONE_IDS = (process.env.WA_ALLOWED_PHONE_IDS || waCloudPhoneId() || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
 
 // كلمات إيقاف الإرسال (opt-out) — أهمّها «إيقاف».
 const OPT_OUT = new Set(['إيقاف', 'ايقاف', 'الغاء', 'إلغاء', 'stop', 'unsubscribe']);
@@ -146,6 +154,12 @@ export function mountWhatsappWebhook(app, ctx) {
           const value = change?.value || {};
           const phoneNumberId = value?.metadata?.phone_number_id || null;
           const profileName = value?.contacts?.[0]?.profile?.name || null;
+
+          // نتجاهل أحداث الأرقام الأخرى تحت نفس التوكن (WABA): نقبل فقط رقم النظام.
+          // إن لم نتمكّن من تحديد الرقم (لا قائمة أو لا معرّف) نقبل — سلوك آمن للخلف.
+          if (phoneNumberId && ALLOWED_PHONE_IDS.length && !ALLOWED_PHONE_IDS.includes(phoneNumberId)) {
+            continue;
+          }
 
           for (const m of (Array.isArray(value.messages) ? value.messages : [])) {
             storeInbound(run, m, profileName, phoneNumberId);
