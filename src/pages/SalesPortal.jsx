@@ -565,14 +565,14 @@ function MyTasksView({ ar, showToast, onWhatsApp, me, templates, filter = 'tasks
               <div className="flex items-center gap-1.5">
                 <a
                   href={`https://wa.me/${waNumber(t.phone)}`} target="_blank" rel="noreferrer"
-                  onClick={() => { onWhatsApp && onWhatsApp(t); markReplied(t); }}
+                  onClick={() => onWhatsApp && onWhatsApp(t)}
                   className="flex-1 text-[12px] text-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg py-2 flex items-center justify-center gap-1.5"
-                  title={ar ? 'يفتح واتساب جوالك ويُنهي المهمة (ترجع لو ردّت العميلة)' : 'open your WhatsApp and complete the task'}
+                  title={ar ? 'يفتح واتساب جوالك — المهمة تبقى عندك' : 'open your WhatsApp — task stays'}
                 ><MessageCircle className="w-3.5 h-3.5" /> {ar ? 'واتساب جوالي' : 'my WhatsApp'}</a>
                 <button
                   onClick={() => markReplied(t)}
                   className="text-[11px] text-slate-400 hover:text-emerald-300 px-2 py-2 flex items-center gap-1"
-                  title={ar ? 'علّم المهمة تمّت بدون فتح واتساب' : 'mark done without opening WhatsApp'}
+                  title={ar ? 'إنهاء المهمة وإخراجها من قائمتك' : 'close the task'}
                 ><CheckCircle2 className="w-3.5 h-3.5" /> {ar ? 'تمّت' : 'Done'}</button>
               </div>
             </div>
@@ -708,10 +708,13 @@ function ChatModal({ salon, me, ar, showToast, onClose, onSent, templates }) {
               </div>
               <a
                 href={`https://wa.me/${waNumber(salon.phone)}`} target="_blank" rel="noreferrer"
-                onClick={() => { salesApi.waMarkReplied(salon.id).then(() => onSent && onSent()).catch(() => {}); if (onClose) onClose(); }}
                 className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl py-3 text-sm"
-              ><MessageCircle className="w-5 h-5" /> {ar ? 'رد من واتساب جوالي (تُنهى المهمة)' : 'Reply from my WhatsApp (completes task)'}</a>
-              <p className="text-[11px] text-slate-500 text-center">{ar ? 'لو ردّت العميلة بعدها، ترجع المهمة تلقائياً.' : 'If she replies again, the task returns automatically.'}</p>
+              ><MessageCircle className="w-5 h-5" /> {ar ? 'رد من واتساب جوالي' : 'Reply from my WhatsApp'}</a>
+              <p className="text-[11px] text-slate-500 text-center">{ar ? 'المهمة تبقى عندك بعد الرد — اضغطي «تمّت» لإنهائها.' : 'The task stays after you reply — press Done to close it.'}</p>
+              <button
+                onClick={() => { salesApi.waMarkReplied(salon.id).then(() => onSent && onSent()).catch(() => {}); if (onClose) onClose(); }}
+                className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl py-2.5 text-sm"
+              ><CheckCircle2 className="w-4 h-4" /> {ar ? 'تمّت — إنهاء المهمة' : 'Done — close task'}</button>
             </div>
           ) : (
             <>

@@ -1915,9 +1915,9 @@ export function mountSalesPortal(app, ctx) {
     const me = req.salesUser;
     try {
       const { wamid } = await sendTextMessage({ to, body: text });
-      // الرد داخل النظام = المهمة تمّت (is_task=0) وتعود تلقائياً لو ردّت العميلة من
-      // جديد (نُلغي علم واتساب الشخصي لأن المتابعة رجعت داخل النظام).
-      const updates = { is_task: 0, personal_handled: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+      // الرد لا يُنهي المهمة — تبقى عند المندوبة (تصير «ردّيتِ · بانتظار العميلة»)
+      // ولا تُقفل إلا يدوياً (زر «تمّت» أو تسجيل نتيجة).
+      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1953,7 +1953,8 @@ export function mountSalesPortal(app, ctx) {
       const mediaId = await uploadMedia(req.file.buffer, req.file.originalname, req.file.mimetype);
       const { wamid } = await sendImageMessage({ to, mediaId, caption });
       const body = caption ? `📷 ${caption}` : '📷 صورة';
-      const updates = { is_task: 0, personal_handled: 0, last_contact_date: nowIso(), updated_date: nowIso() };
+      // الرد بصورة لا يُنهي المهمة — تبقى عند المندوبة حتى تُقفلها يدوياً.
+      const updates = { last_contact_date: nowIso(), updated_date: nowIso() };
       if (!salon.owner_id) { updates.owner_id = me.id; updates.owner_name = me.name; }
       runBatch((r) => {
         r(`INSERT INTO wa_outbound (id, salon_id, to_number, body, wamid, sent_by, sent_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
