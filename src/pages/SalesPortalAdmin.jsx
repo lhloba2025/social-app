@@ -1089,6 +1089,7 @@ let LIVE_TEMPLATES_CACHE = null;
 
 const CAMP_STATUS = {
   draft:     { ar: 'مسودّة',        en: 'Draft',     color: 'bg-slate-600' },
+  scheduled: { ar: 'مجدولة',        en: 'Scheduled', color: 'bg-violet-600' },
   sending:   { ar: 'قيد الإرسال',   en: 'Sending',   color: 'bg-cyan-600' },
   paused:    { ar: 'موقوفة مؤقتاً', en: 'Paused',    color: 'bg-amber-600' },
   done:      { ar: 'مكتملة',        en: 'Done',      color: 'bg-emerald-600' },
@@ -1168,11 +1169,16 @@ function CampaignsTab({ ar, showToast }) {
                       {c.media_id && <span className="text-[11px] text-slate-300 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {ar ? 'صورة' : 'image'}</span>}
                     </div>
                     <div className="text-xs text-slate-400 mt-1">{ar ? 'القالب' : 'Template'}: {c.template_name} · {c.total} {ar ? 'مستلم' : 'recipients'}</div>
+                    {c.status === 'scheduled' && c.scheduled_at && (
+                      <div className="text-[11px] text-violet-300 mt-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {ar ? 'ستُرسل' : 'Sends'}: {new Intl.DateTimeFormat(ar ? 'ar-SA-u-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(c.scheduled_at))} {ar ? '(الرياض)' : '(Riyadh)'}
+                      </div>
+                    )}
                     {c.note && <div className="text-[11px] text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> {c.note}</div>}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {(c.status === 'draft' || c.status === 'paused') && (
-                      <button onClick={() => action(salesApi.waStartCampaign, c.id)} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2.5 py-1.5"><Play className="w-3.5 h-3.5" /> {ar ? (c.status === 'paused' ? 'استئناف' : 'بدء الإرسال') : 'Start'}</button>
+                    {(c.status === 'draft' || c.status === 'paused' || c.status === 'scheduled') && (
+                      <button onClick={() => action(salesApi.waStartCampaign, c.id)} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2.5 py-1.5"><Play className="w-3.5 h-3.5" /> {ar ? (c.status === 'paused' ? 'استئناف' : c.status === 'scheduled' ? 'بدء الآن' : 'بدء الإرسال') : 'Start'}</button>
                     )}
                     {c.status === 'sending' && (
                       <button onClick={() => action(salesApi.waPauseCampaign, c.id)} className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-lg px-2.5 py-1.5"><Pause className="w-3.5 h-3.5" /> {ar ? 'إيقاف' : 'Pause'}</button>
@@ -1217,6 +1223,7 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
   const [templates, setTemplates] = useState(LIVE_TEMPLATES_CACHE);   // يظهر فوراً من الذاكرة إن وُجد
   const [tpl, setTpl] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [schedule, setSchedule] = useState('');   // وقت الإرسال المجدول (توقيت الرياض) — فارغ = مسودّة
   const [busy, setBusy] = useState(false);
   // معاينة حيّة للمستلمين (بالفلاتر): العدد + قائمة قابلة للبحث.
   const [preview, setPreview] = useState(null);   // { total, matched, rows }
@@ -1276,8 +1283,17 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
       else if (mode === 'manual') fd.append('numbers_text', numbersText.trim());
       else { if (city) fd.append('city', city); if (status) fd.append('status', status); if (limit) fd.append('limit', limit); if (randomPick && limit) fd.append('random', '1'); }
       if (imageFile) fd.append('image', imageFile);
+      // الجدولة: قيمة datetime-local تُفسَّر كتوقيت الرياض (UTC+3) وتُحوَّل إلى UTC.
+      if (schedule) {
+        const utc = new Date(schedule + ':00+03:00');
+        if (isNaN(utc.getTime())) { showToast(ar ? 'وقت الجدولة غير صالح' : 'Invalid schedule time', 'err'); setBusy(false); return; }
+        if (utc.getTime() <= Date.now()) { showToast(ar ? 'اختر وقتاً في المستقبل (بتوقيت الرياض)' : 'Pick a future time', 'err'); setBusy(false); return; }
+        fd.append('scheduled_at', utc.toISOString());
+      }
       const r = await salesApi.waCreateCampaign(fd);
-      showToast(ar ? `أُنشئت الحملة — ${r.total} مستلم. اضغط «بدء الإرسال».` : `Created — ${r.total} recipients.`);
+      showToast(schedule
+        ? (ar ? `تمت جدولة الحملة — ${r.total} مستلم. ستُرسل تلقائياً في الوقت المحدد.` : `Scheduled — ${r.total} recipients.`)
+        : (ar ? `أُنشئت الحملة — ${r.total} مستلم. اضغط «بدء الإرسال».` : `Created — ${r.total} recipients.`));
       onCreated();
     } catch (e) { showToast(e.message, 'err'); } finally { setBusy(false); }
   };
@@ -1409,13 +1425,27 @@ function CreateCampaign({ ar, showToast, onClose, onCreated }) {
           </label>
         )}
 
+        {/* جدولة الإرسال (اختياري) — بتوقيت الرياض */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5 space-y-1.5">
+          <label className="text-xs text-slate-300 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-indigo-400" /> {ar ? 'جدولة الإرسال (اختياري) — بتوقيت الرياض 🇸🇦' : 'Schedule send (optional) — Riyadh time'}</label>
+          <input type="datetime-local" value={schedule} onChange={(e) => setSchedule(e.target.value)} className={inputCls} />
+          {schedule && (
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-emerald-300">{ar ? '⏰ ستُرسل تلقائياً في هذا الوقت (بتوقيت الرياض).' : 'Auto-sends at this time (Riyadh).'}</span>
+              <button onClick={() => setSchedule('')} className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1"><X className="w-3 h-3" /> {ar ? 'إلغاء الجدولة' : 'Clear'}</button>
+            </div>
+          )}
+        </div>
+
         <button onClick={submit} disabled={busy} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-2">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-          {pickedNums.length
-            ? (ar ? `إنشاء الحملة للمحدّدين (${pickedNums.length})` : `Create for selected (${pickedNums.length})`)
-            : (ar ? 'إنشاء الحملة (مسودّة)' : 'Create campaign (draft)')}
+          {schedule
+            ? (ar ? 'جدولة الحملة' : 'Schedule campaign')
+            : pickedNums.length
+              ? (ar ? `إنشاء الحملة للمحدّدين (${pickedNums.length})` : `Create for selected (${pickedNums.length})`)
+              : (ar ? 'إنشاء الحملة (مسودّة)' : 'Create campaign (draft)')}
         </button>
-        <p className="text-[11px] text-slate-500 text-center">{ar ? 'تُنشأ كمسودّة أولاً — راجع العدد ثم اضغط «بدء الإرسال».' : 'Created as draft — review count then Start.'}</p>
+        <p className="text-[11px] text-slate-500 text-center">{schedule ? (ar ? 'ستُرسل تلقائياً في الوقت المحدد بتوقيت الرياض.' : 'Auto-sends at the scheduled Riyadh time.') : (ar ? 'تُنشأ كمسودّة أولاً — راجع العدد ثم اضغط «بدء الإرسال».' : 'Created as draft — review count then Start.')}</p>
       </div>
     </ModalShell>
   );

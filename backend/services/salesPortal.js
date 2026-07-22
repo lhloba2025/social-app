@@ -189,6 +189,8 @@ export function mountSalesPortal(app, ctx) {
       updated_date TEXT DEFAULT (datetime('now'))
     );
   `);
+  // وقت الإرسال المجدول (UTC ISO). عند وصوله يتحوّل status من 'scheduled' إلى 'sending'.
+  try { run(`ALTER TABLE wa_campaigns ADD COLUMN scheduled_at TEXT`); } catch { /* موجود */ }
   // رسائل صادرة حرّة من داخل النظام (رد المندوبة عبر رقم الأعمال) — لعرض المحادثة.
   run(`
     CREATE TABLE IF NOT EXISTS wa_outbound (
@@ -1416,20 +1418,32 @@ export function mountSalesPortal(app, ctx) {
         catch (err) { return res.status(502).json({ error: 'تعذّر رفع الصورة لميتا: ' + (err.message || '') }); }
       }
 
+      // جدولة اختيارية: الواجهة ترسل scheduled_at كـ UTC ISO (محوّلاً من توقيت
+      // الرياض). إن كان في المستقبل ⇒ الحالة 'scheduled' ويُرسل تلقائياً عند وصوله.
+      let scheduledAt = null, status = 'draft';
+      const rawSched = String(b.scheduled_at || '').trim();
+      if (rawSched) {
+        const t = Date.parse(rawSched);
+        if (!Number.isFinite(t)) return res.status(400).json({ error: 'وقت الجدولة غير صالح' });
+        if (t <= Date.now()) return res.status(400).json({ error: 'وقت الجدولة يجب أن يكون في المستقبل' });
+        scheduledAt = new Date(t).toISOString();
+        status = 'scheduled';
+      }
+
       const id = randomUUID();
       // إدراج دفعي: الحملة + كل المستلمين (قد يكونون آلافاً) بحفظ واحد للقرص.
       runBatch((r) => {
         r(
-          `INSERT INTO wa_campaigns (id, name, template_name, template_lang, media_id, status, filters, total, created_by, created_by_name)
-           VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
-          [id, name, template_name, template_lang, media_id, JSON.stringify(b || {}), recipients.length, req.salesUser.id, req.salesUser.name]
+          `INSERT INTO wa_campaigns (id, name, template_name, template_lang, media_id, status, scheduled_at, filters, total, created_by, created_by_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, name, template_name, template_lang, media_id, status, scheduledAt, JSON.stringify(b || {}), recipients.length, req.salesUser.id, req.salesUser.name]
         );
         for (const rec of recipients) {
           r(`INSERT INTO wa_campaign_recipients (id, campaign_id, salon_id, to_number, send_status) VALUES (?, ?, ?, ?, 'pending')`,
             [randomUUID(), id, rec.salon_id, rec.to_number]);
         }
       });
-      res.status(201).json({ id, name, total: recipients.length, media_id, status: 'draft', warn24h: sent24hCount() });
+      res.status(201).json({ id, name, total: recipients.length, media_id, status, scheduled_at: scheduledAt, warn24h: sent24hCount() });
     });
 
   // ── قائمة الحملات مع عدّادات ──────────────────────────────────────────────────
@@ -2009,6 +2023,28 @@ export function mountSalesPortal(app, ctx) {
   for (const c of queryAll(`SELECT id FROM wa_campaigns WHERE status = 'sending'`)) {
     runCampaign(c.id);
   }
+
+  // مجدوِل الحملات: كل ٣٠ ثانية يفحص الحملات المجدولة التي حان وقتها (UTC) ويبدأ
+  // إرسالها. المقارنة بـ UTC، والواجهة تحوّل توقيت الرياض إلى UTC عند الإنشاء.
+  // الحملات التي فات وقتها والخادم متوقّف تُرسَل فور أول فحص بعد التشغيل.
+  function checkScheduledCampaigns() {
+    try {
+      const now = nowIso();
+      const due = queryAll(
+        `SELECT id FROM wa_campaigns WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ?`,
+        [now]
+      );
+      for (const c of due) {
+        run(`UPDATE wa_campaigns SET status = 'sending', updated_date = ? WHERE id = ? AND status = 'scheduled'`, [nowIso(), c.id]);
+        console.log(`[wa-campaign] ⏰ بدء حملة مجدولة ${c.id}`);
+        runCampaign(c.id);
+      }
+    } catch (err) {
+      console.error('[wa-campaign] scheduler error:', err?.message || err);
+    }
+  }
+  checkScheduledCampaigns();
+  setInterval(checkScheduledCampaigns, 30 * 1000);
 
   app.use('/api/sales', router);
   console.log('[Sales] ✅ بوابة فريق المبيعات «هوفيرا» جاهزة على /api/sales');
