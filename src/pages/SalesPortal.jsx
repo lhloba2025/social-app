@@ -46,7 +46,11 @@ export default function SalesPortal({ language }) {
   const [logSalon, setLogSalon] = useState(null);  // الصالون لنافذة سجل التواصل
   const [adding, setAdding] = useState(false);     // نافذة إضافة صالون جديد
   const [detailSalon, setDetailSalon] = useState(null);  // نافذة معلومات الصالون
-  const [view, setView] = useState('all');         // 'all' كل الصوالين | 'tasks' مهامي
+  // 'all' كل الصوالين | 'tasks' مهامي — المدير يبدأ بكل الصوالين، المندوبة بمهامها.
+  const [view, setView] = useState(() => {
+    const u = getStoredUser();
+    return (u && (u.role === 'admin' || u.role === 'super_admin')) ? 'all' : 'tasks';
+  });
   const [repFilter, setRepFilter] = useState('tasks');  // فئة عرض المندوبة: tasks|interested|subscribed
   const [repStats, setRepStats] = useState(null);       // عدّادات بطاقات المندوبة
   const loadRepStats = useCallback(() => { salesApi.myStats().then(setRepStats).catch(() => {}); }, []);
@@ -227,27 +231,25 @@ export default function SalesPortal({ language }) {
             <StatCard icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={stats.interested} accent="text-emerald-400" />
             <StatCard icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={stats.subscribed} accent="text-green-400" />
           </div>
-        ) : (
+        ) : view === 'tasks' ? (
           <div className="grid grid-cols-3 gap-3">
             <RepCard active={repFilter === 'tasks'} onClick={() => setRepFilter('tasks')} icon={CheckCircle2} label={ar ? 'مهامي' : 'My Tasks'} value={repStats?.tasks ?? 0} accent="text-fuchsia-400" />
             <RepCard active={repFilter === 'interested'} onClick={() => setRepFilter('interested')} icon={Heart} label={ar ? 'مهتمين' : 'Interested'} value={repStats?.interested ?? 0} accent="text-emerald-400" />
             <RepCard active={repFilter === 'subscribed'} onClick={() => setRepFilter('subscribed')} icon={BadgeCheck} label={ar ? 'مشتركين' : 'Subscribed'} value={repStats?.subscribed ?? 0} accent="text-green-400" />
           </div>
-        )}
+        ) : null}
 
-        {/* مبدّل العرض — للمدير فقط. المندوبة ترى «مهامي» فقط. */}
-        {isAdmin && (
-          <div className="flex gap-2">
-            <button onClick={() => setView('all')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
-              <Store className="w-4 h-4" /> {ar ? 'كل الصوالين' : 'All Salons'}
-            </button>
-            <button onClick={() => setView('tasks')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'tasks' ? 'bg-fuchsia-600 border-fuchsia-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
-              <CheckCircle2 className="w-4 h-4" /> {ar ? 'مهامي' : 'My Tasks'}
-            </button>
-          </div>
-        )}
+        {/* مبدّل العرض — الجميع: «كل الصوالين» (بحث + وسم حملة ميتا) أو «مهامي». */}
+        <div className="flex gap-2">
+          <button onClick={() => setView('all')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+            <Store className="w-4 h-4" /> {ar ? 'كل الصوالين' : 'All Salons'}
+          </button>
+          <button onClick={() => setView('tasks')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition ${view === 'tasks' ? 'bg-fuchsia-600 border-fuchsia-500 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+            <CheckCircle2 className="w-4 h-4" /> {ar ? 'مهامي' : 'My Tasks'}
+          </button>
+        </div>
 
-        {(!isAdmin || view === 'tasks') ? (
+        {view === 'tasks' ? (
           <MyTasksView ar={ar} showToast={showToast} me={user} templates={templates} filter={isAdmin ? 'tasks' : repFilter} onChanged={loadRepStats} onWhatsApp={(s) => setWaSalon(s)} />
         ) : (<>
 
